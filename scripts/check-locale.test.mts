@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flatten, extractUsedKeys, compare } from './check-locale.mjs';
+import { flatten, extractUsedKeys, compare, findRawLinkImports } from './check-locale.mjs';
 
 const base = ['home.title', 'home.tagline', 'error.retry'];
 
@@ -51,6 +51,22 @@ describe('locale gate', () => {
 
   it('MUTATION: a missing default locale is fatal, not a shrug', () => {
     expect(compare({ locales: { fr: base }, usedKeys: base }).join()).toMatch(/default locale must exist/);
+  });
+
+  it("MUTATION: importing Link from 'next/link' is caught", () => {
+    // Invisible with one locale, permanent by the time a second exists: the href simply loses its
+    // locale prefix and nothing complains. ADR-010 stated this rule; now something enforces it.
+    const bad = findRawLinkImports(['a.tsx'], () => "import Link from 'next/link';");
+    expect(bad).toHaveLength(1);
+    expect(bad[0]).toMatch(/@\/i18n\/navigation/);
+  });
+
+  it("the locale-aware import is allowed", () => {
+    expect(findRawLinkImports(['a.tsx'], () => "import { Link } from '@/i18n/navigation';")).toEqual([]);
+  });
+
+  it("a mention in a comment is not an import", () => {
+    expect(findRawLinkImports(['a.tsx'], () => "// never import from 'next/link'")).toEqual([]);
   });
 
   it('the real repository passes all three rules', async () => {

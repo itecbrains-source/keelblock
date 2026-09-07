@@ -42,6 +42,30 @@ export function extractUsedKeys(source) {
   return calls.flatMap((key) => namespaces.map((ns) => `${ns}.${key}`));
 }
 
+/**
+ * `Link` must come from `@/i18n/navigation`, never `next/link`.
+ *
+ * ADR-010 states this rule, and stating a rule with no gate is what this project forbids. The bug it
+ * catches is invisible today and permanent later: with one locale a `next/link` href works fine, so
+ * nothing surfaces — until a second locale exists and every such link silently drops the prefix.
+ * By then they are everywhere. Exported for tests.
+ *
+ * @param {string[]} files
+ * @param {(f: string) => string} read
+ * @returns {string[]}
+ */
+export function findRawLinkImports(files, read) {
+  const bad = [];
+  for (const file of files) {
+    read(file).split('\n').forEach((line, i) => {
+      if (/^\s*import\s+.*\bfrom\s+['"]next\/link['"]/.test(line)) {
+        bad.push(`${file}:${i + 1} — imports Link from 'next/link'; use '@/i18n/navigation' (ADR-010)`);
+      }
+    });
+  }
+  return bad;
+}
+
 /** Pure. Exported so each rule carries a mutation proof. */
 export function compare({ locales, usedKeys }) {
   const problems = [];
@@ -83,8 +107,12 @@ function main() {
     readdirSync(MESSAGES).filter((f) => f.endsWith('.json'))
       .map((f) => [f.replace('.json', ''), flatten(JSON.parse(readFileSync(join(MESSAGES, f), 'utf8')))])
   );
-  const usedKeys = [...new Set(walk(SRC).flatMap((f) => extractUsedKeys(readFileSync(f, 'utf8'))))];
-  const problems = compare({ locales, usedKeys });
+  const files = walk(SRC);
+  const usedKeys = [...new Set(files.flatMap((f) => extractUsedKeys(readFileSync(f, 'utf8'))))];
+  const problems = [
+    ...compare({ locales, usedKeys }),
+    ...findRawLinkImports(files, (f) => readFileSync(f, 'utf8')),
+  ];
 
   if (!problems.length) {
     console.log(`locale: ok — ${Object.keys(locales).length} locale(s), ${locales[DEFAULT_LOCALE].length} keys, all used and all present`);
