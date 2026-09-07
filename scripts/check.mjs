@@ -24,7 +24,10 @@ export const STEPS = [
   { id: 'unused',    why: 'no dead code or unused dependencies',   cmd: 'npx', args: ['knip'] },
   { id: 'deferrals', why: 'debt is logged and no trigger has fired', cmd: 'node', args: ['scripts/check-deferrals.mjs'] },
   { id: 'policy',    why: 'the database enforces isolation',        cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },
-  { id: 'matrix',    why: 'the published access matrix is current', cmd: 'node', args: ['scripts/access-matrix.mjs', '--check'], needsDb: true },
+  // One gate for every committed-and-derived artifact: the access matrix and the database types.
+  // Kept as one because it is one promise -- nothing derived is stale -- and SPEC-003 sets nine gates
+  // as a ceiling, not a floor.
+  { id: 'generated', why: 'no committed generated artifact is stale', cmd: 'node', args: ['scripts/check-generated.mjs', '--check'], needsDb: true },
 ];
 
 /** Exit codes are a contract: 0 all green · 1 a gate failed · 2 the run could not be performed. */

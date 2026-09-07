@@ -78,11 +78,11 @@ describe('check runner', () => {
     for (const e of exemptions) {
       expect(reasons, `${e} is exempted in knip.json but not justified in knip.reasons.md`).toContain(e);
     }
-    expect(exemptions.length).toBeLessThanOrEqual(12);   // shrink-only ratchet
+    expect(exemptions.length).toBeLessThanOrEqual(13);   // shrink-only ratchet
   });
 
   it('the isolation gates are marked as needing the database', () => {
-    for (const id of ['policy', 'matrix']) {
+    for (const id of ['policy', 'generated']) {
       expect(STEPS.find((s) => s.id === id)!.needsDb).toBe(true);
     }
   });

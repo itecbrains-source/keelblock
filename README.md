@@ -119,6 +119,24 @@ fidelity: 45% of steps genuinely executed
 
 **45%, stated plainly.** "CI passed locally" is worth nothing if a third of it was quietly skipped.
 
+### Writing application code
+
+[ADR-011](docs/adr/ADR-011-app-router-conventions.md) settles the conventions before the first real
+screen sets them by accident. The load-bearing ones:
+
+- **Server Actions for the app, Route Handlers for the outside world.** An action invoked from
+  outside the browser breaks the assumptions that make it safe, so anything needing a URL gets
+  explicit auth.
+- **Every mutation is validate → authorise → act.** A Server Action's argument is untrusted input —
+  a network boundary wearing a function's clothes — so it is typed `unknown` and parsed. The type
+  annotation you would rather write is a comment.
+- **Authorisation is the policy, not an `if`.** Actions use the session-carrying client and let RLS
+  refuse. An application check may improve the error message; it is never the boundary. That is
+  [F-15](docs/FINDINGS.md), the pattern keel exists to replace.
+- **Database types are generated and gated.** A stale row type does not fail to compile — it compiles
+  and is `undefined` in production. `npm run generate` regenerates; the `generated` gate fails when
+  it drifts.
+
 ### Security headers
 
 Six headers — `Referrer-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy`
