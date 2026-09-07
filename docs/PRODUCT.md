@@ -54,7 +54,7 @@ feature:
 
 ## The acceptance bar
 
-"World-class" is unfalsifiable. These six are not. keel v1 is not done until every one is
+"World-class" is unfalsifiable. These ten are not. keel v1 is not done until every one is
 demonstrably true, and each is owned by a SPEC.
 
 | # | Bar | How it is proven |
@@ -65,11 +65,41 @@ demonstrably true, and each is owned by a SPEC.
 | B-4 | **Every "no X" promise has a gate, and every gate has a proof it can fail** | Each gate ships a mutation test that restores the real defect and asserts red |
 | B-5 | **A stranger reaches their first deployed feature using only the docs** | A scripted walkthrough run by someone with no prior context, timed and recorded |
 | B-6 | **Any optional subsystem is removable in one commit** | A removal test per optional module: delete it, and typecheck + build + the remaining suite stay green |
+| B-7 | **Accessible**: keyboard-complete, axe-clean on every shipped surface | An automated axe pass in CI plus a manual keyboard walkthrough per surface |
+| B-8 | **Fast**: a performance budget that fails the build, not a Lighthouse screenshot | Budget asserted in CI against the built app |
+| B-9 | **Secure by default**: CSP, security headers, rate limiting, secret scanning over full history | Header assertions in e2e; gitleaks in pre-commit and CI |
+| B-10 | **Upgradable**: a project scaffolded from keel `N` can adopt keel `N+1`'s security fixes by a documented, tested path | A CI job that scaffolds at the previous tag, applies the upgrade path, and runs the current suite green |
 
 B-6 is the direct answer to the field's loudest complaint — *"retrofitting the boilerplate's
 implementation to your needs can be as complicated as implementing the feature from scratch."* Most
 kits treat their features as load-bearing. Keel treats **removability as a tested property**, which
 is what makes an opinionated starter safe to adopt.
+
+## Beating the paid field
+
+The bar is not nextacular. It is MakerKit ($349–649), Supastarter (€349–€1,499), Achromatic and
+ShipFast ($199–299) — funded products with years of head start.
+
+**Where keel does not compete, deliberately:** feature count and framework breadth. Supastarter ships
+five payment providers, an AI chatbot, i18n and Nuxt/SvelteKit builds; MakerKit ships TanStack Start
+and an Expo React Native kit. Matching that is their game, it is years of work, and it is the exact
+bloat the field is criticised for. Keel ships one good path per concern.
+
+**Where every one of them is weak, checked against their own material:**
+
+| Axis | Field's state | keel must | Proof |
+|---|---|---|---|
+| **Proof of isolation** | Nobody publishes any. MakerKit "some tests", Supastarter journey e2e, ShipFast none | Prove it per table × command × identity, and publish the matrix | B-2 |
+| **Rot resistance** | Stays current because a paid maintainer does it — a person, not a property | Make staleness fail the build | B-3 |
+| **Removability** | The loudest complaint in every review; nobody solves it | Make deleting a module a tested property | B-6 |
+| **Upgradability** | You cloned it in March; a security fix lands in September; there is no path | Give a scaffolded project a tested route to upstream fixes | **B-10** |
+| **Verifiable promises** | Marketing claims, no mechanism | Every "no X" has a gate; every gate has a proof it can fail | B-4 |
+| **Price** | $199–1,499 | Free, MIT | D-1 |
+
+**B-10 is the one to lead with after isolation.** It is the deepest structural failure of the entire
+boilerplate category: the product is a *copy*, so the moment you clone it you are forked off
+maintenance forever. Every kit in the table has this problem and none advertises a solution, because
+there isn't one — which is exactly why solving it is worth more than a sixth payment provider.
 
 ## Scope — the eight areas
 
