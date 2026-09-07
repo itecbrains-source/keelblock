@@ -1,8 +1,9 @@
 # Smoke test results — 2026-09-07
 
 Five assumptions that sat under the specs unverified. Four held; **one did not, and it changes an ADR.**
-Run in a throwaway worktree with its own Supabase stack on ports 546xx; both live local stacks
-(`mise-spec-001-wt`, `CarbonOS`) were untouched throughout and verified running afterwards.
+Run in a throwaway worktree with its own Supabase stack on dedicated ports. keel runs its own
+isolated stack (`project_id = keel`, ports 547xx) so it never contends with anything else on the
+machine — worth knowing if you develop several Supabase projects side by side.
 
 | # | Assumption | Result |
 |---|---|---|
