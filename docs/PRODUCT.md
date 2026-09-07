@@ -53,6 +53,29 @@ feature:
 - **Not single-tenant B2C.** ShipFast is better at that and cheaper than free is worth.
 - **No i18n, no admin panel, no CMS** in v1. Clean seams, no pre-installed machinery.
 
+## The enterprise surface — a recognised gap, not a non-goal
+
+[BoxyHQ](https://github.com/boxyhq/saas-starter-kit) (4,928 stars, Apache-2.0) ships SAML SSO, SCIM
+directory sync, audit logs, webhooks and API keys — and enforces tenant isolation with hand-written
+application guards, with **zero** row-level security anywhere in its schema. That is the clearest
+evidence for keel's thesis and, simultaneously, the clearest statement of what keel does not yet have.
+
+**These are not non-goals.** keel targets multi-tenant B2B SaaS, and SSO, SCIM and audit logs are
+exactly what a B2B buyer's security review asks for. Calling them out of scope would be convenient
+rather than true, so they are registered as **DEF-005** instead.
+
+Two things worth taking from how BoxyHQ does it:
+
+- **Delegate, do not build.** Their SSO is Jackson, audit logs are Retraced, webhooks are Svix. None
+  of it is written from scratch, and that is the right instinct — an audit-log implementation in a
+  starter kit is a liability its author will not maintain.
+- **Read their feature list knowing the business model.** The kit is a funnel for Jackson, BoxyHQ's
+  own SSO product. Free-and-enterprise-featured is distribution strategy, not generosity, and it
+  explains which features got built first.
+
+The ordering keel keeps: **isolation proven, then the enterprise surface.** A kit with SSO and no
+provable isolation is the arrangement the whole field already offers.
+
 ## The acceptance bar
 
 "World-class" is unfalsifiable. These ten are not. keel v1 is not done until every one is

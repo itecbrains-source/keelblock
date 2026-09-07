@@ -20,6 +20,7 @@ export const STEPS = [
   { id: 'lint',      why: 'no lint regressions',                    cmd: 'npx',  args: ['eslint', '.', '--max-warnings', '0'] },
   // No --passWithNoTests: a suite that passes with zero tests is a check that cannot fail (F-13).
   { id: 'unit',      why: 'pure logic is correct',                  cmd: 'npx',  args: ['vitest', 'run'] },
+  { id: 'unused',    why: 'no dead code or unused dependencies',   cmd: 'npx', args: ['knip'] },
   { id: 'deferrals', why: 'debt is logged and no trigger has fired', cmd: 'node', args: ['scripts/check-deferrals.mjs'] },
   { id: 'policy',    why: 'the database enforces isolation',        cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },
   { id: 'matrix',    why: 'the published access matrix is current', cmd: 'node', args: ['scripts/access-matrix.mjs', '--check'], needsDb: true },
@@ -54,6 +55,20 @@ export function summarize(results) {
 }
 
 /**
+ * System tools the gates shell out to. They are not npm packages, so nothing else declares them, and
+ * their absence otherwise surfaces as an ENOENT stack trace three layers down.
+ */
+export const REQUIRED_BINARIES = [
+  { bin: 'psql', why: 'the gates query the database directly', install: 'brew install libpq && brew link --force libpq' },
+  { bin: 'supabase', why: 'runs the local stack and the pgTAP suite', install: 'brew install supabase/tap/supabase' },
+];
+
+/** Pure. Exported so "we name a missing prerequisite" is a tested claim, not a README promise. */
+export function missingBinaries(required, has) {
+  return required.filter((r) => !has(r.bin));
+}
+
+/**
  * Ask the database directly rather than asking the CLI whether the database is up.
  * `supabase status` reports on the whole stack and was observed returning non-zero while the
  * database was in fact reachable — a false negative on the most important command in the repo.
@@ -64,6 +79,19 @@ function databaseReachable(url = process.env.KEEL_DB_URL ?? 'postgresql://postgr
 }
 
 function main() {
+  /**
+ * Probe by running the binary, not by asking a shell. `spawnSync(..., { shell: true })` concatenates
+ * arguments into a command string unescaped — Node warns about it, and it is a real injection seam
+ * even when today's inputs are constants.
+ */
+const has = (bin) => spawnSync(bin, ['--version'], { stdio: 'ignore' }).error?.code !== 'ENOENT';
+  const missing = missingBinaries(REQUIRED_BINARIES, has);
+  if (missing.length) {
+    console.error('\n  Missing prerequisites:\n');
+    for (const m of missing) console.error(`    ${m.bin}  — ${m.why}\n      ${m.install}\n`);
+    process.exit(EXIT.CANNOT_RUN);
+  }
+
   const dbAvailable = databaseReachable();
   const decision = decideRun(STEPS, { dbAvailable });
 

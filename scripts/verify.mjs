@@ -19,7 +19,12 @@ import { readFileSync, existsSync } from 'node:fs';
 import { parse } from 'yaml';
 
 const FULL = process.argv.includes('--full');
-const has = (bin) => spawnSync('command', ['-v', bin], { shell: true }).status === 0;
+/**
+ * Probe by running the binary, not by asking a shell. `spawnSync(..., { shell: true })` concatenates
+ * arguments into a command string unescaped — Node warns about it, and it is a real injection seam
+ * even when today's inputs are constants.
+ */
+const has = (bin) => spawnSync(bin, ['--version'], { stdio: 'ignore' }).error?.code !== 'ENOENT';
 
 /** Steps that are slow or destructive locally. Run them with --full. */
 const HEAVY = [{ match: /^npm ci/, why: 'removes and reinstalls node_modules (~500MB)' }];

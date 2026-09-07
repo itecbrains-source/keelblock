@@ -63,6 +63,11 @@ Two of the eight were keel's own mistakes. They are published for the same reaso
 
 ## Getting started
 
+**Prerequisites:** Node 26 · Docker (for the local Supabase stack) · the
+[Supabase CLI](https://supabase.com/docs/guides/cli) · `psql` (the gates query the database
+directly) · Python 3.10+ (the policy prober). `npm run check` names any missing one rather than
+failing with a stack trace.
+
 ```bash
 git clone <this repo> && cd keel
 npm install

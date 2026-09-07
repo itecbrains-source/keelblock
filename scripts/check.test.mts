@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { STEPS, EXIT, decideRun, summarize } from './check.mjs';
+import { STEPS, EXIT, decideRun, summarize, REQUIRED_BINARIES, missingBinaries } from './check.mjs';
+import { readFileSync } from 'node:fs';
 
 const r = (id: string, ok: boolean) => ({ id, why: id, ok, ms: 1000 });
 
@@ -54,6 +55,30 @@ describe('check runner', () => {
   it('typegen runs before typecheck, or a clean clone cannot pass', () => {
     const ids = STEPS.map((s) => s.id);
     expect(ids.indexOf('typegen')).toBeLessThan(ids.indexOf('typecheck'));
+  });
+
+  it('MUTATION: a missing system prerequisite is named, with how to install it', () => {
+    // The README promises this. Without the test it is a promise, not a behaviour.
+    const missing = missingBinaries(REQUIRED_BINARIES, (b: string) => b !== 'psql');
+    expect(missing).toHaveLength(1);
+    expect(missing[0].bin).toBe('psql');
+    expect(missing[0].install).toMatch(/brew/);
+  });
+
+  it('nothing is missing on a correctly set up machine', () => {
+    expect(missingBinaries(REQUIRED_BINARIES, () => true)).toEqual([]);
+  });
+
+  it('every knip exemption is justified in knip.reasons.md, and the list may only shrink', () => {
+    // knip reports genuinely dead code, so each exemption is a claim that something is not dead YET.
+    // An exemption with no recorded reason is how dead code becomes permanent while looking supervised.
+    const cfg = JSON.parse(readFileSync('knip.json', 'utf8'));
+    const reasons = readFileSync('knip.reasons.md', 'utf8');
+    const exemptions = [...(cfg.ignore ?? []), ...(cfg.ignoreDependencies ?? []), ...(cfg.ignoreBinaries ?? [])];
+    for (const e of exemptions) {
+      expect(reasons, `${e} is exempted in knip.json but not justified in knip.reasons.md`).toContain(e);
+    }
+    expect(exemptions.length).toBeLessThanOrEqual(12);   // shrink-only ratchet
   });
 
   it('the isolation gates are marked as needing the database', () => {

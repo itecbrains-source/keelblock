@@ -12,16 +12,49 @@ field moves and a stale competitive read is worse than none.*
 | **ShipFast** | $199–299 | Next, minimal | no — single-tenant B2C | no | no |
 | **Achromatic** | paid | Next | yes | — | no |
 | **`nextjs/saas-starter`** | free | Next 16, Postgres, **Drizzle**, shadcn/ui | owner/member roles | no | yes |
+| **BoxyHQ** | free | Next 15.5, **Pages Router**, Prisma, NextAuth + SAML Jackson | teams, **app-layer only** | 1 unit file + Playwright e2e | **yes, Apache-2.0** |
 | **nextacular** | free | Next **13.5**, Pages Router, Prisma, NextAuth 4 | workspaces, app-layer only | **zero** | yes |
 
-The two free options define the gap precisely:
+**Correction to this memo (2026-09-07):** the original scan missed
+[BoxyHQ](https://github.com/boxyhq/saas-starter-kit) — 4,928 stars, 1,228 forks, 30 contributors,
+Apache-2.0. It is the most-starred free option in the category and by far keel's closest competitor,
+and omitting it made the "no free option exists" claim look easier than it is. Recorded here rather
+than quietly fixed.
+
+**It does not weaken the thesis — it is the strongest evidence for it.** BoxyHQ ships SAML SSO,
+SCIM directory sync, audit logs, webhooks and API keys, and enforces tenant isolation with
+hand-written application guards:
+
+```ts
+export const throwIfNoAccessToApiKey = async (apiKeyId: string, teamId: string) => {
+  const apiKey = await getApiKeyById(apiKeyId);
+  if (teamId !== apiKey.teamId) throw new ApiError(403, '…');
+};
+```
+
+A grep for `create policy` / `row level security` across its schema and lib returns **zero matches**.
+So the most successful free enterprise SaaS starter in the category — five thousand stars, a
+thousand forks — has **no database-enforced tenant isolation at all**, and one unit test file, with
+its entire safety net in Playwright.
+
+Its business model also explains its shape: the kit is a funnel for Jackson, BoxyHQ's own SSO
+product. Free and enterprise-featured is a distribution strategy, not charity — worth knowing before
+reading its feature list as a bar to match.
+
+The free options define the gap precisely:
 
 - **`nextjs/saas-starter`** is deliberately minimal and its README *points users at the paid kits*. It
   uses email+password JWTs in cookies, Drizzle, and Postgres — **not Supabase, and not RLS.**
 - **nextacular** is the right idea, unmaintained in substance.
 
 So: **there is no free, open, tested, Supabase-native, RLS-proven multi-tenant starter.** That is
-the hole, and it is a real one — not a story told to justify building.
+the hole, and it is a real one — not a story told to justify building. Four thousand nine hundred
+stars have accumulated on a kit whose isolation is a function call each route must remember.
+
+**What BoxyHQ is better at, and keel should not pretend otherwise:** enterprise surface (SSO, SCIM,
+audit logs, webhooks, API keys — all *delegated to services* rather than built, which is the right
+instinct), i18n done properly, dead-code detection via `knip`, page-object fixtures in its e2e
+suite, and — the hardest thing to copy — distribution: 30 contributors and a thousand forks.
 
 ## What the field is criticised for
 

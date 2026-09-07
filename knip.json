@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "src/app/**/{page,layout,error,loading,not-found,route,template,default}.tsx",
+    "scripts/*.mjs"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{mjs,mts}"],
+
+  "ignore": [
+    "src/lib/supabase/**"
+  ],
+  "ignoreDependencies": [
+    "@supabase/ssr",
+    "@supabase/supabase-js",
+    "server-only",
+    "stripe",
+    "zod",
+    "@testing-library/jest-dom",
+    "@testing-library/react",
+    "dotenv",
+    "tailwindcss"
+  ],
+  "ignoreBinaries": ["psql", "supabase"]
+}
