@@ -114,6 +114,22 @@ fidelity: 45% of steps genuinely executed
 
 **45%, stated plainly.** "CI passed locally" is worth nothing if a third of it was quietly skipped.
 
+### Three commands, three questions
+
+Deliberately not three names for one job — the cost of a wrong answer rises sharply down the list:
+
+| Command | Question | A wrong answer costs |
+|---|---|---|
+| `npm run check` | is this code correct? | a red build |
+| `npm run verify` | will CI pass? | a round trip, and real CI minutes on a private repo |
+| `npm run preflight` | **is this safe to release?** | **an outage, or a tenant leak in production** |
+
+The third matters most to a team shipping a commercial product on a private repo, and it is the one
+no starter ships: *is this migration safe with the old code still running · has the target's schema
+drifted from the repository, in either direction · does the access matrix in production still match
+the committed one · are the required secrets actually set.* Specified in
+[SPEC-016](spec/SPEC-016-release-preflight.md) — **not yet built.**
+
 ## How it is built
 
 | Decision | Where |

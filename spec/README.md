@@ -30,6 +30,7 @@ template's own instruction is to keep it thin.
 | SPEC-013 | Upgrade path — `keel upgrade`, codemods, advisories | B-10 | 008 | planned |
 | SPEC-014 | Removability — a deletion test per optional module | B-6 | 008 | planned |
 | SPEC-015 | Accessibility & performance budgets | B-7, B-8 | 004 | planned |
+| SPEC-016 | Release preflight — *is this safe to release?* | B-9, B-10 | 003, 008 | draft |
 
 ## Why phase 1 is the proof apparatus and not a login screen
 
@@ -42,6 +43,20 @@ Building SPEC-001..003 first means every feature after them lands into a harness
 adversarial: a new table without a policy fails, a new cached surface without a tenant key fails, a
 new dependency out of date fails. The alternative is fifteen specs of work followed by an audit,
 which is the pattern that produces "gates green, still broken."
+
+## Three commands, three questions
+
+Not three names for one job. Each answers a different question, and the cost of a wrong answer rises
+sharply down the list:
+
+| Command | Question | A wrong answer costs |
+|---|---|---|
+| `npm run check` | is this code correct? | a red build |
+| `npm run verify` | will CI pass? | a wasted round trip, and real minutes on a private repo |
+| `npm run preflight` | **is this safe to release?** | **an outage, or a tenant leak in production** |
+
+`preflight` (SPEC-016) is explicitly forbidden from re-running CI. The moment it does, it is `verify`
+with a different name and the third question stops being asked.
 
 ## Coverage check
 
