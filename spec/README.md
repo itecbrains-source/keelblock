@@ -13,7 +13,7 @@ template's own instruction is to keep it thin.
 | **Phase 1 — the claim** ||||
 | SPEC-001 | Tenancy foundation — `organization`, membership, RLS, scoped-table guard | B-2 | 001, 003 | **partial** (REQ-1..7, 10..12 built; REQ-8/9 gates pending SPEC-003) |
 | SPEC-002 | Proof harness — four test layers, access matrix, mutation proofs | B-2, B-4 | 005 | **partial** (unit + generated + intent + matrix + mutation proofs built; journey layer pending auth) |
-| SPEC-003 | Gates — freshness, service-role boundary, cache keys, supply chain | B-3, B-4, B-9 | 004, 007 | draft |
+| SPEC-003 | Gates — freshness, service-role boundary, cache keys, supply chain | B-3, B-4, B-9 | 004, 007 | **partial** (REQ-7 deferral lint + REQ-8 one command built; freshness/boundary/cache/new-table gates pending) |
 | **Phase 2 — identity** ||||
 | SPEC-004 | Auth — magic link, OAuth, session, route protection | — | 002 | planned |
 | SPEC-005 | Organisations & roles — create, switch, settings, RBAC | B-2 | 001, 002 | planned |

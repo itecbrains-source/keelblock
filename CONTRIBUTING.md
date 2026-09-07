@@ -58,6 +58,18 @@ Two layers, deliberately:
 Assert a write rejection **as the writer**, never by reading afterwards — and remember that a failing
 `USING` on `UPDATE` is a silent no-op (`UPDATE 0`, no error), so those cases assert on the data.
 
+## Deferring work
+
+Debt is allowed; **unlogged debt is not**, and neither is debt whose moment has arrived and nobody
+noticed. Add a row to [`spec/DEFERRAL_REGISTRY.md`](spec/DEFERRAL_REGISTRY.md) with a real reason and
+a **machine-evaluable trigger**. When the trigger fires, `npm run check` fails until the deferral is
+built, closed, or its trigger deliberately restated — that failure is the entire mechanism.
+
+A marker in code (`@defer DEF-001`) must name a registry entry, or the gate rejects it.
+
+**Rule 0: a deferral is scope you chose not to build. A defect is never a deferral.** If you broke
+it, you fix it in the change that broke it.
+
 ## Before you open a PR
 
 ```bash

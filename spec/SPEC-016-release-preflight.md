@@ -119,9 +119,11 @@ shown to be looking at anything.
 
 ## Deferrals
 
-- **A deploy topology for keel itself.** keel has no environments; every check here takes a named
-  target instead. When keel gains a demo deployment, that decision gets its own ADR — writing one
-  now would be inventing a story for users rather than recording a choice.
+- **`DEF-001` — a deploy topology for keel itself.** Registered in
+  [`spec/DEFERRAL_REGISTRY.md`](DEFERRAL_REGISTRY.md) with the trigger
+  `file-exists:.github/workflows/deploy.yml`, so the moment keel gains a real deployment the build
+  fails until that ADR is written. It is not a note in this section — a note in a section is what
+  rots.
 
 ## Out-of-spec log
 
