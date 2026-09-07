@@ -119,6 +119,25 @@ fidelity: 45% of steps genuinely executed
 
 **45%, stated plainly.** "CI passed locally" is worth nothing if a third of it was quietly skipped.
 
+### Security headers
+
+Six headers — `Referrer-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy`
+and both `Cross-Origin-*` — are **enforced unconditionally**. The CSP ships **report-only by
+default**, and that is a measured decision, not caution: a production Next build serves 13 inline
+scripts, so an enforcing `script-src 'self'` blocks hydration entirely. You can have any two of
+{strict CSP, static prerendering, working hydration} — the trilemma and its proof are in
+[F-16](docs/FINDINGS.md). `KEEL_SECURITY_HEADERS=on` enforces the CSP once you have tuned it.
+
+The production CSP contains **no `'unsafe-eval'` and no `'unsafe-inline'` in `script-src`**, both
+pinned by mutation proofs.
+
+### Environment
+
+Validated at boot, with every problem reported at once. A missing variable fails immediately instead
+of becoming the string `"undefined"` three layers away — and any `NEXT_PUBLIC_` variable that looks
+like a credential is **refused**, because the bundler inlines those into client JavaScript and serves
+them to every visitor ([F-17](docs/FINDINGS.md)).
+
 ### Internationalisation
 
 The `[locale]` route segment ships from the first commit, with **one locale**. Not because keel needs

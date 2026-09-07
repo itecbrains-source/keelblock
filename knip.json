@@ -7,14 +7,14 @@
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{mjs,mts}"],
 
   "ignore": [
-    "src/lib/supabase/**"
+    "src/lib/supabase/**",
+    "src/lib/env.ts"
   ],
   "ignoreDependencies": [
     "@supabase/ssr",
     "@supabase/supabase-js",
     "server-only",
     "stripe",
-    "zod",
     "@testing-library/jest-dom",
     "@testing-library/react",
     "dotenv",

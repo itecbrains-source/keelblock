@@ -271,3 +271,55 @@ differently, and which are worth recording because they were arrived at independ
 - They ship `knip` as `check-unused` — and **their CI does not run it.** The tool exists; nothing
   enforces it. That is the advisory-not-blocking pattern keel rejects by design.
 - Their CI has **no secret scanning** at all.
+
+## F-16 · A strict CSP, static prerendering, and working hydration — pick two
+
+**2026-09-07 · decided the default in `src/lib/security-headers.ts`**
+
+Shipped a CSP with `script-src 'self'` — no `'unsafe-inline'`, no `'unsafe-eval'` — verified the
+seven headers on a real response, and was about to call it stronger than the field's. Then counted
+what the server actually returns:
+
+```
+inline <script> (no src): 13    external <script src>: 10
+```
+
+**`script-src 'self'` blocks all thirteen and the page never hydrates.** A CSP that looks strict and
+breaks the application is worse than a weak one, and it would have shipped.
+
+Measuring the alternatives established a genuine trilemma — you can have any two:
+
+| Approach | Strict | Prerenders | Hydrates |
+|---|---|---|---|
+| `'unsafe-inline'` | ✗ | ✓ | ✓ |
+| per-request **nonce** | ✓ | **✗** | ✓ |
+| **report-only** | reports | ✓ | ✓ |
+
+The nonce row is the one worth proving rather than assuming: a nonce in the *response header* alone
+does nothing, because prerendered HTML was fixed at build time and carries no matching attribute. To
+use a nonce the HTML must be generated per request — so static prerendering is gone. Verified.
+
+**keel's default: the six non-CSP headers enforced unconditionally, and the CSP report-only.** That
+is the honest reading of "secure by default" — enforce everything enforceable without breaking the
+app, and report the one thing that cannot be, rather than shipping `'unsafe-inline'` and calling it
+protection. `KEEL_SECURITY_HEADERS=on` enforces the CSP for teams who have tuned it.
+
+## F-17 · `NEXT_PUBLIC_` on a credential publishes it, and nothing warns you
+
+**2026-09-07 · `src/lib/env.schema.ts`**
+
+`NEXT_PUBLIC_*` variables are **inlined into the browser bundle by the bundler**. So
+`NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` is not a latent risk — it is a service-role key served to
+every visitor, and one typo away at all times. No kit examined checks for it.
+
+keel refuses at boot any `NEXT_PUBLIC_` variable matching a credential shape (`SERVICE_ROLE`,
+`SECRET`, `PRIVATE_KEY`, `_TOKEN`, `PASSWORD`, `_DSN`).
+
+The same file exists because of a bug worth recording, found in a competing kit:
+
+```ts
+securityHeadersEnabled: process.env.SECURITY_HEADERS_ENABLED ?? false
+```
+
+Setting that to `"false"` **enables** it — `??` only catches `undefined`, and a non-empty string is
+truthy. keel parses an enum, so `"false"` is a boot error rather than a silent inversion.
