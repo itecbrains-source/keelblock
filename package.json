@@ -10,7 +10,8 @@
     "access-matrix": "node scripts/access-matrix.mjs",
     "access-matrix:check": "node scripts/access-matrix.mjs --check",
     "check": "node scripts/check.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

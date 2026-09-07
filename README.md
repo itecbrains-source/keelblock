@@ -83,6 +83,37 @@ npm run check
 ✓ matrix     the published access matrix is current
 ```
 
+### Running CI locally
+
+There is no remote yet, so the workflow has never executed on GitHub. `npm run verify` closes as much
+of that gap as a laptop honestly can:
+
+```bash
+npm run verify           # fast — defers the heavy reinstall
+npm run verify -- --full # also runs `npm ci`, exactly as CI does
+```
+
+It **parses `.github/workflows/check.yml` and executes its steps**, rather than maintaining a second
+list of commands beside it — a hand-written mimic drifts from the workflow the first time either
+changes, and then proves the wrong thing confidently.
+
+It is deliberate about fidelity, and reports it. `gitleaks` really scans the full history; `npm run
+check` really runs. The GitHub-hosted actions (`checkout`, `setup-node`, `setup-python`,
+`setup-cli`, `upload-artifact`) cannot execute on a laptop, so their **effects** are asserted instead
+— a Node major that does not match CI's pin is a failure, not a shrug. The summary prints the
+percentage genuinely executed and names everything it could not verify:
+
+```
+ran      4   executed exactly as CI will
+local    1   real local equivalent
+asserted 6   effect checked, action not run
+skipped  0   NOT verified
+
+fidelity: 45% of steps genuinely executed
+```
+
+**45%, stated plainly.** "CI passed locally" is worth nothing if a third of it was quietly skipped.
+
 ## How it is built
 
 | Decision | Where |

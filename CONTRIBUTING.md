@@ -62,6 +62,7 @@ Assert a write rejection **as the writer**, never by reading afterwards — and 
 
 ```bash
 npm run check      # all six gates
+npm run verify     # run the CI workflow locally (see the README for what it can and cannot cover)
 ```
 
 Green is necessary, not sufficient. If you changed a policy, read the `docs/ACCESS-MATRIX.md` diff

@@ -52,8 +52,18 @@ export function summarize(results) {
   };
 }
 
+/**
+ * Ask the database directly rather than asking the CLI whether the database is up.
+ * `supabase status` reports on the whole stack and was observed returning non-zero while the
+ * database was in fact reachable — a false negative on the most important command in the repo.
+ * A connection either opens or it does not, and that is the only thing these gates need.
+ */
+function databaseReachable(url = process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres') {
+  return spawnSync('psql', [url, '-tAc', 'select 1'], { encoding: 'utf8' }).status === 0;
+}
+
 function main() {
-  const dbAvailable = spawnSync('npx', ['--no-install', 'supabase', 'status'], { encoding: 'utf8' }).status === 0;
+  const dbAvailable = databaseReachable();
   const decision = decideRun(STEPS, { dbAvailable });
 
   if (!decision.proceed) {

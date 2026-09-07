@@ -103,7 +103,7 @@ function main() {
   }
   console.log(`policy: generated suites for ${probed.length}/${tables.length} RLS tables (${probed.join(', ')})`);
 
-  const run = spawnSync('npx', ['--no-install', 'supabase', 'test', 'db'], { stdio: 'inherit' });
+  const run = spawnSync('supabase', ['test', 'db'], { stdio: 'inherit' });
     process.exit(run.status ?? 1);
   }
 
