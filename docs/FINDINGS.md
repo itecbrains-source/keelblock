@@ -226,3 +226,48 @@ Enforcing it unconditionally also broke the policy prober's legitimate fixture r
 
 Both triggers now constrain **user-initiated** changes and say so. **An overclaimed guarantee is a
 worse defect than an absent one**, because people build on it.
+
+---
+
+# Found by reading the competition
+
+## F-15 · In an app-layer model, the other tenant's row is in memory *before* the check runs
+
+**2026-09-07 · from `boxyhq/saas-starter-kit`, and the clearest illustration of why keel exists**
+
+BoxyHQ is the most-starred free kit in the category — 4,928 stars, Apache-2.0, genuinely well built.
+Its tenant isolation works like this:
+
+```ts
+// models/apiKey.ts — fetch by id, unscoped
+export const getApiKeyById = async (id: string) =>
+  prisma.apiKey.findUnique({ where: { id }, select: { id: true, teamId: true } });
+
+// lib/guards/team-apiKey.ts — then compare, in application code
+export const throwIfNoAccessToApiKey = async (apiKeyId: string, teamId: string) => {
+  const apiKey = await getApiKeyById(apiKeyId);
+  if (teamId !== apiKey.teamId) throw new ApiError(403, '…');
+};
+```
+
+That is disciplined, readable code. It is also **two steps**, and the order is the whole point:
+
+1. the row is fetched — **any tenant's row, by id alone**
+2. a *separate function* the route must remember to call compares the tenant
+
+So a foreign tenant's data is already in the process, in memory, in the log if anything logs the
+query, before anything decides you were not allowed to see it. **Under RLS the row is never selected
+at all** — the predicate is inside the query plan, and there is no step 2 to forget.
+
+This is not a criticism of their engineering. It is the ceiling of the architecture: `grep -r
+"create policy"` across their schema and lib returns **zero matches**, and there is no Prisma
+`$extends` or middleware applying scope centrally either, so every one of ~50 query sites carries the
+obligation individually. Five thousand stars have accumulated on that arrangement, which is the
+market telling you the gap is not obvious to buyers.
+
+**Two smaller observations from the same repository**, both of which keel had already decided
+differently, and which are worth recording because they were arrived at independently:
+
+- They ship `knip` as `check-unused` — and **their CI does not run it.** The tool exists; nothing
+  enforces it. That is the advisory-not-blocking pattern keel rejects by design.
+- Their CI has **no secret scanning** at all.

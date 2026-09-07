@@ -81,6 +81,23 @@ Point 4 is the thesis. Points 1–3 are the constraints that stop keel becoming 
 - Being **free and open** against a $349–1,499 field is a genuine wedge, but only if the quality
   claim survives inspection — a free kit that is merely cheaper is nextacular again.
 
+## Deliberately not lifted from BoxyHQ
+
+Naming these so the choice is a decision rather than an oversight:
+
+- **i18n and `check-locale`.** A real cost for a speculative benefit in a starter; already a stated
+  non-goal, and their locale gate only earns its keep once i18n exists.
+- **The enterprise feature set.** Registered as DEF-005, not copied — and the ordering stands:
+  isolation proven, then table stakes.
+- **Page-object boilerplate.** The *pattern* is settled (SPEC-002 REQ-3b); the code gets written when
+  there is a flow to drive, not before.
+- **Their RBAC matrix shape.** SPEC-001 REQ-7 already specifies a role model pinned across TypeScript
+  and SQL. Theirs is a good confirmation of the shape, not a new idea to import.
+
+**Taken:** the accessible-locator rule (SPEC-002 REQ-3b) and the fetch-then-check contrast
+([F-15](../docs/FINDINGS.md)), which is the clearest illustration of keel's thesis anyone has written,
+including us.
+
 ## Sources
 
 - [MakerKit — best Next.js SaaS boilerplates](https://makerkit.dev/blog/saas/best-nextjs-saas-boilerplate) *(vendor-authored; read for its own positioning)*

@@ -64,6 +64,19 @@ not read another organisation's invoices; an admin must not grant themselves own
 loses access immediately, not at token expiry. It is small by design: exhaustiveness is the generated
 layer's job, judgement is this one's.
 
+### REQ-3b — the journey layer uses accessible locators only
+Every Playwright locator resolves by role, label, or accessible name — `getByRole`, `getByLabel`,
+`getByPlaceholder` — and never by CSS selector or test id.
+
+Adopted from `boxyhq/saas-starter-kit`, whose e2e suite does this throughout, and it is the best idea
+in their repository. The payoff is that the journey suite **doubles as an accessibility regression
+test**: a control that loses its accessible name breaks the test, so bar B-7 is partly held by tests
+that exist for another reason entirely. It also makes the tests survive markup changes, which is why
+most suites reach for test ids and then quietly stop asserting anything about the real interface.
+
+Recorded now, before any journey test exists, because retrofitting locators across a written suite
+never happens.
+
 ### REQ-4 — the access matrix is generated and published
 A committed, human-readable artifact: for every tenant-scoped table, which role may SELECT, INSERT,
 UPDATE and DELETE which rows. It is regenerated on every run and a diff to it is a reviewable event.
