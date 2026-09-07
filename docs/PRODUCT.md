@@ -37,6 +37,7 @@ reason to exist.
 | # | Decision | Date | Rationale |
 |---|---|---|---|
 | D-1 | **MIT, free, open source** | 2026-09-07 | The field is paid and closed; free+open is the structural advantage. A paid tier can be added on top of a known-good free core later; adoption cannot be retrofitted onto a paid one. |
+| D-3 | **Open core: proof free, evidence paid** ([ADR-009](adr/ADR-009-open-core-boundary.md)) | 2026-09-07 | `saas-testing-toolkit` already implements much of SPEC-002/003 in this stack. Its proof layer becomes keel's, MIT; its compliance layer (SOC2 evidence, auditor pack, traceability) stays paid. Refines D-1 rather than reversing it — D-1 anticipated a paid tier *on top of* a known-good free core. **keel's full claim must hold with nothing paid installed, and a gate asserts it.** |
 | D-2 | **Supabase Auth**, not Better Auth | 2026-09-07 | RLS policies key off `auth.uid()` from a Supabase-issued JWT. Keel's claim needs no bridge and no asterisk. Accepted cost: organisations, members, invitations and RBAC are keel's to build and test — a large share of v1 that Better Auth's organization plugin would have given free. |
 
 ## Non-goals

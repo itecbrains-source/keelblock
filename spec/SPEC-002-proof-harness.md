@@ -23,6 +23,8 @@ as one unit, or the proof degrades into a restatement of the implementation.
 - `docs/PRODUCT.md`
 - `research/02-STACK-FINDINGS.md`
 - `spec/SPEC-001-tenancy-foundation.md`
+- `docs/adr/ADR-009-open-core-boundary.md`
+- `research/04-SMOKE-RESULTS.md`
 
 ## Requirements
 
@@ -30,6 +32,16 @@ as one unit, or the proof degrades into a restatement of the implementation.
 Unit (is this pure logic correct?) · generated policy (does the database enforce what the policies
 *declare*?) · intent (are the policies *what we meant*?) · journey (does the real authed flow work?).
 No layer substitutes for another, and the spec names what each cannot do.
+
+### REQ-1b — adopt the toolkit's proof layer, modernised
+`saas-testing-toolkit` v1.1.0 already implements much of this spec in this stack: org-isolation
+(SOC2 CC6.1), role boundaries, auth-required, query-perf (which covers SPEC-001 REQ-5 by *test*, not
+the *analysis* this spec assumed), Stryker mutation testing, and axe/Lighthouse/ZAP wiring. Adoption
+is governed by [ADR-009](../docs/adr/ADR-009-open-core-boundary.md) and is a **modernisation, not a
+copy**: it targets React 18 / Node ≥20, and its generated `002-org-isolation.sql` ships its seed block
+commented out — eight planned assertions against data nobody creates. **Adopting that as-is would ship
+a suite that passes without testing anything**, which is precisely the defect REQ-5 exists to catch.
+In keel the schema is known, so the seed is concrete rather than a TODO.
 
 ### REQ-2 — adopt the generated layer, do not rebuild it
 [`rlsautotest`](https://github.com/unitautogen/rlsautotest) (Apache-2.0) generates a pgTAP suite from
@@ -89,6 +101,8 @@ reached. "Expected 0, got 1" is a true statement and a useless one at 2am.
 | AC-7 | REQ-6 | inspection | `.github/workflows/check.yml` and `nightly.yml` | planned |
 | AC-8 | REQ-7 | demonstration | Timed local run recorded in `docs/TESTING.md` | planned |
 | AC-9 | REQ-8 | test | `supabase/tests/intent/failure-message.test.sql` — an induced leak's message names table, command, identity and row | planned |
+| AC-10 | REQ-1b | test | `scripts/check-free-tier-complete.test.ts` — the full proof suite runs green and the access matrix generates from a checkout containing **no paid components** (ADR-009's anti-degradation rule) | planned |
+| AC-11 | REQ-1b | test | `supabase/tests/generated/seed-is-real.test.sql` — every generated suite seeds the rows it asserts on; a suite planning N assertions against an empty fixture fails | planned |
 
 **AC-4 is the load-bearing one**, and the spike corrected it. The defect must be **semantic** — a
 helper whose logic is wrong — not **syntactic**: `with check (true)` *is* caught by the generated
