@@ -1,0 +1,48 @@
+name: check
+
+on:
+  push: { branches: [main] }
+  pull_request:
+  schedule:
+    # Weekly clean-clone build. A template has no users to exercise it, so this is the substitute:
+    # it installs from scratch on a current runtime and runs everything. It is the only thing that
+    # catches the rot no dependency check can see — that the project no longer installs at all.
+    - cron: '0 6 * * 1'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with: { node-version: 26, cache: npm }
+      # postinstall scripts are a live supply-chain attack vector (ADR-007).
+      - run: npm ci --ignore-scripts
+
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.12' }
+      - run: python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: supabase start
+
+      # Runs all six gates and reports every failure, not just the first.
+      - run: npm run check
+
+      # The access matrix is evidence, so it is published from the run that produced it.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: access-matrix
+          path: docs/ACCESS-MATRIX.md
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        # Full history: a secret committed and later removed is still a live compromise (ADR-007).
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }

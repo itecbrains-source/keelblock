@@ -1,0 +1,11 @@
+-- Local development seed. Runs on `supabase db reset`.
+--
+-- Deliberately EMPTY of tenant data. Two reasons, both learned the hard way in projects that seeded
+-- generously:
+--
+--   1. A seeded fixture makes isolation bugs invisible in development. If org A and org B both have
+--      data and you are always logged in as A, a leak looks like a populated page.
+--   2. Seed data drifts from the schema and then fails a reset at the worst moment.
+--
+-- The tests seed their own fixtures inside a transaction and roll them back, which is where fixtures
+-- belong. Create an organisation through the app instead — that exercises the real path.

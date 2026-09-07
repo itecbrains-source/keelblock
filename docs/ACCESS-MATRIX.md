@@ -28,10 +28,10 @@ Row-level security: **enabled** · policies for DELETE, INSERT, SELECT, UPDATE
 
 | Identity | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
-| Unauthenticated | · | · | · | · |
+| Unauthenticated | · | · | ⚠ **REACHABLE** | – |
 | Authenticated · different organisation | · | · | · | · |
-| Authenticated · member | ✓ | ✓ | ✓ | ✓ |
-| Service role | · | – | · | · |
+| Authenticated · member | ✓ | ✓ | – | – |
+| Service role | ⚠ **REACHABLE** | – | · | · |
 
 ## `project`
 
@@ -52,6 +52,8 @@ for review, not as failures — each is either sanctioned or a finding.
 | Severity | Object | Why it is listed |
 |---|---|---|
 | HIGH | `create_organization(org_name text, org_slug text)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization, organization_member. |
+| CRITICAL | `enforce_organization_has_owner()` | SECURITY DEFINER function is EXECUTE-able by anon; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization, organization_member. |
+| CRITICAL | `enforce_owner_authority()` | SECURITY DEFINER function is EXECUTE-able by anon; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization_member. |
 | HIGH | `is_org_member(org uuid)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization_member. |
 | HIGH | `org_role_of(org uuid)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization_member. |
 | MEDIUM | `organization` | dual write path: a SECURITY DEFINER rpc (create_organization(org_name text, org_slug text)) writes this table AND authenticated holds a direct INSERT/UPDATE/DELETE grant on it. If the rpc is the intended write path (it holds the validation), the client can skip it and write the table directly -- every RLS assertion still passes. REVOKE the direct DML so the rpc is the only path; the direct-write denial then becomes an assertable boundary. |
@@ -60,4 +62,4 @@ for review, not as failures — each is either sanctioned or a finding.
 
 ---
 
-**No anomalies.** Every identity reached exactly what its policies intend, on every table and command.
+**⚠ 2 anomalies** — behaviour differs from intent. Each is a defect until explained.

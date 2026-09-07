@@ -11,8 +11,8 @@ template's own instruction is to keep it thin.
 | SPEC | Title | Bars | ADRs | Status |
 |---|---|---|---|---|
 | **Phase 1 — the claim** ||||
-| SPEC-001 | Tenancy foundation — `organization`, membership, RLS, scoped-table guard | B-2 | 001, 003 | draft |
-| SPEC-002 | Proof harness — four test layers, access matrix, mutation proofs | B-2, B-4 | 005 | draft |
+| SPEC-001 | Tenancy foundation — `organization`, membership, RLS, scoped-table guard | B-2 | 001, 003 | **partial** (REQ-1..7, 10..12 built; REQ-8/9 gates pending SPEC-003) |
+| SPEC-002 | Proof harness — four test layers, access matrix, mutation proofs | B-2, B-4 | 005 | **partial** (unit + generated + intent + matrix + mutation proofs built; journey layer pending auth) |
 | SPEC-003 | Gates — freshness, service-role boundary, cache keys, supply chain | B-3, B-4, B-9 | 004, 007 | draft |
 | **Phase 2 — identity** ||||
 | SPEC-004 | Auth — magic link, OAuth, session, route protection | — | 002 | planned |

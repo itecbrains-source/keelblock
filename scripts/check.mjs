@@ -14,7 +14,8 @@ const steps = [
   { id: 'typegen',   why: 'route types are generated',    cmd: 'npx', args: ['next', 'typegen'] },
   { id: 'typecheck', why: 'types are sound',              cmd: 'npx', args: ['tsc', '--noEmit'] },
   { id: 'lint',      why: 'no lint regressions',          cmd: 'npx', args: ['eslint', '.', '--max-warnings', '0'] },
-  { id: 'unit',      why: 'pure logic is correct',        cmd: 'npx', args: ['vitest', 'run', '--passWithNoTests'] },
+  // No --passWithNoTests: a suite that passes with zero tests is a check that cannot fail.
+  { id: 'unit',      why: 'pure logic is correct',        cmd: 'npx', args: ['vitest', 'run'] },
   { id: 'policy',    why: 'the database enforces isolation', cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },
   { id: 'matrix',    why: 'the published access matrix is current', cmd: 'node', args: ['scripts/access-matrix.mjs', '--check'], needsDb: true },
 ];

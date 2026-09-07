@@ -125,3 +125,104 @@ write policy in keel, a spam vector, and the exact shape keel's own gate forbids
 `SECURITY DEFINER` RPC, so there is no INSERT policy at all and the matrix reads clean.
 
 **A matrix with a false positive in it teaches people to ignore the true ones.**
+
+---
+
+# Found by auditing our own work
+
+The findings above came from building. These came from **deliberately attacking what we had already
+shipped and called green.** Two were live security defects. Three were keel breaking its own rules.
+
+That distinction is the point: a green suite means the tests you wrote pass. It says nothing about
+the tests you did not think to write.
+
+## F-9 · An admin could demote the owner and seize the organisation
+
+**2026-09-07 · fixed in `20260907150000_membership_invariants.sql`**
+
+```sql
+-- as an ADMIN of the organisation
+update public.organization_member set role = 'member'
+ where user_id = '<the owner>';         -- UPDATE 1
+```
+
+The owner became a member. An admin could take over any organisation they administered. The `owner`
+role is meaningless if an admin can remove it.
+
+Fixed with a trigger: any row that *is* an owner, or is *becoming* one, may only be touched by an
+owner.
+
+## F-10 · The last owner could orphan an organisation
+
+**2026-09-07 · same fix**
+
+```sql
+-- as the ONLY owner
+delete from public.organization_member where user_id = '<me>';
+-- orgs = 1, members = 0
+```
+
+An organisation nobody can administer, nobody can delete (delete requires an owner), holding its slug
+forever. Fixed with a per-statement invariant that still permits succession — promote a new owner,
+then step down — because that is two statements and each intermediate state is legal.
+
+**Neither defect was caught by 23 passing intent tests**, because both were cases the author of those
+tests did not consider. This is the argument for auditing a suite against the schema rather than
+trusting it.
+
+## F-11 · `auth.uid()` reads two different settings, and tools clear only one
+
+**2026-09-07 · shapes `scripts/check-policies.mjs`**
+
+```sql
+select set_config('request.jwt.claim.sub', '<uid>', true);
+select set_config('request.jwt.claims', '', true);   -- clears the PLURAL
+select auth.uid();                                   -- still returns <uid>
+```
+
+`auth.uid()` is `coalesce(request.jwt.claim.sub, (request.jwt.claims)::jsonb->>'sub')`. The policy
+prober resets identity by clearing only the plural form, so a stale identity survives — and keel's
+membership triggers then correctly fire on the prober's own fixture reset, aborting its file.
+
+Consequence: **a table carrying domain-invariant triggers cannot be probed by a policy prober**,
+whose model is "policies only" and which cannot distinguish a business-rule refusal from a policy
+denial. `organization_member` is therefore covered by the intent layer instead — recorded in
+`check-policies.mjs` as an explicit **coverage transfer, never a coverage hole**, naming the tests
+that carry it.
+
+## F-12 · A deferred constraint trigger is invisible to a statement-level test
+
+**2026-09-07**
+
+The last-owner invariant was first written `deferrable initially deferred`. It fired at COMMIT, so
+`throws_ok` never saw it and the test failed while the protection worked. It was also worse for
+users: the error arrived far from the statement that caused it.
+
+`initially immediate` fixes both and still permits succession. **A correct protection that no test
+can observe is indistinguishable from an absent one.**
+
+## F-13 · keel's own `unit` gate could not fail
+
+**2026-09-07 · the most embarrassing finding here, and the reason it is published**
+
+`npm run check` ran `vitest run --passWithNoTests` against **zero test files**, and reported a green
+tick. Meanwhile `render()` — the pure function producing the access matrix, the artifact the whole
+claim rests on — had no test at all.
+
+keel's own rule is *every gate ships a proof it can fail*. The gate enforcing that rule did not
+have one. Fixed: `--passWithNoTests` removed, and nine tests added of which six are mutation proofs
+that restore a real defect and assert the matrix goes loud.
+
+**The rule was written down and still violated.** Writing a standard is not implementing it, and the
+only reliable check on that is an audit that assumes the author was wrong.
+
+## F-14 · An unconstrained default privilege we also had to un-claim
+
+**2026-09-07 · corrected in the same migration**
+
+The last-owner invariant was originally documented as holding "on every path — including the service
+role." That was theatre: a service-role holder bypasses RLS and can drop the trigger outright.
+Enforcing it unconditionally also broke the policy prober's legitimate fixture reset.
+
+Both triggers now constrain **user-initiated** changes and say so. **An overclaimed guarantee is a
+worse defect than an absent one**, because people build on it.
