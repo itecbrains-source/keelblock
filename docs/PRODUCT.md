@@ -37,6 +37,7 @@ reason to exist.
 | # | Decision | Date | Rationale |
 |---|---|---|---|
 | D-1 | **MIT, free, open source** | 2026-09-07 | The field is paid and closed; free+open is the structural advantage. A paid tier can be added on top of a known-good free core later; adoption cannot be retrofitted onto a paid one. |
+| D-4 | **i18n route structure shipped with one locale** ([ADR-010](adr/ADR-010-internationalisation.md)) | 2026-09-07 | Reverses a non-goal. i18n is pervasive rather than additive, so its cost is proportional to the surface it must be applied to — and that surface was one page. Locale resolves from `next/root-params`, which is what makes it compatible with Cache Components at all. |
 | D-3 | **Open core: proof free, evidence paid** ([ADR-009](adr/ADR-009-open-core-boundary.md)) | 2026-09-07 | `saas-testing-toolkit` already implements much of SPEC-002/003 in this stack. Its proof layer becomes keel's, MIT; its compliance layer (SOC2 evidence, auditor pack, traceability) stays paid. Refines D-1 rather than reversing it — D-1 anticipated a paid tier *on top of* a known-good free core. **keel's full claim must hold with nothing paid installed, and a gate asserts it.** |
 | D-2 | **Supabase Auth**, not Better Auth | 2026-09-07 | RLS policies key off `auth.uid()` from a Supabase-issued JWT. Keel's claim needs no bridge and no asterisk. Accepted cost: organisations, members, invitations and RBAC are keel's to build and test — a large share of v1 that Better Auth's organization plugin would have given free. |
 
@@ -51,7 +52,11 @@ feature:
 - **Not a framework.** No `keel.config.ts` runtime, no plugin lifecycle, no abstraction over Next or
   Supabase. It is *your* code from the first commit.
 - **Not single-tenant B2C.** ShipFast is better at that and cheaper than free is worth.
-- **No i18n, no admin panel, no CMS** in v1. Clean seams, no pre-installed machinery.
+- **No admin panel, no CMS** in v1. Clean seams, no pre-installed machinery.
+- ~~No i18n~~ — **corrected 2026-09-07 ([ADR-010](adr/ADR-010-internationalisation.md)).** Grouping
+  i18n with those two was a category error: they are *additive*, i18n is *pervasive*. Its retrofit
+  moves every route and every link, so the cost scales with screen count — and keel had one page.
+  Shipped with a single locale, at the cheapest moment it will ever have.
 
 ## The enterprise surface — a recognised gap, not a non-goal
 

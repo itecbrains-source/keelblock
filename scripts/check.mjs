@@ -20,6 +20,7 @@ export const STEPS = [
   { id: 'lint',      why: 'no lint regressions',                    cmd: 'npx',  args: ['eslint', '.', '--max-warnings', '0'] },
   // No --passWithNoTests: a suite that passes with zero tests is a check that cannot fail (F-13).
   { id: 'unit',      why: 'pure logic is correct',                  cmd: 'npx',  args: ['vitest', 'run'] },
+  { id: 'locale',    why: 'translations are complete and all used',  cmd: 'node', args: ['scripts/check-locale.mjs'] },
   { id: 'unused',    why: 'no dead code or unused dependencies',   cmd: 'npx', args: ['knip'] },
   { id: 'deferrals', why: 'debt is logged and no trigger has fired', cmd: 'node', args: ['scripts/check-deferrals.mjs'] },
   { id: 'policy',    why: 'the database enforces isolation',        cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },

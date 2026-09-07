@@ -119,6 +119,17 @@ fidelity: 45% of steps genuinely executed
 
 **45%, stated plainly.** "CI passed locally" is worth nothing if a third of it was quietly skipped.
 
+### Internationalisation
+
+The `[locale]` route segment ships from the first commit, with **one locale**. Not because keel needs
+five languages, but because i18n is the one concern that cannot be added later without touching
+everything: next-intl's own instructions are *"move all existing layouts and pages into the `[locale]`
+segment."* That cost scales with your screen count, so it is paid here at one page.
+
+Adding a language is a message file and one array entry. A gate fails the build on a missing key, a
+misspelled `t('key')`, or a key nobody uses — all three of which otherwise fail silently, in a
+language nobody on your team reads. See [ADR-010](docs/adr/ADR-010-internationalisation.md).
+
 ### Three commands, three questions
 
 Deliberately not three names for one job — the cost of a wrong answer rises sharply down the list:

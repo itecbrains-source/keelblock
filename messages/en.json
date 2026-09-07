@@ -1,0 +1,19 @@
+{
+  "home": {
+    "title": "keel",
+    "tagline": "Multi-tenant SaaS starter — tenant isolation enforced by the database and proven on every commit.",
+    "foundation": "Foundation only. See the access matrix for what the database currently permits."
+  },
+  "loading": { "label": "Loading" },
+  "error": {
+    "title": "Something went wrong",
+    "body": "This page could not load. It has not shown you partial or stale data — it stopped instead.",
+    "reference": "Reference {digest} — quote this if you report it.",
+    "retry": "Try again"
+  },
+  "notFound": {
+    "title": "Not found",
+    "body": "This page does not exist, or you do not have access to it. Those are deliberately indistinguishable — telling them apart would confirm that a resource exists to someone not entitled to know.",
+    "back": "Back to start"
+  }
+}
