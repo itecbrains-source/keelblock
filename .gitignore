@@ -6,3 +6,7 @@ node_modules/
 *.log
 supabase/.branches/
 supabase/.temp/
+.venv/
+supabase/tests/rls/
+.rls-report.json
+rls-report.json

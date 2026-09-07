@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "access-matrix": "node scripts/access-matrix.mjs",
+    "access-matrix:check": "node scripts/access-matrix.mjs --check",
+    "check": "node scripts/check.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

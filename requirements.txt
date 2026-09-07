@@ -1,0 +1,2 @@
+# Pinned. The freshness gate stamps this like any other dependency.
+rlsautotest==0.7.0
