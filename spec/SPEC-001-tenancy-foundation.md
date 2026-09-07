@@ -111,6 +111,23 @@ So: definer helpers reachable by `authenticated` return a scalar, take only the 
 `EXECUTE` revoked from `public` and `anon`, and are enumerated. The set of `BYPASSRLS` roles is a reviewed, committed artifact — an unreviewed one is
 a bypass nobody is looking at.
 
+### REQ-12 — destructive default privileges are revoked
+**MEASURED on a clean local stack, during the build:** `set role anon; truncate public.organization
+cascade;` **succeeded**, cascading to `organization_member` and `project` — every tenant's rows
+removed by an unauthenticated role.
+
+Cause: `pg_default_acl` grants `Dxtm` (TRUNCATE, REFERENCES, TRIGGER, MAINTAIN) to `anon` and
+`authenticated` for tables created by `postgres`, and **RLS does not apply to TRUNCATE at all**. No
+policy in this repository can prevent it, which means no policy test — generated or intent — would
+ever have seen it. It is a Supabase default, so every project inheriting it carries the same grant.
+
+Exploitability, stated honestly: PostgREST exposes no TRUNCATE verb (verified — 404), so this is not
+a remote zero-click. It is a defence-in-depth failure that converts any SQL injection in a
+`SECURITY INVOKER` function, or a leaked role credential, from a scoped read into total data loss.
+
+So: `TRUNCATE`, `REFERENCES` and `TRIGGER` are revoked from `anon` and `authenticated`, and the
+default privileges are altered so a table created later cannot silently reintroduce them.
+
 ## Acceptance criteria
 
 | AC | Verifies | Method | Evidence | Status |
@@ -127,7 +144,8 @@ a bypass nobody is looking at.
 | AC-9 | REQ-10 | test | `supabase/tests/org_deletion.test.sql` — after deletion, no row anywhere retains the organisation id | planned |
 | AC-10 | REQ-11 | test | `supabase/tests/definer_returns_scalar.test.sql` — no definer function reachable by `authenticated` returns a row type | planned |
 | AC-11 | REQ-11 | inspection | `docs/BYPASSRLS-ROLES.md` — the reviewed inventory, with a test that fails when an unlisted role gains the attribute | planned |
-| AC-12 | REQ-11 | test | `supabase/tests/definer_not_public.test.sql` — no definer function reachable from a policy is `EXECUTE`-able by `public` or `anon` (S-4) | planned |
+| AC-12 | REQ-11 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — the membership helper is not callable by `anon` | **done** |
+| AC-13 | REQ-12 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — neither `anon` nor a member can `TRUNCATE` a tenant table | **done** |
 
 ## Definition of Done
 
