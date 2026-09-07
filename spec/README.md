@@ -4,14 +4,16 @@ Governed by [`docs/PRODUCT.md`](../docs/PRODUCT.md) and the [ADRs](../docs/adr/)
 playbook's `_TEMPLATE.spec.md`: intent · scope/non-scope · sources of truth · REQ/AC · DoD ·
 deferrals. **Thin.** A spec that outgrows the feature it governs has failed its own purpose.
 
-Status: all `planned` — none authored yet.
+Status: **Phase 1 authored** (`draft`) — SPEC-001/002/003. The remaining twelve are `planned`
+and are deliberately not written yet: specification authored far ahead of contact rots, and the
+template's own instruction is to keep it thin.
 
 | SPEC | Title | Bars | ADRs | Status |
 |---|---|---|---|---|
 | **Phase 1 — the claim** ||||
-| SPEC-001 | Tenancy foundation — `organization`, membership, RLS, scoped-table guard | B-2 | 001, 003 | planned |
-| SPEC-002 | Proof harness — four test layers, access matrix, mutation proofs | B-2, B-4 | 005 | planned |
-| SPEC-003 | Gates — freshness, service-role boundary, cache keys, supply chain | B-3, B-4, B-9 | 004, 007 | planned |
+| SPEC-001 | Tenancy foundation — `organization`, membership, RLS, scoped-table guard | B-2 | 001, 003 | draft |
+| SPEC-002 | Proof harness — four test layers, access matrix, mutation proofs | B-2, B-4 | 005 | draft |
+| SPEC-003 | Gates — freshness, service-role boundary, cache keys, supply chain | B-3, B-4, B-9 | 004, 007 | draft |
 | **Phase 2 — identity** ||||
 | SPEC-004 | Auth — magic link, OAuth, session, route protection | — | 002 | planned |
 | SPEC-005 | Organisations & roles — create, switch, settings, RBAC | B-2 | 001, 002 | planned |
