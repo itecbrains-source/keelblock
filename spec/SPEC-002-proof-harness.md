@@ -1,6 +1,6 @@
 # SPEC-002: Proof harness
 
-> Status: `draft` · Bars: **B-2**, **B-4** · ADRs: [005](../docs/adr/ADR-005-testing.md)
+> Status: `draft` (spike-validated 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-2**, **B-4** · ADRs: [005](../docs/adr/ADR-005-testing.md)
 
 ## Intent
 
@@ -38,8 +38,16 @@ runs against a throwaway database only: it seeds rows and executes real queries 
 so pointing it at production is destructive.
 
 ### REQ-3 — the intent layer is hand-written, adversarial and small
-The generated layer's own documentation states its limit: *"a wrong policy will be faithfully (and
-greenly) confirmed."* The intent layer is where a human asserts what *should* be true — a member must
+The generated layer's limit is not theoretical — it was measured (`research/03-SPIKE-RESULTS.md` F-1).
+A helper that dropped its `user_id` check produced a **total cross-tenant read leak**, and the
+generated suite reported the affected table as clean. The mechanism is the tool's own:
+
+> *"opaque policy function(s) were MOCKED to prove the policy delegates correctly (wiring) — the
+> function's own logic is NOT verified here"*
+
+So the boundary is precise: **the generated layer verifies that a policy delegates to its helper; every
+line inside that helper is unverified by it.** Keel puts the membership predicate in exactly such a
+helper, which makes the intent layer the only thing testing the predicate at all. The intent layer is where a human asserts what *should* be true — a member must
 not read another organisation's invoices; an admin must not grant themselves owner; a removed member
 loses access immediately, not at token expiry. It is small by design: exhaustiveness is the generated
 layer's job, judgement is this one's.
@@ -75,17 +83,20 @@ reached. "Expected 0, got 1" is a true statement and a useless one at 2am.
 | AC-1 | REQ-1 | inspection | `docs/TESTING.md` — the four layers, what each proves, and what each cannot | planned |
 | AC-2 | REQ-2 | test | `supabase/tests/generated/` present and green; the version is pinned and stamped | planned |
 | AC-3 | REQ-3 | test | `supabase/tests/intent/*.test.sql` — at least one adversarial case per role transition | planned |
-| AC-4 | REQ-3 | test | `supabase/tests/intent/wrong-policy.mutation.test.sql` — a deliberately over-permissive policy is caught by the intent layer *and confirmed green by the generated layer*, proving the two are not redundant | planned |
+| AC-4 | REQ-3 | test | `supabase/tests/intent/wrong-helper.mutation.test.sql` — a **semantic** defect (the membership helper drops its `user_id` check) is caught by the intent layer *and confirmed green by the generated layer*, proving the two are not redundant. Reproduced in the spike. | planned |
 | AC-5 | REQ-4 | test | `docs/ACCESS-MATRIX.md` is regenerated in CI and a stale committed copy fails the build | planned |
 | AC-6 | REQ-5 | test | `scripts/check-mutation-proofs.test.ts` — a gate without a paired mutation proof fails | planned |
 | AC-7 | REQ-6 | inspection | `.github/workflows/check.yml` and `nightly.yml` | planned |
 | AC-8 | REQ-7 | demonstration | Timed local run recorded in `docs/TESTING.md` | planned |
 | AC-9 | REQ-8 | test | `supabase/tests/intent/failure-message.test.sql` — an induced leak's message names table, command, identity and row | planned |
 
-**AC-4 is the load-bearing one.** It is the only test that proves the two policy layers are doing
-different jobs. If it ever passes trivially — if the generated layer also catches the planted bad
-policy — then the intent layer's justification has weakened and this spec should be re-argued rather
-than quietly kept.
+**AC-4 is the load-bearing one**, and the spike corrected it. The defect must be **semantic** — a
+helper whose logic is wrong — not **syntactic**: `with check (true)` *is* caught by the generated
+layer as a footgun, so a syntactic defect would have made AC-4 pass for the wrong reason and quietly
+retire the intent layer's justification.
+
+If AC-4 ever starts passing trivially, the boundary has moved and this spec should be re-argued rather
+than kept out of habit.
 
 ## Definition of Done
 

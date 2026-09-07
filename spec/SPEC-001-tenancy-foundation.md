@@ -1,6 +1,6 @@
 # SPEC-001: Tenancy foundation
 
-> Status: `draft` · Bars: **B-2** · ADRs: [001](../docs/adr/ADR-001-tenancy-model.md), [003](../docs/adr/ADR-003-data-access.md)
+> Status: `draft` (spike-corrected 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-2** · ADRs: [001](../docs/adr/ADR-001-tenancy-model.md), [003](../docs/adr/ADR-003-data-access.md)
 
 ## Intent
 
@@ -41,12 +41,19 @@ inspecting the table — which is what REQ-8 depends on.
 Every tenant-scoped table has RLS enabled with no permissive fallback. The absence of a matching
 policy is a denial, never an allowance. `anon` reaches nothing tenant-scoped.
 
-### REQ-4 — every write policy has a `WITH CHECK` clause
+### REQ-4 — every write policy has a *meaningful* `WITH CHECK` clause
 `USING` governs which rows are visible; **`WITH CHECK` governs which rows may be written.** A policy
 with `USING` alone lets an authenticated user *insert a row into another organisation* while appearing
-correct on read. This is the single most common RLS defect and it is invisible to a generated test
-suite that only asserts what the policy declares (ADR-005), so it is called out as its own requirement
-rather than folded into REQ-3.
+correct on read.
+
+Two facts from the spike (`research/03-SPIKE-RESULTS.md` F-3, F-4) shape this requirement:
+
+- **The smuggled row is invisible to the attacker.** Measured: user A inserted into Org B and still
+  saw only their own row. A suite that proves isolation by *reading* can never catch this — only one
+  that attempts a cross-tenant *write* and asserts rejection.
+- **Presence is not enough.** The defect's policy *has* a `WITH CHECK`; it is `true`. A check for
+  `polwithcheck IS NULL` misses it entirely. The requirement is a clause that actually constrains the
+  organisation, and the gate must reject a trivially-true one.
 
 ### REQ-5 — the membership predicate is indexed and evaluated once per query
 Policies use `(select auth.uid())` rather than a bare `auth.uid()`, so the value is evaluated once
@@ -80,19 +87,39 @@ Deleting an organisation removes or anonymises all its rows by explicit `ON DELE
 per table, not by application cleanup. An orphaned row with a dangling `organization_id` is
 unreachable by policy and therefore invisible to every proof in SPEC-002 — a leak nobody can see.
 
+### REQ-11 — `SECURITY DEFINER` helpers return scalars, never rows
+Measured in the spike (F-2): on Supabase, `postgres` is **not a superuser but carries `BYPASSRLS`**,
+and `FORCE ROW LEVEL SECURITY` does **not** stop it — postgres read every row across both
+organisations with FORCE enabled.
+
+Two consequences:
+
+1. A `SECURITY DEFINER` function owned by `postgres` runs with **RLS bypassed**. The membership helper
+   works *because of* this, not despite it. One that returns rows rather than a boolean is therefore a
+   total isolation bypass with no policy involved — and invisible to every layer of SPEC-002.
+2. Any remediation advice that treats `FORCE` as the fix for owner-bypass is wrong on Supabase,
+   including the advice `rlsautotest` itself prints.
+
+So: definer helpers reachable by `authenticated` return a scalar, take only the values they need, and
+are enumerated. The set of `BYPASSRLS` roles is a reviewed, committed artifact — an unreviewed one is
+a bypass nobody is looking at.
+
 ## Acceptance criteria
 
 | AC | Verifies | Method | Evidence | Status |
 |----|----------|--------|----------|--------|
 | AC-1 | REQ-1, REQ-2 | test | `supabase/tests/tenancy_schema.test.sql` | planned |
 | AC-2 | REQ-3 | test | `supabase/tests/rls_deny_by_default.test.sql` — anon and a foreign member are denied on every scoped table | planned |
-| AC-3 | REQ-4 | test | `supabase/tests/rls_with_check.test.sql` — a member cannot INSERT or UPDATE a row into another organisation | planned |
+| AC-3 | REQ-4 | test | `supabase/tests/rls_with_check.test.sql` — a member cannot INSERT or UPDATE a row into another organisation, asserted **as the writer** (the row is invisible to them, F-3) | planned |
+| AC-3b | REQ-4 | test | `scripts/check-scoped-tables.test.ts` — a write policy whose `WITH CHECK` is trivially true is rejected (F-4) | planned |
 | AC-4 | REQ-5 | analysis | `docs/evidence/policy-plans.md` — `EXPLAIN` output showing index use and one-time `auth.uid()` evaluation | planned |
 | AC-5 | REQ-6 | test | `supabase/tests/definer_hardening.test.sql` — every definer function reachable from a policy has a pinned `search_path` | planned |
 | AC-6 | REQ-7 | test | `src/lib/authz/role-parity.test.ts` — the SQL role matrix and the TypeScript one are equal | planned |
 | AC-7 | REQ-8 | test | `src/lib/db/scoped-tables.test.ts` — the catalog query returns the expected set, and fails when a scoped table is added without a policy | planned |
 | AC-8 | REQ-9 | test | `scripts/check-service-role-boundary.test.ts` — importing the service-role client from a client-reachable module fails the gate | planned |
 | AC-9 | REQ-10 | test | `supabase/tests/org_deletion.test.sql` — after deletion, no row anywhere retains the organisation id | planned |
+| AC-10 | REQ-11 | test | `supabase/tests/definer_returns_scalar.test.sql` — no definer function reachable by `authenticated` returns a row type | planned |
+| AC-11 | REQ-11 | inspection | `docs/BYPASSRLS-ROLES.md` — the reviewed inventory, with a test that fails when an unlisted role gains the attribute | planned |
 
 ## Definition of Done
 

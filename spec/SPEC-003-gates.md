@@ -1,6 +1,6 @@
 # SPEC-003: Gates
 
-> Status: `draft` · Bars: **B-3**, **B-4**, **B-9** · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [007](../docs/adr/ADR-007-supply-chain-and-freshness.md)
+> Status: `draft` (spike-corrected 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-3**, **B-4**, **B-9** · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [007](../docs/adr/ADR-007-supply-chain-and-freshness.md)
 
 ## Intent
 
@@ -34,6 +34,12 @@ runs them.
 4. **It is cheap.** The whole set runs in seconds. A gate suite slow enough to be skipped will be.
 5. **It parses, it does not grep.** A text match over a workflow or a source file is satisfied by a
    mention in a comment. Gates that reason about structure reason about the AST or the parsed file.
+6. **Its exit status is not masked.** A gate piped into `tail` reports the pipe's status, not its own —
+   observed in the spike, where a tool that had exited 1 appeared to exit 0. Check `PIPESTATUS`, or do
+   not pipe. A CI gate whose failure cannot reach CI is a check that cannot fail.
+7. **Its remediation advice is tested, not repeated.** `rlsautotest` prints "add `FORCE ROW LEVEL
+   SECURITY`" for owner-bypass; the spike measured that this does *not* work on Supabase, where the
+   owner bypasses via `BYPASSRLS` (F-2). Advice keel passes on is advice keel has run.
 
 ## Requirements
 
