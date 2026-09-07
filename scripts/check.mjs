@@ -2,54 +2,80 @@
 /**
  * `npm run check` — SPEC-003 REQ-8.
  *
- * Runs every gate and test layer, and **reports all failures rather than stopping at the first**.
- * A developer who has to run six commands runs four; a checker that stops at the first failure
- * makes you run it six times.
+ * Runs every gate and test layer and **reports all failures rather than stopping at the first**.
+ * A developer who has to run six commands runs four; a checker that stops at the first failure makes
+ * you run it six times.
+ *
+ * The decision logic is exported as pure functions so it can carry mutation proofs
+ * (`scripts/check.test.mts`). A runner that has only ever printed a tick has not been shown to be
+ * looking at anything.
  */
 import { spawnSync } from 'node:child_process';
 
-const steps = [
+export const STEPS = [
   // Next generates route types (LayoutProps, PageProps) into .next/types. Without this, typecheck
-  // fails on a clean checkout -- a gate that cannot pass on a fresh clone is a broken gate.
-  { id: 'typegen',   why: 'route types are generated',    cmd: 'npx', args: ['next', 'typegen'] },
-  { id: 'typecheck', why: 'types are sound',              cmd: 'npx', args: ['tsc', '--noEmit'] },
-  { id: 'lint',      why: 'no lint regressions',          cmd: 'npx', args: ['eslint', '.', '--max-warnings', '0'] },
-  // No --passWithNoTests: a suite that passes with zero tests is a check that cannot fail.
-  { id: 'unit',      why: 'pure logic is correct',        cmd: 'npx', args: ['vitest', 'run'] },
-  { id: 'policy',    why: 'the database enforces isolation', cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },
+  // fails on a clean checkout — a gate that cannot pass on a fresh clone is a broken gate.
+  { id: 'typegen',   why: 'route types are generated',              cmd: 'npx',  args: ['next', 'typegen'] },
+  { id: 'typecheck', why: 'types are sound',                        cmd: 'npx',  args: ['tsc', '--noEmit'] },
+  { id: 'lint',      why: 'no lint regressions',                    cmd: 'npx',  args: ['eslint', '.', '--max-warnings', '0'] },
+  // No --passWithNoTests: a suite that passes with zero tests is a check that cannot fail (F-13).
+  { id: 'unit',      why: 'pure logic is correct',                  cmd: 'npx',  args: ['vitest', 'run'] },
+  { id: 'policy',    why: 'the database enforces isolation',        cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },
   { id: 'matrix',    why: 'the published access matrix is current', cmd: 'node', args: ['scripts/access-matrix.mjs', '--check'], needsDb: true },
 ];
 
-const dbUp = () => {
-  const r = spawnSync('npx', ['--no-install', 'supabase', 'status'], { encoding: 'utf8' });
-  return r.status === 0;
-};
+/** Exit codes are a contract: 0 all green · 1 a gate failed · 2 the run could not be performed. */
+export const EXIT = { OK: 0, FAILED: 1, CANNOT_RUN: 2 };
 
-const dbAvailable = steps.some((s) => s.needsDb) ? dbUp() : true;
-if (!dbAvailable) {
-  console.error('\n  The local database is not running. Start it with:  supabase start');
-  console.error('  Database-backed gates cannot be skipped silently — that would make `check` a');
-  console.error('  check that cannot fail.\n');
-  process.exit(2);
-}
-
-const results = [];
-for (const step of steps) {
-  process.stdout.write(`\n──── ${step.id} · ${step.why}\n`);
-  const t0 = Date.now();
-  const r = spawnSync(step.cmd, step.args, { stdio: 'inherit' });
-  results.push({ ...step, ok: r.status === 0, ms: Date.now() - t0 });
+/**
+ * A database-backed gate is never skipped when the database is absent — it aborts the whole run.
+ * Skipping would turn `check` into a command that reports green while proving nothing, which is the
+ * exact defect F-13 was.
+ */
+export function decideRun(steps, { dbAvailable }) {
+  const needsDb = steps.some((s) => s.needsDb);
+  if (needsDb && !dbAvailable) {
+    return { proceed: false, exit: EXIT.CANNOT_RUN, reason: 'database-unavailable' };
+  }
+  return { proceed: true, steps };
 }
 
-const pad = Math.max(...results.map((r) => r.id.length));
-console.log('\n════ summary ════');
-for (const r of results) {
-  console.log(`  ${r.ok ? '✓' : '✗'} ${r.id.padEnd(pad)}  ${(r.ms / 1000).toFixed(1)}s  ${r.why}`);
+/** Every step runs; failures are collected, never short-circuited. */
+export function summarize(results) {
+  const failed = results.filter((r) => !r.ok);
+  const pad = Math.max(0, ...results.map((r) => r.id.length));
+  return {
+    ok: failed.length === 0,
+    failed: failed.map((f) => f.id),
+    exit: failed.length === 0 ? EXIT.OK : EXIT.FAILED,
+    lines: results.map((r) => `  ${r.ok ? '✓' : '✗'} ${r.id.padEnd(pad)}  ${(r.ms / 1000).toFixed(1)}s  ${r.why}`),
+  };
 }
-const failed = results.filter((r) => !r.ok);
-if (failed.length === 0) {
-  console.log(`\n  all ${results.length} green\n`);
-  process.exit(0);
+
+function main() {
+  const dbAvailable = spawnSync('npx', ['--no-install', 'supabase', 'status'], { encoding: 'utf8' }).status === 0;
+  const decision = decideRun(STEPS, { dbAvailable });
+
+  if (!decision.proceed) {
+    console.error('\n  The local database is not running. Start it with:  supabase start');
+    console.error('  Database-backed gates are not skipped when it is absent — that would make');
+    console.error('  `check` a command that reports green while proving nothing.\n');
+    process.exit(decision.exit);
+  }
+
+  const results = [];
+  for (const step of decision.steps) {
+    process.stdout.write(`\n──── ${step.id} · ${step.why}\n`);
+    const t0 = Date.now();
+    const r = spawnSync(step.cmd, step.args, { stdio: 'inherit' });
+    results.push({ ...step, ok: r.status === 0, ms: Date.now() - t0 });
+  }
+
+  const { ok, failed, exit, lines } = summarize(results);
+  console.log('\n════ summary ════');
+  for (const line of lines) console.log(line);
+  console.log(ok ? `\n  all ${results.length} green\n` : `\n  ${failed.length} failed: ${failed.join(', ')}\n`);
+  process.exit(exit);
 }
-console.log(`\n  ${failed.length} failed: ${failed.map((f) => f.id).join(', ')}\n`);
-process.exit(1);
+
+if (import.meta.url === `file://${process.argv[1]}`) main();
