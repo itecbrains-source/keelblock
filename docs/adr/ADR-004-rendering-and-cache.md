@@ -1,6 +1,6 @@
 # ADR-004: Rendering and caching — explicit `use cache`, tenant-scoped keys, enforced
 
-**Status:** Accepted · **Date:** 2026-09-07 · **Deciders:** architect
+**Status:** Accepted, **amended 2026-09-07 after smoke testing** (`research/04-SMOKE-RESULTS.md` S-3) · **Date:** 2026-09-07 · **Deciders:** architect
 
 ## Context
 
@@ -21,9 +21,28 @@ is the one way to leak data that the entire B-2 apparatus would confirm as green
 
 ## Decision
 
-**Chosen:** Cache Components enabled; **nothing tenant-scoped is cached without the organisation id in
-its cache key or tag**; a central tag registry from the first commit; a gate that fails the build on a
-`use cache` in a tenant-scoped module whose key or tag does not include the organisation.
+**Chosen:** Cache Components enabled, with the amendment below.
+
+**Amendment (measured, not predicted).** With `cacheComponents: true`, any Server Component reading
+cookies fails the production build — and every authenticated Supabase read reads cookies. So enabling
+Cache Components is not free: it forces a decision on **every authenticated route**. Verified outcomes:
+
+- **`<Suspense>` around the tenant read is the default.** It builds, and the route becomes partially
+  prerendered — static shell, streamed tenant data. A **standard authenticated page shell with a real
+  fallback is therefore an architectural default**, not a style choice, and it makes *loading* a state
+  the framework forces you to design rather than an afterthought.
+- `export const instant = false` is acceptable where nothing meaningful can be prerendered.
+- **`"use cache"` over a session-dependent read is refused by Next itself** — `cookies()` inside a cache
+  scope is a build error. The naive cross-tenant cache leak is therefore impossible, not merely
+  discouraged.
+
+**This narrows the gate rather than widening it.** The surviving risk is the escape hatch Next's own
+error message recommends — read cookies outside, pass the value in as an argument. That is legitimate
+and needed for per-org aggregates. So the gate checks the one thing that remains checkable: a
+`use cache` function reaching tenant data takes its organisation as an **argument** (which Next keys
+on), never from closure or a default.
+
+A central cache-tag registry still lands from the first commit.
 
 ## Consequences
 

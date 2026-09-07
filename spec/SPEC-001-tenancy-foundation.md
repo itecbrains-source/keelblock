@@ -100,8 +100,15 @@ Two consequences:
 2. Any remediation advice that treats `FORCE` as the fix for owner-bypass is wrong on Supabase,
    including the advice `rlsautotest` itself prints.
 
-So: definer helpers reachable by `authenticated` return a scalar, take only the values they need, and
-are enumerated. The set of `BYPASSRLS` roles is a reviewed, committed artifact — an unreviewed one is
+**Smoke testing added the missing half** (`research/04-SMOKE-RESULTS.md` S-4). Postgres grants
+`EXECUTE` on new functions to `PUBLIC`, so on a real stack the membership helper was callable by
+**`anon`** — an unauthenticated oracle over an RLS-protected table. Every definer helper therefore
+ships with `revoke execute … from public, anon` in the same migration that creates it. The bare
+container used in the first spike did not model this: *a spike environment that is nearly the target
+returns nearly the truth.*
+
+So: definer helpers reachable by `authenticated` return a scalar, take only the values they need, have
+`EXECUTE` revoked from `public` and `anon`, and are enumerated. The set of `BYPASSRLS` roles is a reviewed, committed artifact — an unreviewed one is
 a bypass nobody is looking at.
 
 ## Acceptance criteria
@@ -120,6 +127,7 @@ a bypass nobody is looking at.
 | AC-9 | REQ-10 | test | `supabase/tests/org_deletion.test.sql` — after deletion, no row anywhere retains the organisation id | planned |
 | AC-10 | REQ-11 | test | `supabase/tests/definer_returns_scalar.test.sql` — no definer function reachable by `authenticated` returns a row type | planned |
 | AC-11 | REQ-11 | inspection | `docs/BYPASSRLS-ROLES.md` — the reviewed inventory, with a test that fails when an unlisted role gains the attribute | planned |
+| AC-12 | REQ-11 | test | `supabase/tests/definer_not_public.test.sql` — no definer function reachable from a policy is `EXECUTE`-able by `public` or `anon` (S-4) | planned |
 
 ## Definition of Done
 
