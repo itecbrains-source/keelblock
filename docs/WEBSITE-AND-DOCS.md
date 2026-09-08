@@ -1,5 +1,29 @@
 # Website & documentation plan
 
+> **Whose site this is, because the word "blog" means two different things in this repository.**
+>
+> This plan describes **keelblock.dev — the project's own marketing site and its own blog**, where
+> the findings in [`docs/FINDINGS.md`](FINDINGS.md) get published. It is not a description of
+> anything the starter kit ships to a buyer.
+>
+> `PRODUCT.md` refuses "a blog and a CMS" as a **kit feature**: scaffold keelblock and you get no
+> blog machinery. The two are opposite sides of the same boundary and they do not conflict — this
+> project can publish thirty posts while shipping zero blog machinery to anyone.
+>
+> **Two things about this plan are not yet owned by anything.** Stated here rather than discovered
+> later:
+>
+> 1. **No spec claims this document.** SPEC-009 (marketing shell) and SPEC-012 (docs) are both about
+>    what a BUYER receives, carrying bars B-8 and B-5. keelblock.dev itself — this site, this blog,
+>    the published access matrix, the seven sections below — has no owning spec and no acceptance
+>    criteria. It is a plan, and plans are not gated.
+> 2. **The content source is unspecified.** Nothing in the repository names MDX, markdown or any
+>    other pipeline, while `docs/content/MANIFEST.json` already routes findings to `blog` and
+>    `landing`. `check-content` enforces that every finding HAS a destination; nothing enforces that
+>    the destination exists, so it will keep passing indefinitely while nothing is published. Decide
+>    the source when a spec claims this document — and note that choosing an external CMS for it
+>    would not contradict the kit's refusal, though it would want its own reasoning.
+
 **Baseline: [supastarter.dev](https://supastarter.dev)** — matched on quality and completeness,
 **simplified in structure, and deliberately reordered.** Docs are a deliverable (bar B-5), not
 marketing that happens afterwards.

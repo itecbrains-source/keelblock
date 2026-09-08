@@ -14,6 +14,19 @@ be looking at anything. See `scripts/access-matrix.test.mts` for the shape.
 **3 · Measure, then claim.** Nothing in the docs asserts behavior that has not been reproduced. If
 you cannot reproduce it, write down what you observed and what you could not confirm.
 
+## House style
+
+**US English**, in prose and in identifiers — `organization`, `behavior`, `authorize`, `license`,
+`center`, `analyze`. The database has always spelled it `organization`, and prose that spells it
+`organisation` puts two spellings of the central noun in one repository.
+
+**Deliberately not gated.** A spelling check means a word list to maintain and false positives to
+exempt — `promise`, `enterprise`, `exercise` and `compromise` are correct in both dialects and a
+careless rule mangles all four. The failure mode here is cosmetic, and the marginal value of another
+mechanism in this repository is currently zero (`docs/review/06-RESCORE-CI.md`). So this is a
+convention a reviewer enforces, and it is written down rather than assumed, which is the difference
+that matters.
+
 ## Adding a tenant-scoped table
 
 The most common change, and the one where data leaks. In one migration:
