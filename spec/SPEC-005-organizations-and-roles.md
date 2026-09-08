@@ -1,7 +1,7 @@
 # SPEC-005: Organizations and roles
 
 > Status: `done` · Bars: **B-2** · Research: [`research/08-ORG-CONTEXT.md`](../research/08-ORG-CONTEXT.md) · ADRs: [001](../docs/adr/ADR-001-tenancy-model.md), [002](../docs/adr/ADR-002-auth.md), [011](../docs/adr/ADR-011-app-router-conventions.md)
-> Contracts: SPEC-001, SPEC-002, SPEC-004, SPEC-006 ·
+> Contracts: SPEC-001, SPEC-002, SPEC-004, SPEC-006, SPEC-007 ·
 
 ## Intent
 
