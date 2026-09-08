@@ -22,7 +22,10 @@ export const STEPS = [
   { id: 'unit',      why: 'pure logic is correct',                  cmd: 'npx',  args: ['vitest', 'run'] },
   { id: 'locale',    why: 'translations are complete and all used',  cmd: 'node', args: ['scripts/check-locale.mjs'] },
   { id: 'unused',    why: 'no dead code or unused dependencies',   cmd: 'npx', args: ['knip'] },
-  { id: 'deferrals', why: 'debt is logged and no trigger has fired', cmd: 'node', args: ['scripts/check-deferrals.mjs'] },
+  { id: 'freshness', why: 'nothing has quietly gone stale',       cmd: 'node', args: ['scripts/check-freshness.mjs'] },
+  { id: 'promises',  why: 'every commitment is owned and tracked', cmd: 'node', args: ['scripts/check-promises.mjs'] },
+  { id: 'boundaries', why: 'the app cannot route around RLS',        cmd: 'node', args: ['scripts/check-boundaries.mjs'] },
+  { id: 'schema',    why: 'every tenant table is protected',         cmd: 'node', args: ['scripts/check-schema-guard.mjs'], needsDb: true },
   { id: 'policy',    why: 'the database enforces isolation',        cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },
   // One gate for every committed-and-derived artifact: the access matrix and the database types.
   // Kept as one because it is one promise -- nothing derived is stale -- and SPEC-003 sets nine gates

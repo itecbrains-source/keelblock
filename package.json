@@ -40,7 +40,7 @@
     "jsdom": "^30.0.1",
     "knip": "^6.34.0",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "^6.0.3",
     "vitest": "^5.0.0",
     "yaml": "^2.9.0"
   },

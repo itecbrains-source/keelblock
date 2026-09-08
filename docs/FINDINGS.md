@@ -323,3 +323,51 @@ securityHeadersEnabled: process.env.SECURITY_HEADERS_ENABLED ?? false
 
 Setting that to `"false"` **enables** it — `??` only catches `undefined`, and a non-empty string is
 truthy. keel parses an enum, so `"false"` is a boot error rather than a silent inversion.
+
+## F-18 · keel inherited two-majors-behind rot from `create-next-app`, on day two
+
+**2026-09-07 · found by the freshness gate on its first run**
+
+The gate that exists to stop keel becoming a stale starter found keel already stale:
+
+```
+[drift] typescript: pinned at 5, current is 7 — 2 majors behind (limit 1)
+[stamp] knip: package.json has major 6, stamp claims 5
+```
+
+`create-next-app` pins `typescript: ^5`. TypeScript 7 is current. **keel shipped two majors behind
+on its second day, from the scaffold itself**, and without this gate nothing anywhere would have
+said so — it builds, it typechecks, the tests pass.
+
+The second line is the gate catching its author: I wrote a stamp claiming knip 5 while installing 6.
+
+**Upgrading found a genuine external blocker.** TypeScript 7 typechecks keel cleanly — and about
+three times faster, 1.7s → 0.5s, being the Go-based compiler — but `typescript-eslint` refuses to
+load against it and ESLint aborts outright. keel sits on TypeScript 6: one major behind current,
+inside the gate's one-major grace, which is the situation that grace exists for. Registered as
+**DEF-008** with the upstream tracking issue.
+
+TypeScript 7 also caught a real weakness TypeScript 5 permitted: a parser returning `{}` with no
+index signature, indexed by a string. Two majors of drift had been hiding a type hole.
+
+## F-19 · A gate that misreports its own failure sends you to debug the wrong thing
+
+**2026-09-07 · `scripts/check-schema-guard.mjs`**
+
+The new-table guard's first version printed:
+
+```
+schema-guard: could not reach the database. Is the local stack running? `supabase start`
+```
+
+The database was running. The query had a SQL syntax error, and the catch block assumed every
+failure was connectivity. That message sends a reader to check Docker for twenty minutes.
+
+It now distinguishes the two and says which: *"the query failed — this is a bug in the gate, not in
+your schema."* Being wrong is acceptable; **being confidently wrong about which layer is broken is
+not**, and it is a failure of SPEC-002 REQ-8 (a failing proof must be legible).
+
+The same gate had a second, quieter defect: it counted **2** tenant-scoped tables where there are 3.
+It looked for an `organization_id` column, and the `organization` table does not reference itself —
+so **the root table, the most important one in the schema, was invisible to the guard protecting
+it.** Now covered, and pinned by a pgTAP case that disables RLS on the root and asserts it is caught.

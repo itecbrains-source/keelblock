@@ -11,9 +11,9 @@ template's own instruction is to keep it thin.
 | SPEC | Title | Bars | ADRs | Status |
 |---|---|---|---|---|
 | **Phase 1 — the claim** ||||
-| SPEC-001 | Tenancy foundation — `organization`, membership, RLS, scoped-table guard | B-2 | 001, 003 | **partial** (REQ-1..7, 10..12 built; REQ-8/9 gates pending SPEC-003) |
+| SPEC-001 | Tenancy foundation — `organization`, membership, RLS, scoped-table guard | B-2 | 001, 003 | **done** (REQ-1..12; REQ-8/9 now gated by SPEC-003) |
 | SPEC-002 | Proof harness — four test layers, access matrix, mutation proofs | B-2, B-4 | 005 | **partial** (unit + generated + intent + matrix + mutation proofs built; journey layer pending auth) |
-| SPEC-003 | Gates — freshness, service-role boundary, cache keys, supply chain | B-3, B-4, B-9 | 004, 007 | **partial** (REQ-7 deferral lint + REQ-8 one command built; freshness/boundary/cache/new-table gates pending) |
+| SPEC-003 | Gates — freshness, service-role boundary, cache keys, supply chain | B-3, B-4, B-9 | 004, 007 | **done** (REQ-1..9, all mutation-proven) |
 | **Phase 2 — identity** ||||
 | SPEC-004 | Auth — magic link, OAuth, session, route protection | — | 002 | planned |
 | SPEC-005 | Organisations & roles — create, switch, settings, RBAC | B-2 | 001, 002 | planned |
@@ -60,7 +60,19 @@ with a different name and the third question stops being asked.
 
 ## Coverage check
 
-Every bar in `PRODUCT.md` is owned by at least one spec above: B-1 → 011 · B-2 → 001, 002, 005, 006 ·
-B-3 → 003 · B-4 → 002, 003 · B-5 → 012 · B-6 → 014 · B-7 → 008, 015 · B-8 → 009, 015 · B-9 → 003 ·
-B-10 → 013. A bar with no spec is an unkept promise; keeping this list honest is itself a gate
-(`check-bar-coverage`, owned by SPEC-003).
+Every acceptance bar in `docs/PRODUCT.md` maps to an owning spec. **A bar with no owner is an unkept
+promise**, and this table is read by a gate (`npm run check` → `promises`), so it cannot quietly go
+stale. It is a table rather than a sentence because a gate should never have to parse prose.
+
+| Bar | Owned by |
+|---|---|
+| B-1 | SPEC-011 |
+| B-2 | SPEC-001, SPEC-002, SPEC-005, SPEC-006 |
+| B-3 | SPEC-003 |
+| B-4 | SPEC-002, SPEC-003 |
+| B-5 | SPEC-012 |
+| B-6 | SPEC-014 |
+| B-7 | SPEC-008, SPEC-015 |
+| B-8 | SPEC-009, SPEC-015 |
+| B-9 | SPEC-003, SPEC-016 |
+| B-10 | SPEC-013, SPEC-016 |

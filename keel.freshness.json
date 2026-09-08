@@ -1,0 +1,58 @@
+{
+  "$comment": "Dated verification stamps. A stamp is a claim that a human checked this pin against current on that date, and it EXPIRES. See scripts/check-freshness.mjs.",
+  "maxAgeDays": 45,
+  "runtime": {
+    "node": 26
+  },
+  "pins": {
+    "next": {
+      "major": 16,
+      "verifiedOn": "2026-09-07"
+    },
+    "react": {
+      "major": 19,
+      "verifiedOn": "2026-09-07"
+    },
+    "next-intl": {
+      "major": 4,
+      "verifiedOn": "2026-09-07"
+    },
+    "tailwindcss": {
+      "major": 4,
+      "verifiedOn": "2026-09-07"
+    },
+    "typescript": {
+      "major": 6,
+      "verifiedOn": "2026-09-07",
+      "note": "One major behind 7 deliberately: typescript-eslint does not support TS 7 (DEF-008). Inside the gate's one-major grace, and the grace exists for exactly this."
+    },
+    "@supabase/supabase-js": {
+      "major": 2,
+      "verifiedOn": "2026-09-07"
+    },
+    "@supabase/ssr": {
+      "major": 0,
+      "verifiedOn": "2026-09-07"
+    },
+    "stripe": {
+      "major": 22,
+      "verifiedOn": "2026-09-07"
+    },
+    "zod": {
+      "major": 4,
+      "verifiedOn": "2026-09-07"
+    },
+    "vitest": {
+      "major": 5,
+      "verifiedOn": "2026-09-07"
+    },
+    "@playwright/test": {
+      "major": 1,
+      "verifiedOn": "2026-09-07"
+    },
+    "knip": {
+      "major": 6,
+      "verifiedOn": "2026-09-07"
+    }
+  }
+}
