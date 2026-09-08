@@ -685,6 +685,16 @@ environment rather than with the schema.
 extension is transient here, which is why this went unnoticed; it only had to be resident once, on
 the machine that happened to run `npm run generate`.
 
+**Corrected 2026-09-08, by CI.** "Transient here" was true of CLI 2.109.0 and false of the `latest`
+a GitHub runner installs, where `supabase test db` leaves pgTAP resident. Since `check-generated`
+runs immediately after `check-policies`, the types it read on the runner contained pgTAP's views and
+the committed artifact was reported STALE — twice, with a message naming the schema rather than the
+cause. Measured: 149 lines of difference between types generated with and without the extension
+present. `check-policies` now drops it after the run, which restores the state the gate started in.
+The wider lesson survives the correction and is sharper for it: **a gate that leaves residue behind
+is a gate that changes what the next one sees**, and the failure surfaces somewhere it cannot be
+explained.
+
 Found because a rename forced a clean rebuild. Nothing else would have caught it — the gate compares
 the committed file to whatever the current stack produces, so on the machine that produced it, it
 agreed with itself indefinitely.

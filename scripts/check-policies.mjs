@@ -139,6 +139,26 @@ function main() {
   );
 
   const run = spawnSync('supabase', ['test', 'db'], { stdio: 'inherit' });
+
+  // Clean up after the test framework, because it changes what the NEXT gate sees.
+  //
+  // The generated suite opens with `create extension if not exists pgtap`, and whether that survives
+  // the run depends on the CLI version: it does not on 2.109.0, it does on the `latest` a GitHub
+  // runner installs. `check-generated` runs immediately after this gate and asks the database for
+  // its types, so a resident pgTAP puts its own views -- pg_all_foreign_keys, tap_funky -- into the
+  // application's `Database` type and the committed artifact reads STALE. Measured 2026-09-08: 149
+  // lines of difference, and two CI failures whose message named the schema rather than the cause.
+  //
+  // Dropping it restores the state the run started in. That is cleanup, not mutation -- and a gate
+  // that leaves residue for a later gate to trip over is worse than one that does nothing (F-29).
+  try {
+    execFileSync('psql', [DB, '-qc', 'drop extension if exists pgtap'], { stdio: 'pipe' });
+  } catch {
+    console.error(
+      'policy: pgtap could not be removed after the run. If `generated` now reports stale types,',
+    );
+    console.error('  that is why, and the schema has not changed.');
+  }
   process.exit(run.status ?? 1);
 }
 
