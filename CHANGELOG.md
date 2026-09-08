@@ -12,6 +12,13 @@ entries are what make the rest worth believing. Full reproductions live in
 The tenancy foundation, the proof harness and the gates. Auth, billing and the product surfaces are
 specced and not yet built — see [`spec/README.md`](spec/README.md).
 
+### Changed
+
+- **Renamed `keel` to `keelblock`** ([ADR-015](docs/adr/ADR-015-the-name.md)). `keel` and
+  `create-keel-app` are both live on npm and keel.so is a funded developer-tools company, so bar
+  B-1's headline command scaffolded somebody else's project. Verified with a positive control before
+  choosing; the npm pair and `keelblock.dev` are free. Prose is US English throughout.
+
 ### Added
 
 - **Tenancy foundation** — `organization`, `organization_member`, a hardened membership predicate,
@@ -25,6 +32,16 @@ specced and not yet built — see [`spec/README.md`](spec/README.md).
 - CI per commit, a nightly clean-clone build and a nightly fresh dependency resolution, gitleaks over full history; MIT license; security policy;
   contributor guide; honest `error` and `not-found` states; the three Supabase clients, with the
   service-role client behind a `server-only` import boundary.
+- **CI running on a real remote**, green on every job — `check`, `audit`, `codeql`, `secrets` — plus
+  a nightly clean-clone build and a nightly fresh dependency resolution. The steps `npm run verify`
+  could previously only assert are now observed.
+- **Review dispositions** ([`docs/review/DISPOSITIONS.md`](docs/review/DISPOSITIONS.md)) — an external
+  review is tracked to closure: every finding is implemented, refuted or deferred, whether it is
+  closed is computed rather than asserted, and a finding deferred to a deferral that later closes
+  fails the build until it is answered again.
+- **Adjudication on the access matrix** — an anomaly or bypass surface must be absent or answered
+  with a written reason in `keelblock.access-allowances.json`, published in the artifact itself. The
+  gate previously compared the document for freshness and was indifferent to what it said.
 
 ### Security
 
@@ -40,6 +57,21 @@ specced and not yet built — see [`spec/README.md`](spec/README.md).
   reintroduce it. **This affects every project inheriting the same Supabase defaults.**
 - **`EXECUTE` defaults to `PUBLIC` (F-7).** The membership helper was callable by `anon` — an
   unauthenticated oracle over an RLS-protected table. Revoked.
+- **A privilege boundary that was inherited rather than stated (F-31).** `anon` regained DML on every
+  tenant table on `supabase/postgres:17.6.1.167`, where it has none on `.140` — so an assertion green
+  on every local run failed the first time it ran anywhere else. RLS still held (every policy is `to
+authenticated`), but the layer before it did not, and defense in depth is the thing you cannot
+  notice losing. All three roles' privileges are now stated by migration. **This affects every
+  project that assumes Supabase's defaults are fixed.**
+- **A role that could destroy a table it could not read (F-28).** The F-1 revoke covered `anon` and
+  `authenticated` and not `service_role`, which kept `TRUNCATE` on all three tenant tables while
+  holding no DML at all. Not remotely exploitable — `service_role` is server-only — but it made a
+  leaked service key total data loss rather than a scoped read.
+- **`EXECUTE` to `PUBLIC` on the two trigger functions.** REQ-11 wrote the rule down and applied it
+  to the helpers; the trigger functions added three migrations later kept the default. Postgres
+  refuses a direct call to a function returning `trigger`, so this was defense in depth rather than a
+  live hole. Revoked from `public`, `anon` and `authenticated` by name, because revoking from
+  `PUBLIC` alone was enough on one image and not on another.
 
 ### Fixed
 
@@ -47,6 +79,18 @@ specced and not yet built — see [`spec/README.md`](spec/README.md).
   printed a green tick, while the function generating the access matrix had no test. The rule
   requiring a mutation proof per gate was written down and then violated by the gate enforcing it.
   Every gate now carries mutation proofs.
+- **The check that certified every other check was a substring search (F-30).** The meta-gate
+  asserted every gate had been shown to fail by looking for the word MUTATION in its test file; any
+  comment mentioning it satisfied that. It now asks the parsed test file whether a case named as a
+  mutation proof calls something the gate exports. Every existing proof passed the stronger rule.
+- **The anti-stale-documentation gate could not see the form this repository writes in (F-23).** The
+  rule was digits-only, and every stale count here was spelled out — eighteen of them, including the
+  line in `AGENTS.md` telling a coding agent the decision record held eleven entries when it held
+  fifteen.
+- **A generated artifact that could not be regenerated from the repository (F-29).** The committed
+  database types carried pgTAP's own views, because they were generated on a machine where the
+  extension happened to be resident. `check-policies` now removes it after the run, and the CLI is
+  pinned — a generated artifact can only be compared against a pinned generator.
 - **An overclaimed guarantee (F-14).** The membership invariants were documented as binding the
   service role. They do not, and could not: that identity can drop the trigger. Corrected to say what
   is true. An overclaimed guarantee is worse than an absent one, because people build on it.

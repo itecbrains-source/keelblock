@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { census, checkCountClaims, claimsIn, COUNTABLE, numberOf } from './status.mjs';
+import {
+  census,
+  checkCountClaims,
+  checkStateClaims,
+  claimsIn,
+  COUNTABLE,
+  numberOf,
+} from './status.mjs';
 
 const c = census();
 
@@ -92,6 +99,39 @@ describe('derived status', () => {
   it('claimsIn strips inline spans and keeps fences', () => {
     expect(claimsIn('a `six gates` b')).not.toContain('six gates');
     expect(claimsIn('```\nsix gates\n```')).toContain('six gates');
+  });
+
+  // ── state claims: the class a count rule cannot see ─────────────────────────
+
+  it('MUTATION: the exact sentence pushing falsified is caught', () => {
+    // Verbatim from README.md, true when written and false for the duration of the push that
+    // created the remote — written by the same person who pushed.
+    const doc =
+      'There is no remote yet, so the workflow has never executed on GitHub. `npm run verify` closes as much of that gap as a laptop honestly can:';
+    const p = checkStateClaims({ 'README.md': doc }, { hasRemote: true });
+    expect(p).toHaveLength(1);
+    expect(p[0]).toContain('no longer true');
+  });
+
+  it('the same sentence is fine while it is TRUE', () => {
+    const doc = 'There is no remote yet, so the workflow has never executed on GitHub.';
+    expect(checkStateClaims({ 'README.md': doc }, { hasRemote: false })).toEqual([]);
+  });
+
+  it('the real documentation makes no state claim that has expired', () => {
+    expect(checkStateClaims({ 'x.md': '' }, { hasRemote: true })).toEqual([]);
+  });
+
+  it('a quotation is still a quotation here too', () => {
+    // The review says "no remote" as a dated record and must keep saying it.
+    expect(
+      checkStateClaims({ 'd.md': 'the audit noted `no remote` on the day' }, { hasRemote: true }),
+    ).toEqual([]);
+  });
+
+  it('ordinary prose about remotes is not a claim about this one', () => {
+    const doc = 'Push to your remote when ready; a remote branch is cheap.';
+    expect(checkStateClaims({ 'd.md': doc }, { hasRemote: true })).toEqual([]);
   });
 
   it('every AC status is a closed vocabulary — nothing invents its own', () => {

@@ -1,5 +1,8 @@
 # keelblock
 
+[![check](https://github.com/itecbrains-source/keelblock/actions/workflows/check.yml/badge.svg)](https://github.com/itecbrains-source/keelblock/actions/workflows/check.yml)
+[![nightly](https://github.com/itecbrains-source/keelblock/actions/workflows/nightly.yml/badge.svg)](https://github.com/itecbrains-source/keelblock/actions/workflows/nightly.yml)
+
 **A multi-tenant SaaS starter where tenant isolation is enforced by the database and proven on every
 commit.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe. MIT.
 
@@ -134,8 +137,9 @@ npm run check
 
 ### Running CI locally
 
-There is no remote yet, so the workflow has never executed on GitHub. `npm run verify` closes as much
-of that gap as a laptop honestly can:
+CI runs on every push and every night, and the badge above is the only place this README states
+whether it passed — because that is volatile state, and this file is for durable claims. `npm run
+verify` is for the loop before you push: it closes as much of the gap as a laptop honestly can.
 
 ```bash
 npm run verify           # fast — defers the heavy reinstall
@@ -153,15 +157,17 @@ check` really runs. The GitHub-hosted actions (`checkout`, `setup-node`, `setup-
 percentage genuinely executed and names everything it could not verify:
 
 ```
-ran      4   executed exactly as CI will
-local    1   real local equivalent
-asserted 6   effect checked, action not run
-skipped  0   NOT verified
+ran      N   executed exactly as CI will
+local    N   real local equivalent
+asserted N   effect checked, action not run
+skipped  N   NOT verified
 
-fidelity: 45% of steps genuinely executed
+fidelity: NN% of steps genuinely executed
 ```
 
-**45%, stated plainly.** "CI passed locally" is worth nothing if a third of it was quietly skipped.
+**The percentage is stated plainly, whatever it is.** "CI passed locally" is worth nothing if a third
+of it was quietly skipped — and the number is printed rather than reproduced here, because a figure
+copied into a README is a figure that stops being true.
 
 ### Writing application code
 

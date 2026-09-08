@@ -796,3 +796,45 @@ and neither here. Naming the roles is one word longer and portable.
 
 The rule worth keeping: **if a security property is true because of a default you did not set, it is
 not a property, it is a version of somebody else's image.**
+
+## F-32 · The documentation was falsified by the commit that made it stale
+
+**2026-09-08 · `scripts/status.mjs`**
+
+Pushing to a remote for the first time made this sentence in `README.md` false:
+
+> `There is no remote yet, so the workflow has never executed on GitHub.`
+
+It was true when written, and false for the duration of the `git push` that created the remote and
+ran the workflow — written by the same person who pushed. Two paragraphs above it, the same file
+says: _"This README describes what exists today, not what is planned. If that distinction ever
+blurs, the project has failed its own first rule."_
+
+**The stale-count gate could not see it, and correctly so.** F-23's rule watches counts, and a count
+goes stale when reality drifts past it — slowly, over commits, which is why a periodic check catches
+it. **A state claim goes stale instantly**, in the same commit as the action, and there is no drift
+window in which anyone would notice.
+
+Two fixes, and the second is the one that generalizes.
+
+**Stop asserting volatile state in prose.** The paragraph is gone, replaced by a CI badge, which is
+computed by the thing it describes and cannot lie about it. That is `npm run status`'s rule —
+_durable claims written down, volatile state computed_ — applied to a file that was exempt from it
+because nobody had thought of the README as making claims.
+
+**And a rule for the class**, because the next one will not be about a remote. `checkStateClaims`
+carries one entry today, added because one failure was measured, and it is proven by restoring the
+real sentence to the real file and watching the gate go red. The pattern to keep is narrow: a claim
+about state is checkable only when the state is observable to the repository, and `git remote` is.
+A claim like "nobody uses this yet" is not checkable and does not belong in a gate — it belongs in a
+sentence nobody wrote.
+
+The rule caught this finding while it was being written — the paragraph above quotes the false
+sentence, and the quotation had to be marked as one, which is the same escape the count rule needed
+for the same reason. A rule you cannot state inside the repository it governs will be stated wrongly.
+
+The uncomfortable part is worth stating plainly. Every gate in this repository was written after
+someone here got something wrong, and this one is no exception: the defect was introduced by the
+change that closed R-13, in the file the review had already found wrong in seven places, on the same
+day. **A project whose thesis is "documentation drifts from reality" should expect to keep proving
+its own thesis.**

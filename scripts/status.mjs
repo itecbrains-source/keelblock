@@ -91,6 +91,44 @@ export const COUNTABLE = {
 };
 
 /**
+ * Claims about volatile STATE, which the count rule cannot see.
+ *
+ * A count goes stale when reality drifts past it. A state claim goes stale the INSTANT someone does
+ * the thing — and it is usually stale in the same commit, written by the person who did it. On
+ * 2026-09-08 this README said "There is no remote yet, so the workflow has never executed on GitHub"
+ * for the duration of the push that created the remote and ran the workflow, in a file whose second
+ * paragraph promises it "describes what exists today, not what is planned".
+ *
+ * One rule, because one failure has been measured. Add another when another is.
+ */
+export const STATE_CLAIMS = [
+  {
+    id: 'no-remote',
+    claim:
+      /\bno (git )?remote\b|\bnever (executed|run) on github\b|\bworkflow has never (executed|run)\b/i,
+    trueWhen: (f) => !f.hasRemote,
+    fix: 'a git remote exists and the workflow has run. Say what is true, or say nothing and let the badge say it.',
+  },
+];
+
+/**
+ * @param {Record<string, string>} docs @param {{hasRemote: boolean}} facts @returns {string[]}
+ */
+export function checkStateClaims(docs, facts) {
+  const problems = [];
+  for (const [file, raw] of Object.entries(docs)) {
+    const text = claimsIn(raw);
+    for (const rule of STATE_CLAIMS) {
+      const m = text.match(rule.claim);
+      if (m && !rule.trueWhen(facts)) {
+        problems.push(`${file}: says "${m[0]}", which is no longer true. ${rule.fix}`);
+      }
+    }
+  }
+  return problems;
+}
+
+/**
  * Spelled-out numerals, because this repository spells them.
  *
  * The rule used to be digits-only, and said so: "a spelled-out number is almost always prose about
@@ -198,13 +236,20 @@ function walkDocs() {
 function main() {
   const c = census();
   if (process.argv.includes('--check')) {
-    const problems = checkCountClaims(walkDocs(), c);
+    const docs = walkDocs();
+    let hasRemote = false;
+    try {
+      hasRemote = execFileSync('git', ['remote'], { encoding: 'utf8' }).trim().length > 0;
+    } catch {
+      /* not a repository, or no git — the claim then cannot be contradicted */
+    }
+    const problems = [...checkCountClaims(docs, c), ...checkStateClaims(docs, { hasRemote })];
     if (problems.length) {
       console.error('status: STALE DOCUMENTATION\n');
       for (const p of problems) console.error(`  ${p}`);
       process.exit(1);
     }
-    console.log('status: ok — no document asserts a count that has gone stale');
+    console.log('status: ok — no document asserts a count or a state that has gone stale');
     return;
   }
 
