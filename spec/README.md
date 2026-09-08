@@ -24,12 +24,21 @@ template's own instruction is to keep it thin.
 | **Phase 4 — surface** ||||
 | SPEC-009 | Marketing shell, ops & health endpoints | B-8 | 004 | planned |
 | SPEC-010 | Custom domains | — | 004 | planned |
+| **Phase 4b — the rest of a real SaaS** ||||
+| SPEC-017 | Transactional email — templates, provider seam, delivery | — | 004, 006 | planned |
+| SPEC-018 | File storage — buckets, tenant-scoped policies, presigned uploads | B-2 | 001, 003 | planned |
+| SPEC-019 | Background jobs & cron | — | 003 | planned |
+| SPEC-020 | Notifications — in-app centre and email, with preferences | — | 017 | planned |
+| SPEC-021 | Admin, user management & **audited impersonation** | B-2 | 001, 002 | planned |
+| SPEC-022 | Onboarding flow | B-5 | 005 | planned |
+| SPEC-023 | Legal pages & error monitoring | B-9 | — | planned |
 | **Phase 5 — adoption** ||||
 | SPEC-011 | `create-keel-app` | B-1 | 007 | planned |
 | SPEC-012 | Docs & the stranger walkthrough | B-5 | — | planned |
 | SPEC-013 | Upgrade path — `keel upgrade`, codemods, advisories | B-10 | 008 | planned |
 | SPEC-014 | Removability — a deletion test per optional module | B-6 | 008 | planned |
 | SPEC-015 | Accessibility & performance budgets | B-7, B-8 | 004 | planned |
+| SPEC-024 | Handover — `AGENTS.md`, task recipes, and the trial that proves it | **B-11** | 011 | planned |
 | SPEC-016 | Release preflight — *is this safe to release?* | B-9, B-10 | 003, 008 | draft |
 
 ## Why phase 1 is the proof apparatus and not a login screen
@@ -67,12 +76,13 @@ stale. It is a table rather than a sentence because a gate should never have to 
 | Bar | Owned by |
 |---|---|
 | B-1 | SPEC-011 |
-| B-2 | SPEC-001, SPEC-002, SPEC-005, SPEC-006 |
+| B-2 | SPEC-001, SPEC-002, SPEC-005, SPEC-006, SPEC-018, SPEC-021 |
 | B-3 | SPEC-003 |
 | B-4 | SPEC-002, SPEC-003 |
-| B-5 | SPEC-012 |
+| B-5 | SPEC-012, SPEC-022 |
 | B-6 | SPEC-014 |
 | B-7 | SPEC-008, SPEC-015 |
 | B-8 | SPEC-009, SPEC-015 |
-| B-9 | SPEC-003, SPEC-016 |
+| B-9 | SPEC-003, SPEC-016, SPEC-023 |
 | B-10 | SPEC-013, SPEC-016 |
+| B-11 | SPEC-024 |

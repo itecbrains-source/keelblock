@@ -83,7 +83,7 @@ provable isolation is the arrangement the whole field already offers.
 
 ## The acceptance bar
 
-"World-class" is unfalsifiable. These ten are not. keel v1 is not done until every one is
+"World-class" is unfalsifiable. These eleven are not. keel v1 is not done until every one is
 demonstrably true, and each is owned by a SPEC.
 
 | # | Bar | How it is proven |
@@ -97,6 +97,7 @@ demonstrably true, and each is owned by a SPEC.
 | B-7 | **Accessible**: keyboard-complete, axe-clean on every shipped surface | An automated axe pass in CI plus a manual keyboard walkthrough per surface |
 | B-8 | **Fast**: a performance budget that fails the build, not a Lighthouse screenshot | Budget asserted in CI against the built app |
 | B-9 | **Secure by default**: CSP, security headers, rate limiting, secret scanning over full history | Header assertions in e2e; gitleaks in pre-commit and CI |
+| B-11 | **Handover-ready**: someone who has never seen this repository — a new developer or a coding agent — can add a tenant-scoped feature correctly on their first attempt, and **prove it themselves without a reviewer** | A scripted trial: a fresh agent session and an unfamiliar developer each given one feature task and only the repository; measured on whether the gates catch what they get wrong |
 | B-10 | **Upgradable**: a project scaffolded from keel `N` can adopt keel `N+1`'s security fixes by a documented, tested path | A CI job that scaffolds at the previous tag, applies the upgrade path, and runs the current suite green |
 
 B-6 is the direct answer to the field's loudest complaint — *"retrofitting the boilerplate's
@@ -104,7 +105,35 @@ implementation to your needs can be as complicated as implementing the feature f
 kits treat their features as load-bearing. Keel treats **removability as a tested property**, which
 is what makes an opinionated starter safe to adopt.
 
-## Beating the paid field
+## Handover: the property nobody else can claim
+
+Supastarter's first advertised feature is *"Codebase — AI-ready"*, and its headline is *"the SaaS
+starter kit your coding agent deserves."* Their offering is an `AGENTS.md`, monorepo structure and
+end-to-end types — a **better map**.
+
+keel's advantage is different in kind, and it is a by-product of everything already built:
+**an agent working in keel cannot silently be wrong.**
+
+An agent's characteristic failure is confident, plausible, incorrect code — and every gate here
+targets exactly that class:
+
+| The mistake an agent (or a tired developer) makes | What catches it, immediately |
+|---|---|
+| adds a table, forgets row-level security | `schema` guard names the table |
+| writes `with check (true)` because it compiles | `schema` guard — `polwithcheck IS NULL` would not |
+| reaches for the service-role client to make a query work | `boundaries`, through the import graph, two hops deep |
+| caches a tenant query | `boundaries` — the cache key has no organisation |
+| invents a message key | `locale` |
+| leaves an unused export or dependency | `unused` |
+| claims a promise nothing implements | `promises` |
+| widens a permission | the **access-matrix diff**, in the review |
+
+A map tells you where things are. **A gate tells you that you are wrong, in seconds, specifically.**
+That is worth more to an agent than any amount of documentation, because it converts the review
+bottleneck — a human reading generated code — into something the agent runs itself.
+
+Same property, same value, for a human team: a new hire's first pull request is checked by the same
+twelve gates instead of by a senior engineer's attention.
 
 The bar is not nextacular. It is MakerKit ($349–649), Supastarter (€349–€1,499), Achromatic and
 ShipFast ($199–299) — funded products with years of head start.
@@ -130,15 +159,42 @@ boilerplate category: the product is a *copy*, so the moment you clone it you ar
 maintenance forever. Every kit in the table has this problem and none advertises a solution, because
 there isn't one — which is exactly why solving it is worth more than a sixth payment provider.
 
-## Scope — the eight areas
+## Scope — thirteen areas, one framework
 
-Parity with nextacular's surface (37 routes, enumerated from its `src/pages` tree), plus the
-adoption layer that makes it usable by strangers.
+**Next.js only.** No Nuxt, no SvelteKit, no TanStack Start, no React Native. That is the decision
+that makes feature-completeness affordable rather than a slogan: Supastarter maintains the same
+feature set across three frameworks and MakerKit across three targets, so **keel has roughly 3× the
+budget per feature.** The offsetting cost is real and specific — every keel feature also needs
+policies, intent tests, access-matrix rows and schema-guard compliance, call it 1.75× — so the net
+advantage is real but not threefold. It is enough.
 
-1. Marketing shell · 2. Auth · 3. Account · 4. Organisations · 5. Team & invitations ·
-6. Billing · 7. Custom domains · 8. Ops & health
+1. Marketing shell · 2. Auth (password, magic link, OAuth, passkeys, 2FA) · 3. Account ·
+4. Organisations · 5. Team & invitations · 6. Billing (Stripe: subscriptions, seats, usage) ·
+7. Custom domains · 8. Ops & health · 9. **Transactional email** · 10. **File storage** ·
+11. **Background jobs & cron** · 12. **Notifications** · 13. **Admin, user management &
+impersonation**
 
-Plus: `create-keel-app` · docs · demo deployment · upgrade guides.
+Plus the adoption layer: `create-keel-app` · docs · demo deployment · upgrade guides · onboarding
+flow · legal pages · error monitoring · deployment guides.
+
+### Refused deliberately, with reasons
+
+Not "features we lack" — features whose cost is permanent and whose value is a comparison-table row:
+
+| Refused | Why |
+|---|---|
+| **Five payment providers** | Stripe covers nearly every buyer. The other four are four webhook surfaces to maintain forever, in exchange for one row in a grid. |
+| **Prisma *or* Drizzle** | Choice-as-a-feature is double maintenance for a decision the buyer makes once. ADR-003 settled it, and the reason was tenant isolation. |
+| **AI chatbot examples** | A demo dressed as a feature. |
+| **Multiple analytics providers** | One, behind a seam. |
+| **Blog / CMS** | Most teams use a real CMS. The seam stays clean; the machinery does not ship. |
+
+### Impersonation is the interesting one
+
+It **deliberately crosses the tenant boundary** — the only feature in the category that does. For a
+kit whose whole claim is proven isolation it cannot be a superpower flag: it must be time-boxed,
+audited, consented, and visible to the organisation being impersonated. Nobody in the field does that.
+It is the feature where keel's thesis produces a **visibly better answer rather than an equal one**.
 
 ## Definition of done for v1
 
