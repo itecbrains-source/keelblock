@@ -175,6 +175,12 @@
       "what": "a role that could destroy a table it could not read",
       "to": ["blog", "faq", "docs"],
       "angle": "The sequel to F-1 and a sharper version of it: the revoke covered two roles out of three, so service_role kept TRUNCATE on every tenant table and held no DML. Affects every project that copied the F-1 fix. Also the general rule — a hardening statement applied to the objects that existed when it was written decays silently unless ALTER DEFAULT PRIVILEGES carries it forward."
+    },
+    {
+      "id": "F-29",
+      "what": "the committed database types could not be regenerated from the repository",
+      "to": ["blog", "docs"],
+      "angle": "A generated artifact is only evidence if it reproduces from the inputs in the repository; this one had recorded a property of one machine — pgTAP's own views, typed as part of the application schema. The failure lands on the newcomer, who is told an artifact is stale through nothing they did. Only a clean rebuild could have found it, because the gate compares the file to whatever the current stack produces."
     }
   ]
 }

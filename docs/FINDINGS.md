@@ -648,3 +648,43 @@ the first thing to wire `src/lib/supabase/server-only/admin.ts` — the Stripe w
 the canonical candidate — will fail with `permission denied for table`. That is arguably the correct
 default (grant it when something needs it, deliberately, rather than in advance), and it is recorded
 here so it is discovered by reading rather than by debugging.
+
+## F-29 · The committed database types could not be regenerated from the repository
+
+**2026-09-08 · `src/lib/db/database.types.ts`**
+
+Renaming the project changed the local stack's name, so the old containers were replaced and a new
+stack was built from the repository's own migrations. `npm run generate` then produced a file 147
+lines shorter than the committed one.
+
+The removed lines were **pgTAP's internal views** — `pg_all_foreign_keys` and `tap_funky` — typed as
+part of the application's `Database` schema.
+
+They are there because the committed artifact was generated on a stack where pgTAP had been installed
+persistently into `public`. On a stack created from this repository alone they do not exist, and
+`supabase test db` does not leave them behind:
+
+```bash
+psql -Atc "select extname from pg_extension where extname='pgtap'"   # (nothing)
+node scripts/check-policies.mjs                                       # Files=7, Tests=60, Result: PASS
+psql -Atc "select extname from pg_extension where extname='pgtap'"   # (still nothing)
+```
+
+So the generated file recorded **a property of one machine**, not a property of the schema. The
+consequence lands on exactly the person keelblock is trying to convince: a stranger clones the
+repository, runs `supabase start`, runs `npm run check`, and is told a committed generated artifact
+is stale — through nothing they did, with no way to tell a real schema drift from this.
+
+Two things worth keeping.
+
+**A "generated" artifact is only evidence if it is reproducible from the inputs in the repository.**
+Otherwise it is a snapshot of an environment, and the gate guarding it enforces agreement with that
+environment rather than with the schema.
+
+**Test frameworks that install into `public` leak into everything that reads `public`.** The
+extension is transient here, which is why this went unnoticed; it only had to be resident once, on
+the machine that happened to run `npm run generate`.
+
+Found because a rename forced a clean rebuild. Nothing else would have caught it — the gate compares
+the committed file to whatever the current stack produces, so on the machine that produced it, it
+agreed with itself indefinitely.
