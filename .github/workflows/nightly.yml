@@ -40,6 +40,20 @@ jobs:
           # carries the review date so the pin cannot quietly become the old version nobody chose.
           version: 2.109.0
       - run: supabase start
+      # `supabase gen types --local` runs postgres-meta in a container it pulls on demand, and
+      # public.ecr.aws rate-limits it: two runs on 2026-09-08 failed with `toomanyrequests: Rate
+      # exceeded` AFTER every gate had passed. Pull it up front, with backoff, so a registry
+      # throttle cannot masquerade as a broken stack. The tag tracks the pinned CLI above; both
+      # move together or neither does.
+      - name: pre-pull postgres-meta (registry throttling, not a code path)
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull public.ecr.aws/supabase/postgres-meta:v0.96.1 && exit 0
+            echo "pull attempt $i failed; backing off"
+            sleep $((i * 15))
+          done
+          echo "could not pull postgres-meta after five attempts"
+          exit 1
       # --strict: a degraded gate is a rule that did not run. On a laptop that can be a
       # hotel network; on a runner with a network it is news, so it fails here.
       - run: npm run check -- --strict

@@ -41,10 +41,22 @@ function main() {
     generated = execFileSync('supabase', ['gen', 'types', 'typescript', '--local'], {
       encoding: 'utf8',
     });
-  } catch {
-    console.error(
-      'generated: could not reach the database. Is the local stack running? `supabase start`',
-    );
+  } catch (err) {
+    // Say what actually happened. `supabase gen types --local` runs postgres-meta in a container it
+    // pulls on demand, and public.ecr.aws rate-limits that: two CI runs on 2026-09-08 died with
+    // `toomanyrequests: Rate exceeded` and were reported here as "could not reach the database",
+    // which sent the reader to check a stack that was running perfectly. A gate that names the wrong
+    // cause costs more than one that says nothing (SPEC-002 REQ-8: a failing proof is legible).
+    const detail = String(err?.stderr ?? err?.message ?? '').trim();
+    if (/toomanyrequests|rate exceeded|pull access denied|manifest unknown/i.test(detail)) {
+      console.error('generated: the container registry refused the image pull — this is not your');
+      console.error('  database, and not your schema. Retry, or pre-pull the image.\n');
+    } else {
+      console.error(
+        'generated: could not reach the database. Is the local stack running? `supabase start`\n',
+      );
+    }
+    for (const line of detail.split('\n').slice(-4)) if (line) console.error(`  ${line}`);
     process.exit(2);
   }
 
