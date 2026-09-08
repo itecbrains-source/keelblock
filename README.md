@@ -37,6 +37,25 @@ that alters who can reach what shows up as a diff in review.
 **A new tick in the "different organization" column is a tenant leak, caught in a document before it
 reaches a user.**
 
+### Checking it without installing anything
+
+Two links and one sentence about how they relate:
+
+- **the artifact** — [`docs/ACCESS-MATRIX.md`](docs/ACCESS-MATRIX.md), readable in a browser
+- **the runs that produce it** — [the `check` workflow](../../actions/workflows/check.yml), on every
+  push and every night
+
+The sentence: `npm run check` includes a gate that regenerates the matrix against a live database and
+compares it to the committed copy **byte-for-byte**, failing if they differ. CI runs that gate. So a
+green run is not a claim that the matrix was correct once — it is the statement that the file above
+is what this database produced on that commit.
+
+Reproducing it yourself needs Docker, the Supabase CLI, `psql`, Node and a Python virtualenv, and
+that is a real cost. Reading it, and reading the run that stands behind it, needs none of them.
+
+_A run's downloadable artifacts expire after ninety days; the committed file and the run's log do
+not. Cite those._
+
 Four test layers, each answering a different question:
 
 | Layer            | Question                                                 | How                                         |
