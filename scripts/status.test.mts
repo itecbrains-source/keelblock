@@ -3,6 +3,7 @@ import {
   census,
   checkCountClaims,
   checkStateClaims,
+  countPages,
   claimsIn,
   COUNTABLE,
   numberOf,
@@ -108,30 +109,51 @@ describe('derived status', () => {
     // created the remote — written by the same person who pushed.
     const doc =
       'There is no remote yet, so the workflow has never executed on GitHub. `npm run verify` closes as much of that gap as a laptop honestly can:';
-    const p = checkStateClaims({ 'README.md': doc }, { hasRemote: true });
+    const p = checkStateClaims(
+      { 'README.md': doc },
+      { hasRemote: true, authShipped: false, unreleasedIsStale: false },
+    );
     expect(p).toHaveLength(1);
     expect(p[0]).toContain('no longer true');
   });
 
   it('the same sentence is fine while it is TRUE', () => {
     const doc = 'There is no remote yet, so the workflow has never executed on GitHub.';
-    expect(checkStateClaims({ 'README.md': doc }, { hasRemote: false })).toEqual([]);
+    expect(
+      checkStateClaims(
+        { 'README.md': doc },
+        { hasRemote: false, authShipped: false, unreleasedIsStale: false },
+      ),
+    ).toEqual([]);
   });
 
   it('the real documentation makes no state claim that has expired', () => {
-    expect(checkStateClaims({ 'x.md': '' }, { hasRemote: true })).toEqual([]);
+    expect(
+      checkStateClaims(
+        { 'x.md': '' },
+        { hasRemote: true, authShipped: false, unreleasedIsStale: false },
+      ),
+    ).toEqual([]);
   });
 
   it('a quotation is still a quotation here too', () => {
     // The review says "no remote" as a dated record and must keep saying it.
     expect(
-      checkStateClaims({ 'd.md': 'the audit noted `no remote` on the day' }, { hasRemote: true }),
+      checkStateClaims(
+        { 'd.md': 'the audit noted `no remote` on the day' },
+        { hasRemote: true, authShipped: false, unreleasedIsStale: false },
+      ),
     ).toEqual([]);
   });
 
   it('ordinary prose about remotes is not a claim about this one', () => {
     const doc = 'Push to your remote when ready; a remote branch is cheap.';
-    expect(checkStateClaims({ 'd.md': doc }, { hasRemote: true })).toEqual([]);
+    expect(
+      checkStateClaims(
+        { 'd.md': doc },
+        { hasRemote: true, authShipped: false, unreleasedIsStale: false },
+      ),
+    ).toEqual([]);
   });
 
   it('every AC status is a closed vocabulary — nothing invents its own', () => {
@@ -150,5 +172,71 @@ describe('derived status', () => {
         `${s.id} is done with open criteria`,
       ).toEqual([]);
     }
+  });
+});
+
+describe('state claims about the product surface', () => {
+  const facts = { hasRemote: true, authShipped: true, unreleasedIsStale: false };
+
+  it('MUTATION: the exact README sentence that shipping sign-in falsified is caught', () => {
+    // Verbatim from README's first blockquote, in the same file that promises two paragraphs later
+    // to describe "what exists today, not what is planned".
+    const doc =
+      '> **Status: foundation.** The tenancy layer, the proof harness and the gates are built and\n' +
+      '> green. Auth, billing and the product surfaces are specced and not yet built.';
+    const p = checkStateClaims({ 'README.md': doc }, facts);
+    expect(p[0]).toMatch(/no longer true/);
+    expect(p[0]).toMatch(/spec that owns sign-in is done or partial/);
+  });
+
+  it('the same sentence is fine while it is true', () => {
+    const doc = 'Auth, billing and the product surfaces are specced and not yet built.';
+    expect(checkStateClaims({ 'README.md': doc }, { ...facts, authShipped: false })).toEqual([]);
+  });
+
+  it('does not flag a different spec that is legitimately unbuilt', () => {
+    // README says SPEC-016 is "not yet built" and that stays true. A rule that flagged every such
+    // sentence would be exempted into uselessness inside a week.
+    const doc = 'The release preflight (SPEC-016) — **not yet built.**';
+    expect(checkStateClaims({ 'README.md': doc }, facts)).toEqual([]);
+  });
+
+  it('MUTATION: an Unreleased section that omits a shipped spec is caught', () => {
+    const doc = '## [Unreleased]\n\nThe tenancy foundation and the gates.';
+    const p = checkStateClaims({ 'CHANGELOG.md': doc }, { ...facts, unreleasedIsStale: true });
+    expect(p[0]).toMatch(/predates work that has since shipped/);
+  });
+
+  it('an Unreleased section that names the shipped work passes', () => {
+    const doc = '## [Unreleased]\n\nSPEC-001, SPEC-004.';
+    expect(checkStateClaims({ 'CHANGELOG.md': doc }, facts)).toEqual([]);
+  });
+});
+
+describe('countPages', () => {
+  it('counts the real route tree, and only page files', () => {
+    // The fact behind the `pages` noun. F-32's test for whether a state rule may exist at all is
+    // that the state is observable to the repository — this is what makes it so.
+    expect(countPages('src/app')).toBeGreaterThanOrEqual(2);
+  });
+
+  it('MUTATION: a stale page count in prose is caught', () => {
+    // "it is paid here at one page" was true when written and false the moment sign-in shipped,
+    // in the same commit, written by the same person.
+    const p = checkCountClaims({ 'README.md': 'the cost is paid here at one page.' }, {
+      ...census(),
+      pages: 2,
+    } as never);
+    expect(p[0]).toMatch(/says "one pages?"|says "one page"/);
+  });
+
+  it('does not count a directory or a test file as a page', () => {
+    const fs = {
+      existsSync: () => true,
+      readdirSync: (d: string) =>
+        d === 'app' ? ['page.tsx', 'page.test.tsx', 'sub'] : ['page.tsx'],
+      statSync: (p: string) => ({ isDirectory: () => p.endsWith('sub') }),
+    };
+    expect(countPages('app', fs as never)).toBe(2);
   });
 });

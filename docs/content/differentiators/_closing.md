@@ -5,7 +5,7 @@
 | Feature breadth       | Billing, teams, admin, email, storage, jobs | Tenancy, proofs, gates, auth. The rest is specified, not built.     |
 | Frameworks            | Next / Nuxt / SvelteKit / TanStack / Expo   | Next only, by decision — that is what makes completeness affordable |
 | Payment providers     | Up to five                                  | Stripe, specified, not yet built                                    |
-| Maturity              | Years of production use across many teams   | Days old. One page, one locale, and now a login                     |
+| Maturity              | Years of production use across many teams   | Days old, and small — run `npm run status` for what actually exists |
 | Enterprise SSO / SCIM | Shipped (BoxyHQ, via Jackson)               | Deferred, with a reason: neither can be verified without an IdP     |
 
 **The honest positioning.** If the requirement is a broad kit today, buy one of theirs. keelblock is

@@ -50,6 +50,9 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
     specs,
     adrs: fs.readdirSync('docs/adr').filter((f) => f.endsWith('.md')).length,
     memos: fs.readdirSync('research').filter((f) => f.endsWith('.md')).length,
+    // Rendered pages, counted from the route tree. A claim about the size of the app is checkable
+    // exactly because this is observable — the test F-32 set for whether a state rule may exist.
+    pages: countPages('src/app', { ...fs, statSync }),
     sources: JSON.parse(read('research/corpus.json') || '{"sources":[]}').sources.length,
     // The scope list is written inline as "1. … · 2. … · 19. …", so the markers are the count.
     scopeAreas: (
@@ -78,6 +81,17 @@ function reviewState() {
   );
 }
 
+/** Every `page.tsx` under the app directory. Exported for tests. */
+export function countPages(dir, fs = { readdirSync, existsSync, statSync }, seen = 0) {
+  if (!fs.existsSync(dir)) return seen;
+  for (const name of fs.readdirSync(dir)) {
+    const p = join(dir, name);
+    if (fs.statSync(p).isDirectory()) seen = countPages(p, fs, seen);
+    else if (/^page\.tsx?$/.test(name)) seen += 1;
+  }
+  return seen;
+}
+
 /** The nouns whose counts appear in prose, and how each is measured. Exported for tests. */
 export const COUNTABLE = {
   findings: (c) => c.findings,
@@ -88,6 +102,12 @@ export const COUNTABLE = {
   'acceptance bars': (c) => c.bars,
   'research memos': (c) => c.memos,
   'primary sources': (c) => c.sources,
+  // Added when shipping sign-in made README's "paid here at one page" false in the same commit —
+  // the F-32 class again, and the second time a surface claim has gone stale unnoticed.
+  pages: (c) => c.pages,
+  // Singular too. Every existing noun here is plural, so "one page" — the sentence that actually
+  // went stale — would have slipped past a `pages` key entirely.
+  page: (c) => c.pages,
 };
 
 /**
@@ -103,6 +123,25 @@ export const COUNTABLE = {
  */
 export const STATE_CLAIMS = [
   {
+    id: 'auth-unbuilt',
+    // Both offenders read "Auth, billing and the product surfaces are specced and not yet built" —
+    // one of them the first blockquote of README, written by the same person who shipped sign-in.
+    // Scoped to auth-adjacent to the phrase on purpose: SPEC-016 is legitimately "not yet built",
+    // and a rule that flagged every such sentence would be exempted into uselessness within a week.
+    claim: /\bauth\w*\b[^.]{0,80}\bnot yet built\b/i,
+    trueWhen: (f) => !f.authShipped,
+    fix: 'the spec that owns sign-in is done or partial. Say what ships today, or name what is left.',
+  },
+  {
+    id: 'unreleased-omits-shipped-work',
+    claim: /##\s*\[Unreleased\]/,
+    trueWhen: (f) => !f.unreleasedIsStale,
+    fix:
+      "the changelog's Unreleased section predates work that has since shipped. Nothing publishes " +
+      'this repository but the repository, so a front page describing the previous version IS the ' +
+      'stale documentation.',
+  },
+  {
     id: 'no-remote',
     claim:
       /\bno (git )?remote\b|\bnever (executed|run) on github\b|\bworkflow has never (executed|run)\b/i,
@@ -112,7 +151,7 @@ export const STATE_CLAIMS = [
 ];
 
 /**
- * @param {Record<string, string>} docs @param {{hasRemote: boolean}} facts @returns {string[]}
+ * @param {Record<string, string>} docs @param {{hasRemote: boolean, authShipped: boolean, unreleasedIsStale: boolean}} facts @returns {string[]}
  */
 export function checkStateClaims(docs, facts) {
   const problems = [];
@@ -222,7 +261,11 @@ function walkDocs() {
       // records of what was true on a date; "fixing" their numbers would falsify them. This gate
       // checks the claims the project makes about ITSELF, now.
       if (p.includes('node_modules') || p.includes('.venv')) continue;
-      if (p.includes('docs/review') || p.startsWith('research')) continue;
+      // ADRs join docs/review and research/ for the same reason: they are dated records, each
+      // stamped with the date it was accepted. "keelblock has one page today" inside a decision from
+      // 2026-09-07 is a true statement about that day, and editing it to match this week would
+      // falsify the record rather than refresh it — which is the opposite of what this gate is for.
+      if (p.includes('docs/review') || p.includes('docs/adr') || p.startsWith('research')) continue;
       if (statSync(p).isDirectory()) visit(p);
       else if (extname(p) === '.md') out[p] = readFileSync(p, 'utf8');
     }
@@ -237,13 +280,34 @@ function main() {
   const c = census();
   if (process.argv.includes('--check')) {
     const docs = walkDocs();
+    const specStatuses = Object.fromEntries(
+      readdirSync('spec')
+        .filter((f) => /^SPEC-\d+/.test(f))
+        .map((f) => [
+          f.slice(0, 8),
+          (readFileSync(`spec/${f}`, 'utf8').match(/^> Status: `(\w+)`/m) ?? [, '?'])[1],
+        ]),
+    );
+    // SPEC-004 owns sign-in. Read, never assumed — the point of every rule in this file.
+    const authShipped = ['done', 'partial'].includes(specStatuses['SPEC-004']);
+    // The changelog is stale when a spec has shipped that its Unreleased section does not mention.
+    const changelog = existsSync('CHANGELOG.md') ? readFileSync('CHANGELOG.md', 'utf8') : '';
+    const unreleased = changelog.split(/^## /m).find((b) => b.startsWith('[Unreleased]')) ?? '';
+    const shippedSpecs = Object.entries(specStatuses)
+      .filter(([, st]) => st === 'done' || st === 'partial')
+      .map(([id]) => id);
+    const unreleasedIsStale = shippedSpecs.some((id) => !unreleased.includes(id));
+
     let hasRemote = false;
     try {
       hasRemote = execFileSync('git', ['remote'], { encoding: 'utf8' }).trim().length > 0;
     } catch {
       /* not a repository, or no git — the claim then cannot be contradicted */
     }
-    const problems = [...checkCountClaims(docs, c), ...checkStateClaims(docs, { hasRemote })];
+    const problems = [
+      ...checkCountClaims(docs, c),
+      ...checkStateClaims(docs, { hasRemote, authShipped, unreleasedIsStale }),
+    ];
     if (problems.length) {
       console.error('status: STALE DOCUMENTATION\n');
       for (const p of problems) console.error(`  ${p}`);

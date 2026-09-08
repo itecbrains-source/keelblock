@@ -6,10 +6,12 @@
 **A multi-tenant SaaS starter where tenant isolation is enforced by the database and proven on every
 commit.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe. MIT.
 
-> **Status: foundation.** The tenancy layer, the proof harness and the gates are built and green.
-> Auth, billing and the product surfaces are specced and not yet built — see
-> [the spec index](spec/README.md). This README describes what exists today, not what is planned.
-> If that distinction ever blurs, the project has failed its own first rule.
+> **Status: foundation, plus sign-in.** The tenancy layer, the proof harness and the gates are built
+> and green. You can now sign in with an emailed link, and every Server Action must authorize or the
+> build refuses it. Organizations, invitations, billing and the product surfaces are specced and not
+> built — run `npm run status`, which reads the repository rather than this sentence.
+> This README describes what exists today, not what is planned. If that distinction ever blurs, the
+> project has failed its own first rule.
 
 ---
 
@@ -230,7 +232,7 @@ them to every visitor ([F-17](docs/FINDINGS.md)).
 The `[locale]` route segment ships from the first commit, with **one locale**. Not because keelblock needs
 five languages, but because i18n is the one concern that cannot be added later without touching
 everything: next-intl's own instructions are _"move all existing layouts and pages into the `[locale]`
-segment."_ That cost scales with your screen count, so it is paid here at one page.
+segment."_ That cost scales with your screen count, so it is paid here while the app is small.
 
 Adding a language is a message file and one array entry. A gate fails the build on a missing key, a
 misspelled `t('key')`, or a key nobody uses — all three of which otherwise fail silently, in a

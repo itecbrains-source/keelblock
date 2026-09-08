@@ -9,8 +9,9 @@ entries are what make the rest worth believing. Full reproductions live in
 
 ## [Unreleased]
 
-The tenancy foundation, the proof harness and the gates. Auth, billing and the product surfaces are
-specced and not yet built — see [`spec/README.md`](spec/README.md).
+The tenancy foundation, the proof harness, the gates, and sign-in (SPEC-001, SPEC-002, SPEC-003,
+SPEC-004). Organizations, invitations, billing and the remaining product surfaces are specced and
+not built — run `npm run status`, which reads the repository rather than this paragraph.
 
 ### Changed
 
@@ -20,6 +21,21 @@ specced and not yet built — see [`spec/README.md`](spec/README.md).
   choosing; the npm pair and `keelblock.dev` are free. Prose is US English throughout.
 
 ### Added
+
+- **Sign-in, by emailed link (SPEC-004).** Magic link and OAuth through PKCE, a callback that
+  validates its own redirect target, sign-out, and a session refreshed at the network boundary.
+  Verified end to end against the local stack rather than asserted: the flow is recorded in the
+  spec, and the callback's redirect carries `private, no-cache, no-store` alongside two auth
+  cookies. OAuth ships behind a configured-provider list, so no provider button renders until one
+  exists — a button that always fails is a worse affordance than none (DEF-018, DEF-019).
+- **Every Server Action must authorize, or the build refuses it.** Resolved per action through the
+  module graph, with a deliberately-public allowlist that carries a written reason for each entry.
+  Next.js documents the exposure itself: an exported action is reachable by direct POST even when
+  nothing imports it, and a page-level check does not extend to it.
+- **The battlecard is generated** from the specs it describes, into the same gate as the database
+  types and the access matrix. Status, criteria counts and every evidence link are derived; the
+  claim and the argument are written once. A spec that ships now declares what it lets keelblock
+  claim, or the `content` gate fails.
 
 - **Tenancy foundation** — `organization`, `organization_member`, a hardened membership predicate,
   and RLS on every tenant-scoped table with a `WITH CHECK` that constrains the organization.
