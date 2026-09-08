@@ -1,6 +1,7 @@
 # SPEC-016: Release preflight
 
-> Status: `draft` · Bars: **B-9**, **B-10** · ADRs: [003](../docs/adr/ADR-003-data-access.md), [008](../docs/adr/ADR-008-upgradability.md)
+> Status: `draft` (corrected 2026-09-07 by [`research/06-RELEASE-SAFETY.md`](../research/06-RELEASE-SAFETY.md)) · Bars: **B-9**, **B-10** · ADRs: [003](../docs/adr/ADR-003-data-access.md), [008](../docs/adr/ADR-008-upgradability.md)
+> Contracts: SPEC-003 ·
 
 ## Intent
 
@@ -38,21 +39,43 @@ private repo, real customers, and a production database that no test suite has e
 
 ## Requirements
 
-### REQ-1 — a destructive migration is detected and refused as a single deploy
+### REQ-1 — migrations are classified into three hazard classes, not two
 Code and schema deploy by different mechanisms that fire on the same push, so for a window every
-release runs **new code against the old database** — in whichever order they land. Additive changes
-are safe by construction. A `drop column`, `drop table`, rename, tightened constraint, or changed
-function signature is not, and must ship in two deliberate steps: schema first, code after.
+release runs **new code against the old database**. Research corrected the classification: it is not
+safe-versus-destructive, it is three classes, and the middle one is the one that takes production
+down without dropping anything.
 
-Preflight parses the pending migrations and fails on a destructive statement unless it is explicitly
-marked as the schema half of a two-step release. **This is the check most likely to prevent a real
-outage**, because the failure is invisible in every environment where code and schema move together.
+| Class | Examples | Preflight |
+|---|---|---|
+| **Additive** | new column, new table, new index `CONCURRENTLY` | passes |
+| **Lock-taking** | `CREATE INDEX` without `CONCURRENTLY`, `ALTER TABLE` forms that rewrite | warns with the expected lock, fails above a size threshold |
+| **Destructive** | `DROP`, rename, tightened constraint, changed signature | fails — see REQ-1b |
 
-### REQ-2 — schema drift is detected in both directions
-The target's applied migrations are compared against the repository. **A hole in the middle is drift
-even when the heads match** — the half-applied case, which a head-only comparison reports as fine.
-Repository-ahead is expected before a deploy; target-ahead means someone applied something by hand
-and is always a finding.
+### REQ-1b — a destructive change requires evidence the *migrate* phase completed
+The established pattern is **three** phases — expand · migrate · contract — and the spec previously
+described two. The middle phase is where the work is: backfill, dual-write, and confirm consistency
+**under real traffic**. Splitting a destructive change across two deploys without it still breaks.
+
+Preflight therefore demands evidence rather than a marker: the new structure exists, is populated,
+and every running instance reports the migration head that contains it. keel can answer this because
+`/api/health/deep` already reports the applied head — *"wait a full rollout cycle"* is the part the
+literature leaves vague and this makes checkable.
+
+### REQ-1c — a verified, restorable backup exists
+Standard deployment checklists put automated backups **and restore drills** ahead of everything else,
+and SPEC-016 omitted them entirely — the most serious gap the research found. Preflight fails without
+a recent backup, and **"restorable" means a drill has run**: a backup nobody has restored is a
+belief, not a backup.
+
+### REQ-2 — drift is a schema fingerprint, not a migration list
+Comparing applied migrations catches a missing one. It **cannot** catch the case that matters most:
+the same migrations applied, and the resulting schema then altered by hand in a console — which is
+how production policies actually drift.
+
+So drift is a **fingerprint of the realised schema** compared against an approved value, halting on
+any difference until a human reviews it. Migration-set comparison remains as a second signal, because
+a hole in the middle is drift even when the heads match. Repository-ahead is expected before a
+deploy; target-ahead is always a finding.
 
 ### REQ-3 — the access matrix is verified against the target, not the local stack
 keel's central claim concerns production, and policies can drift there without any commit — a

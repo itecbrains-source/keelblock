@@ -100,6 +100,18 @@ including us.
 
 ## Sources
 
+**Primary** — each project's own repository, documentation or pricing page. Everything load-bearing
+here (stack, tenancy mechanism, test presence, price) was read from the source, not from a review:
+
+- [boxyhq/saas-starter-kit](https://github.com/boxyhq/saas-starter-kit) · cloned and read: `models/`, `lib/guards/`, `prisma/schema.prisma`, `.github/workflows/`
+- [nextacular/nextacular](https://github.com/nextacular/nextacular) · cloned and read
+- [Vercel — Next.js SaaS Starter](https://vercel.com/templates/next.js/next-js-saas-starter)
+- [supastarter.dev](https://supastarter.dev) · feature list and pricing, read directly
+- [MakerKit](https://makerkit.dev) · pricing and stack, read directly
+
+**Secondary** — comparison write-ups, several vendor-authored. Used to find candidates, never to
+establish a fact about one:
+
 - [MakerKit — best Next.js SaaS boilerplates](https://makerkit.dev/blog/saas/best-nextjs-saas-boilerplate) *(vendor-authored; read for its own positioning)*
 - [StarterPick — supastarter vs makerkit vs ixartz vs shipfast](https://starterpick.com/guides/supastarter-vs-makerkit-vs-ixartz-vs-shipfast-2026)
 - [buildmvpfast — best SaaS boilerplate 2026](https://www.buildmvpfast.com/blog/best-saas-boilerplate-starter-kit-2026-nextjs)

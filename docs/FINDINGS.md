@@ -393,3 +393,52 @@ rule it violated.
 same mistake three times while actively thinking about it. The lesson is structural: **a check that
 matches text will eventually match a mention.** Parse the AST, the parsed workflow, or the import
 statement — or accept that the check reports its own bugs as the codebase's.
+
+## F-21 · A specific date, from an agency blog, in a spec
+
+**2026-09-07 · corrected in `research/05-SEO-2026.md` and SPEC-028 REQ-2**
+
+The SEO memo asserted: *"FAQ rich results were removed on 7 May 2026."* Precise, plausible, and
+sourced from a content-marketing post. Google's own Search Central blog says something materially
+different:
+
+> *HowTo* rich results are **deprecated** — no longer shown, documentation removed. *FAQ* rich
+> results **"will only be shown for well-known, authoritative government and health websites"** —
+> restricted, not removed. And: *"there's no need to proactively remove it. Structured data that's
+> not being used does not cause problems for Search, but also has no visible effects."*
+
+**The date could not be verified against any primary source.** It had already reached a requirement.
+
+The failure was not carelessness — the memo cited nine sources and looked diligent. It was that
+**nothing asked which tier a source was.** A specific date lends more authority than a vague claim,
+so an unverifiable specific is more dangerous than an obvious guess.
+
+Two mechanisms came out of it: a **pinned corpus** (`research/corpus.json`) recording every
+authoritative source with the date it was read and the specific claim it supports, and a gate rule
+that **refuses a memo which has not separated primary from secondary**. A gate cannot judge
+authority — but it can refuse a memo that never asked the question, and that refusal is what sends
+the author to find the vendor's own documentation.
+
+## F-22 · Two records of one fact, disagreeing — and the gate that hid it
+
+**2026-09-07 · `scripts/check-contracts.mjs`**
+
+SPEC-001 and SPEC-003 read **`done` in the spec index** and **`draft` in their own file headers**,
+for several commits. SPEC-002 read `partial` and `draft`.
+
+The new evidence rule — *a shipped spec's acceptance criteria must cite files that exist* — passed
+cleanly, because it only inspects shipped specs and every spec file claimed to be a draft. **The
+drift concealed the check that would have caught the drift.**
+
+When status agreement was enforced and the specs corrected, the evidence rule immediately found what
+it had been hiding: fourteen acceptance criteria in SPEC-001 alone citing files that were never
+written under those names, because the spec was authored before the implementation and never
+reconciled.
+
+Two refinements followed, both from being wrong once:
+
+- **Evidence is checked per criterion, not per spec.** A `partial` spec legitimately has `planned`
+  criteria whose files do not exist. Demanding them would train people to ignore the gate, which is
+  worse than not having it.
+- **A glob is not evidence.** `supabase/tests/intent/*.test.sql` cannot be verified, so it is refused
+  outright rather than passed as approximately true.

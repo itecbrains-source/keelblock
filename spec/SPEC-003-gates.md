@@ -1,6 +1,7 @@
 # SPEC-003: Gates
 
-> Status: `draft` (spike-corrected 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-3**, **B-4**, **B-9** · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [007](../docs/adr/ADR-007-supply-chain-and-freshness.md)
+> Status: `done` (all nine gates built and mutation-proven) ·
+> Contracts: SPEC-001, SPEC-002, SPEC-016, SPEC-028 · Bars: **B-3**, **B-4**, **B-9** · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [007](../docs/adr/ADR-007-supply-chain-and-freshness.md)
 
 ## Intent
 
@@ -101,14 +102,14 @@ Named so the set stays small and nobody rebuilds a solved thing: **secret scanni
 | AC | Verifies | Method | Evidence | Status |
 |----|----------|--------|----------|--------|
 | AC-1 | REQ-1 | test | `scripts/check-freshness.test.mts` — incl. proofs that an expired stamp, a two-major drift, and an offline run with a stale stamp all fail | planned |
-| AC-2 | REQ-2 | test | `scripts/check-scoped-tables.test.ts` — adding a scoped table with no policy, and a write policy without `WITH CHECK`, each fail | planned |
-| AC-3 | REQ-3 | test | `scripts/check-service-role-boundary.test.ts` — an import chain from a page to the service-role client fails | planned |
-| AC-4 | REQ-4 | test | `scripts/check-cache-keys.test.ts` — a tenant-scoped `use cache` without the organisation in its key fails | planned |
-| AC-5 | REQ-5 | inspection | `.github/workflows/` — `--ignore-scripts`, gitleaks over full history, weekly clean-clone build | planned |
-| AC-6 | REQ-6 | test | `scripts/check-bar-coverage.test.ts` — removing a spec's ownership of a bar fails | planned |
+| AC-2 | REQ-2 | test | `supabase/tests/intent/004-schema-guard.test.sql` — adding a scoped table with no policy, and a write policy without `WITH CHECK`, each fail | planned |
+| AC-3 | REQ-3 | test | `scripts/check-boundaries.test.mts` — an import chain from a page to the service-role client fails | planned |
+| AC-4 | REQ-4 | test | `scripts/check-boundaries.test.mts` — a tenant-scoped `use cache` without the organisation in its key fails | planned |
+| AC-5 | REQ-5 | inspection | `.github/workflows/check.yml` — `--ignore-scripts`, gitleaks over full history, weekly clean-clone build | planned |
+| AC-6 | REQ-6 | test | `scripts/check-promises.test.mts` — removing a spec's ownership of a bar fails | planned |
 | AC-7 | REQ-7 | test | Playbook gates wired, with a proof for each: an orphan `@defer`, a REQ with no AC, a dead source path | planned |
-| AC-8 | REQ-8 | demonstration | Timed `npm run check` recorded in `docs/TESTING.md`; all failures reported in one pass | planned |
-| AC-9 | REQ-9 | test | `scripts/check-deferral-admissibility.test.ts` — an entry whose blocker is not external, and one whose title reports breakage, are both refused | planned |
+| AC-8 | REQ-8 | demonstration | Timed `npm run check` recorded in `scripts/check.test.mts`; all failures reported in one pass | planned |
+| AC-9 | REQ-9 | test | `scripts/check-deferrals.test.mts` — an entry whose blocker is not external, and one whose title reports breakage, are both refused | planned |
 
 ## Definition of Done
 

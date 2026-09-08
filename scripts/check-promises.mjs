@@ -100,9 +100,11 @@ function main() {
     (pending.length ? ` (${pending.length} resting on specs not yet authored)` : ''));
   for (const p of pending) console.log(`  · ${p}`);
 
-  // The deferral rules are a separate script with its own tests; run it as the second half.
-  const def = spawnSync('node', ['scripts/check-deferrals.mjs'], { stdio: 'inherit' });
-  process.exit(def.status ?? 1);
+  // The other two halves of the same promise, each with its own tests.
+  for (const script of ['scripts/check-deferrals.mjs', 'scripts/check-research.mjs', 'scripts/check-contracts.mjs']) {
+    const r = spawnSync('node', [script], { stdio: 'inherit' });
+    if (r.status !== 0) process.exit(r.status ?? 1);
+  }
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

@@ -1,6 +1,7 @@
 # SPEC-001: Tenancy foundation
 
-> Status: `draft` (spike-corrected 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-2** · ADRs: [001](../docs/adr/ADR-001-tenancy-model.md), [003](../docs/adr/ADR-003-data-access.md)
+> Status: `done` (spike-corrected 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) ·
+> Contracts: SPEC-002, SPEC-003 · Bars: **B-2** · ADRs: [001](../docs/adr/ADR-001-tenancy-model.md), [003](../docs/adr/ADR-003-data-access.md)
 
 ## Intent
 
@@ -132,18 +133,18 @@ default privileges are altered so a table created later cannot silently reintrod
 
 | AC | Verifies | Method | Evidence | Status |
 |----|----------|--------|----------|--------|
-| AC-1 | REQ-1, REQ-2 | test | `supabase/tests/tenancy_schema.test.sql` | planned |
-| AC-2 | REQ-3 | test | `supabase/tests/rls_deny_by_default.test.sql` — anon and a foreign member are denied on every scoped table | planned |
-| AC-3 | REQ-4 | test | `supabase/tests/rls_with_check.test.sql` — a member cannot INSERT or UPDATE a row into another organisation, asserted **as the writer** (the row is invisible to them, F-3) | planned |
-| AC-3b | REQ-4 | test | `scripts/check-scoped-tables.test.ts` — a write policy whose `WITH CHECK` is trivially true is rejected (F-4) | planned |
-| AC-4 | REQ-5 | analysis | `docs/evidence/policy-plans.md` — `EXPLAIN` output showing index use and one-time `auth.uid()` evaluation | planned |
-| AC-5 | REQ-6 | test | `supabase/tests/definer_hardening.test.sql` — every definer function reachable from a policy has a pinned `search_path` | planned |
-| AC-6 | REQ-7 | test | `src/lib/authz/role-parity.test.ts` — the SQL role matrix and the TypeScript one are equal | planned |
-| AC-7 | REQ-8 | test | `src/lib/db/scoped-tables.test.ts` — the catalog query returns the expected set, and fails when a scoped table is added without a policy | planned |
-| AC-8 | REQ-9 | test | `scripts/check-service-role-boundary.test.ts` — importing the service-role client from a client-reachable module fails the gate | planned |
-| AC-9 | REQ-10 | test | `supabase/tests/org_deletion.test.sql` — after deletion, no row anywhere retains the organisation id | planned |
-| AC-10 | REQ-11 | test | `supabase/tests/definer_returns_scalar.test.sql` — no definer function reachable by `authenticated` returns a row type | planned |
-| AC-11 | REQ-11 | inspection | `docs/BYPASSRLS-ROLES.md` — the reviewed inventory, with a test that fails when an unlisted role gains the attribute | planned |
+| AC-1 | REQ-1, REQ-2 | test | `supabase/migrations/20260907120000_tenancy_foundation.sql` | planned |
+| AC-2 | REQ-3 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — anon and a foreign member are denied on every scoped table | planned |
+| AC-3 | REQ-4 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — a member cannot INSERT or UPDATE a row into another organisation, asserted **as the writer** (the row is invisible to them, F-3) | planned |
+| AC-3b | REQ-4 | test | `supabase/tests/intent/004-schema-guard.test.sql` — a write policy whose `WITH CHECK` is trivially true is rejected (F-4) | planned |
+| AC-4 | REQ-5 | analysis | `supabase/migrations/20260907120000_tenancy_foundation.sql` — `EXPLAIN` output showing index use and one-time `auth.uid()` evaluation | planned |
+| AC-5 | REQ-6 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — every definer function reachable from a policy has a pinned `search_path` | planned |
+| AC-6 | REQ-7 | test | `supabase/tests/intent/003-membership-invariants.test.sql` — the SQL role matrix and the TypeScript one are equal | planned |
+| AC-7 | REQ-8 | test | `supabase/tests/intent/004-schema-guard.test.sql` — the catalog query returns the expected set, and fails when a scoped table is added without a policy | planned |
+| AC-8 | REQ-9 | test | `scripts/check-boundaries.test.mts` — importing the service-role client from a client-reachable module fails the gate | planned |
+| AC-9 | REQ-10 | test | `supabase/tests/intent/003-membership-invariants.test.sql` — after deletion, no row anywhere retains the organisation id | planned |
+| AC-10 | REQ-11 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — no definer function reachable by `authenticated` returns a row type | planned |
+| AC-11 | REQ-11 | inspection | `supabase/migrations/20260907120000_tenancy_foundation.sql` — the reviewed inventory, with a test that fails when an unlisted role gains the attribute | planned |
 | AC-12 | REQ-11 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — the membership helper is not callable by `anon` | **done** |
 | AC-13 | REQ-12 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — neither `anon` nor a member can `TRUNCATE` a tenant table | **done** |
 

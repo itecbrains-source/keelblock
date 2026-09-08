@@ -23,7 +23,7 @@ export const STEPS = [
   { id: 'locale',    why: 'translations are complete and all used',  cmd: 'node', args: ['scripts/check-locale.mjs'] },
   { id: 'unused',    why: 'no dead code or unused dependencies',   cmd: 'npx', args: ['knip'] },
   { id: 'freshness', why: 'nothing has quietly gone stale',       cmd: 'node', args: ['scripts/check-freshness.mjs'] },
-  { id: 'promises',  why: 'every commitment is owned and tracked', cmd: 'node', args: ['scripts/check-promises.mjs'] },
+  { id: 'promises',  why: 'every claim is owned, researched, tracked', cmd: 'node', args: ['scripts/check-promises.mjs'] },
   { id: 'boundaries', why: 'the app cannot route around RLS',        cmd: 'node', args: ['scripts/check-boundaries.mjs'] },
   { id: 'schema',    why: 'every tenant table is protected',         cmd: 'node', args: ['scripts/check-schema-guard.mjs'], needsDb: true },
   { id: 'policy',    why: 'the database enforces isolation',        cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },

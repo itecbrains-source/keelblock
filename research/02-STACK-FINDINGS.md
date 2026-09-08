@@ -99,6 +99,17 @@ reaches the database. **This deserves its own gate.**
 
 ## Sources
 
+**Primary** — the documentation and repositories of the things being decided between:
+
+- [next-intl](https://next-intl.dev/docs/getting-started/app-router) and [`next/root-params`](https://next-intl.dev/blog/nextjs-root-params)
+- [Next.js 16 release notes](https://nextjs.org/blog/next-16) · [Cache Components migration guide](https://nextjs.org/docs/app/guides/migrating-to-cache-components)
+- [rlsautotest](https://github.com/unitautogen/rlsautotest) · the tool's own README, including its stated limits
+- [Supabase — testing overview](https://supabase.com/docs/guides/local-development/testing/overview) · [Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+- [Drizzle — RLS](https://orm.drizzle.team/docs/rls)
+- [Stripe documentation](https://docs.stripe.com/billing/subscriptions/webhooks)
+
+**Secondary** — comparisons and practitioner write-ups, used for orientation only:
+
 - [Better Auth vs Clerk vs NextAuth vs Supabase Auth](https://makerkit.dev/blog/tutorials/better-auth-vs-clerk) · [TurboStarter's version](https://www.turbostarter.dev/blog/better-auth-vs-clerk-vs-nextauth-vs-supabase-auth)
 - [rlsautotest](https://github.com/unitautogen/rlsautotest) · [Supabase discussion](https://github.com/orgs/supabase/discussions/47191) · [Supabase testing docs](https://supabase.com/docs/guides/local-development/testing/overview) · ["RLS fails silently"](https://dev.to/munaf-khatri/rls-fails-silently-heres-how-to-actually-test-your-supabase-policies-p6m)
 - [Drizzle RLS docs](https://orm.drizzle.team/docs/rls) · [drizzle-supabase-rls](https://github.com/rphlmr/drizzle-supabase-rls)

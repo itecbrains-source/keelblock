@@ -1,6 +1,7 @@
 # SPEC-028: SEO & structured data
 
 > Status: `draft` · Bars: **B-8** · Research: [`research/05-SEO-2026.md`](../research/05-SEO-2026.md) · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [010](../docs/adr/ADR-010-internationalisation.md)
+> Contracts: SPEC-003 ·
 
 ## Intent
 
@@ -27,11 +28,15 @@ Builders for the five types a SaaS actually uses: `Organization`, `WebSite`, `So
 `BreadcrumbList`, `FAQPage`. Typed against schema.org so a missing required property fails at build
 rather than surfacing as a Search Console warning three weeks later, when nobody remembers the change.
 
-### REQ-2 — `FAQPage` and `HowTo` ship, and the docs say what they now do
-FAQ rich results were **removed on 7 May 2026**. The markup is still worth emitting because it
-packages content as question–answer pairs, which is the shape an LLM quotes. The documentation says
-exactly this — **it earns no snippet and improves nothing in the blue links** — because the two
-common wrong beliefs are that it is now pointless and that it still decorates.
+### REQ-2 — `FAQPage` ships; `HowTo` does not; the docs say why
+Per Google's own Search Central blog: **`HowTo` rich results are deprecated** — no longer shown, and
+the documentation removed — so keel does not emit `HowTo`. **`FAQPage` is restricted**, shown only
+for "well-known, authoritative government and health websites", which no keel buyer is.
+
+keel emits `FAQPage` anyway, and the documentation states exactly why: **it will not produce a rich
+result for you**, and it is worth emitting because it packages content as question–answer pairs,
+which is the shape an LLM quotes. Google's own guidance is that unused structured data causes no
+harm and has no visible effect — so this is a decision made for extractors, stated as such.
 
 ### REQ-3 — every page declares a canonical URL
 The most common self-inflicted SEO wound, and invisible until traffic splits.
@@ -67,7 +72,7 @@ previous page's picture — a failure nobody notices until a link is shared.
 | AC | Verifies | Method | Evidence | Status |
 |----|----------|--------|----------|--------|
 | AC-1 | REQ-1 | test | `src/lib/seo/json-ld.test.mts` — each builder emits a valid graph; a missing required property fails to typecheck | planned |
-| AC-2 | REQ-2 | test | the docs assert the no-snippet caveat; a rendered `FAQPage` parses as valid JSON-LD | planned |
+| AC-2 | REQ-2 | test | no `HowTo` is emitted anywhere; a rendered `FAQPage` parses as valid JSON-LD; the docs carry the no-rich-result caveat | planned |
 | AC-3 | REQ-3 | test | every route in the manifest emits exactly one canonical | planned |
 | AC-4 | REQ-4 | test | `hreflang` is emitted for every configured locale, derived from `routing.locales`; adding a locale without one fails | planned |
 | AC-5 | REQ-5 | test | the sitemap contains every public route and no private one — **a sitemap that lists an authenticated route is a disclosure bug** | planned |

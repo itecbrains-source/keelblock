@@ -1,0 +1,84 @@
+{
+  "$comment": "Every research memo, with the date a human last verified it and how fast its subject moves. Checked by scripts/check-research.mjs. A lapsed memo blocks its spec from being authored or marked done.",
+  "volatility": {
+    "fast": {
+      "maxAgeDays": 90,
+      "why": "AI, search, framework majors, competitor feature sets \u2014 these genuinely change quarterly, and a six-month-old memo will be confidently wrong"
+    },
+    "moderate": {
+      "maxAgeDays": 180,
+      "why": "auth patterns, billing practice, vendor APIs \u2014 they move, but not quarterly"
+    },
+    "stable": {
+      "maxAgeDays": 365,
+      "why": "Postgres and RLS semantics, HTTP, SQL \u2014 a year-old memo here is still broadly true"
+    }
+  },
+  "memos": [
+    {
+      "file": "01-FIELD-SCAN.md",
+      "area": "competitive landscape",
+      "volatility": "fast",
+      "verifiedOn": "2026-09-07",
+      "specs": [],
+      "kind": "sourced"
+    },
+    {
+      "file": "02-STACK-FINDINGS.md",
+      "area": "stack decisions",
+      "volatility": "fast",
+      "verifiedOn": "2026-09-07",
+      "specs": [
+        "SPEC-002",
+        "SPEC-003"
+      ],
+      "kind": "sourced"
+    },
+    {
+      "file": "03-SPIKE-RESULTS.md",
+      "area": "RLS behaviour, measured",
+      "volatility": "stable",
+      "verifiedOn": "2026-09-07",
+      "specs": [
+        "SPEC-001",
+        "SPEC-002"
+      ],
+      "kind": "measured"
+    },
+    {
+      "file": "04-SMOKE-RESULTS.md",
+      "area": "framework integration, measured",
+      "volatility": "moderate",
+      "verifiedOn": "2026-09-07",
+      "specs": [
+        "SPEC-001",
+        "SPEC-002"
+      ],
+      "kind": "measured"
+    },
+    {
+      "file": "05-SEO-2026.md",
+      "area": "SEO and AI search",
+      "volatility": "fast",
+      "verifiedOn": "2026-09-07",
+      "specs": [
+        "SPEC-028"
+      ],
+      "kind": "sourced"
+    },
+    {
+      "file": "06-RELEASE-SAFETY.md",
+      "area": "migration and release safety",
+      "volatility": "stable",
+      "verifiedOn": "2026-09-07",
+      "specs": [
+        "SPEC-016"
+      ],
+      "kind": "sourced"
+    }
+  ],
+  "$kinds": {
+    "sourced": "Cites external work. Must separate **Primary** (the vendor's own documentation, a standards body, the originating description of a pattern, or the tool's own repository) from **Secondary**, and must have at least one primary.",
+    "measured": "IS the primary evidence \u2014 we ran it and recorded what happened. Must contain a reproduction someone else can execute. A measurement with no reproduction is an anecdote."
+  }
+}
