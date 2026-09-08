@@ -20,6 +20,13 @@
 --     "new row violates row-level security policy" and "permission denied for table" -- verified by
 --     running supabase/tests/intent/002 before and after this migration (10/10 both times).
 --
+-- CORRECTED 2026-09-08, after an external re-score named it. The bullet above reads as if the
+-- SQLSTATE overlap made this change SAFE. It does the opposite: because 42501 is returned by both
+-- layers, that assertion passes whether the refusal comes from the grant or from the policy, so it
+-- could not confirm the thing this migration claims to do. The change was correct and its cited
+-- verification was blind. 002 now asserts has_table_privilege directly and pins the refusal MESSAGE,
+-- with a policy refusal beside it as a contrast, so restoring this grant turns the suite red.
+--
 -- UPDATE and DELETE on organization, and every command on organization_member, are deliberately NOT
 -- revoked: those have real policies behind them and are how a member administers their own tenant.
 

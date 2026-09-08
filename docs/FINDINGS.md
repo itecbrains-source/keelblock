@@ -838,3 +838,48 @@ someone here got something wrong, and this one is no exception: the defect was i
 change that closed R-13, in the file the review had already found wrong in seven places, on the same
 day. **A project whose thesis is "documentation drifts from reality" should expect to keep proving
 its own thesis.**
+
+## F-33 · A claim that was true, and a verification that could not have known
+
+**2026-09-08 · `supabase/tests/intent/002-organization-creation.test.sql`**
+
+An external re-score narrowed an open discrepancy to two branches and pointed out that nothing in the
+repository could tell them apart.
+
+The access matrix reports `organization` as a dual write path — _"a SECURITY DEFINER rpc writes this
+table AND authenticated holds a direct INSERT/UPDATE/DELETE grant on it"_ — and the adjudication for
+that row claims the INSERT half was revoked. Either the tool's sentence is a static template, or the
+grant is still held and the adjudication is false. The CI run had already removed the innocent third
+explanation: the `generated` gate passed, so the committed matrix was current.
+
+```sql
+select has_table_privilege('authenticated', 'public.organization', 'INSERT');  -- false
+```
+
+**The claim was true.** The grant is gone, `create_organization()` is the only writer, and the tool's
+sentence is a template that names all three commands whether or not they are held.
+
+**The verification was blind, and that is the finding.** The migration cited this, from the intent
+suite, as its evidence:
+
+```sql
+select throws_ok($$insert into public.organization ...$$, '42501', null, '...');
+```
+
+`42501` is `insufficient_privilege`, and Postgres returns it for **both** `permission denied for
+table` and `new row violates row-level security policy`. So that assertion passes whether the refusal
+comes from the grant layer or the policy layer — it cannot say which one is doing the work, which is
+the only thing the migration claimed. Worse, the migration's own comment presented the overlap as
+what made the change _safe_: "42501, which covers BOTH". It is what made the check unable to see.
+
+Being right by accident is not the same as being right, and a repository whose product is proof
+should not need that said.
+
+Now: 002 asserts `has_table_privilege` directly, pins the refusal **message** rather than the code,
+and carries a policy refusal beside it as a contrast — same SQLSTATE, different layer, different
+message. Restoring the grant turns both red, which was checked by restoring it.
+
+The general shape, and it is the R2 weak-acceptance-criterion rule with a real instance attached:
+**a test that passes under both branches of the question it was cited to answer is not evidence for
+either.** The tell is available in advance and was written down in this case — an assertion that
+deliberately matches a broad code, with a comment explaining how conveniently broad it is.

@@ -23,7 +23,7 @@
     },
     {
       "key": "bypass:organization",
-      "reason": "PARTIALLY CLOSED 2026-09-08, remainder accepted. The flagged INSERT half is gone: 20260908130000 revoked the vestigial INSERT grant, so create_organization() really is the only way a row appears. UPDATE and DELETE remain granted to authenticated on purpose -- both are policy-gated (is_org_admin / owner) and are how a tenant administers itself, not a creation path. Narrowing those to RPCs is a design change, tracked as DEF-014."
+      "reason": "PARTIALLY CLOSED 2026-09-08, remainder accepted. The INSERT half is gone and this row will keep reporting it anyway: the tool's sentence is a STATIC TEMPLATE that names INSERT/UPDATE/DELETE whether or not they are held. Measured directly rather than inferred -- has_table_privilege('authenticated','public.organization','INSERT') is false, and 20260908130000 is what made it so, leaving create_organization() as the only writer. UPDATE and DELETE remain granted to authenticated on purpose -- both are policy-gated (is_org_admin / owner) and are how a tenant administers itself, not a creation path. Narrowing those to RPCs is a design change, tracked as DEF-014. The claim above is falsifiable from inside the repository: supabase/tests/intent/002 asserts the privilege directly AND asserts the refusal message, because 42501 alone is returned by both the grant layer and the policy layer and cannot say which refused."
     },
     {
       "key": "bypass:organization_member",

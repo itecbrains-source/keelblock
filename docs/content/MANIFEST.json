@@ -199,6 +199,12 @@
       "what": "the documentation was falsified by the commit that made it stale",
       "to": ["blog", "docs"],
       "angle": "The cleanest small illustration of the whole thesis, and self-inflicted: a README sentence was true when written and false for the duration of the push that falsified it. Counts drift slowly and a periodic check catches them; a state claim goes stale instantly, in the same commit as the action. The fix is a badge plus a narrow rule, and the honest note that a project claiming documentation drifts should expect to keep proving it."
+    },
+    {
+      "id": "F-33",
+      "what": "a claim that was true, and a verification that could not have known",
+      "to": ["blog", "docs"],
+      "angle": "The sharpest small lesson in the register and it came from an outside reader: a test that passes under both branches of the question it was cited to answer is not evidence for either. SQLSTATE 42501 covers both a missing privilege and an RLS refusal, so the assertion could not confirm which layer refused - and the migration comment presented that breadth as what made the change safe. Being right by accident is not being right."
     }
   ]
 }

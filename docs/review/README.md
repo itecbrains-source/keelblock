@@ -15,6 +15,7 @@ The brief was to assume the project fails and go looking for the reason. Read
 | [`03-POSITIONING.md`](03-POSITIONING.md)   | Market, name, moat, commercial model — checked against sources read on the day |
 | [`04-SCORECARD.md`](04-SCORECARD.md)       | A rubric with thresholds, today's score, and how to re-score without opinion   |
 | [`05-VERIFICATION.md`](05-VERIFICATION.md) | An independent re-check of the dispositions, by planting each defect again     |
+| [`06-RESCORE-CI.md`](06-RESCORE-CI.md)     | Re-score after the remote and the first green CI runs                          |
 | [`DISPOSITIONS.md`](DISPOSITIONS.md)       | **The only live file here** — one row per finding, enforced by `npm run check` |
 | [`DISPOSITIONS.md`](DISPOSITIONS.md)       | **What was done about each finding.** The only live file here                  |
 
