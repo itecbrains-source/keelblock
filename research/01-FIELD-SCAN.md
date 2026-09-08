@@ -47,9 +47,82 @@ The free options define the gap precisely:
   uses email+password JWTs in cookies, Drizzle, and Postgres — **not Supabase, and not RLS.**
 - **nextacular** is the right idea, unmaintained in substance.
 
-So: **there is no free, open, tested, Supabase-native, RLS-proven multi-tenant starter.** That is
-the hole, and it is a real one — not a story told to justify building. Four thousand nine hundred
-stars have accumulated on a kit whose isolation is a function call each route must remember.
+## Second correction (2026-09-08): the Supabase-native RLS kits this scan missed
+
+**The sentence that stood here was wrong, and it is quoted before it is corrected:** _"there is no
+free, open, tested, Supabase-native, RLS-proven multi-tenant starter."_ Basejump is free, open,
+Supabase-native, RLS-based **and ships a real pgTAP suite**. The claim needs narrowing, not
+defending. Recorded like the BoxyHQ correction above rather than quietly rewritten, because the
+version of this memo that omits the closest competitor is the version a knowledgeable reader uses to
+dismiss the rest of it.
+
+Both were read from the source on **2026-09-08**; the figures below are counted, not recalled.
+
+### Basejump — [usebasejump/basejump](https://github.com/usebasejump/basejump), 940 stars
+
+**Shape.** 19 `.sql` files against 2 `.ts`/`.tsx`: a Postgres extension with a thin template, not an
+application kit. 13 `create policy` statements. MIT by the text of its `LICENSE.md` (GitHub's
+detector reports no licence, because the file is `LICENSE.md` rather than `LICENSE`).
+
+**It ships the thing this project claims the field does not.** `supabase/tests/database/` holds 13
+pgTAP files — schema, personal accounts, team accounts, invitations, member removal, roles, billing
+functions — and they are adversarial rather than happy-path: **42 `throws_ok`** assertions across at
+least eight identities switched with `tests.authenticate_as(…)`, asserting the exact refusal text,
+including an anonymous caller and a second user reaching for the first one's account:
+
+```sql
+SELECT throws_ok(
+  $$ insert into basejump.account_user (account_id, account_role, user_id)
+     values ('8fcec130-…', 'owner', tests.get_supabase_uid('test2')) $$,
+  'new row violates row-level security policy for table "account_user"'
+);
+```
+
+It also **published its test tooling for other people** — `supabase_test_helpers`, a separate repo
+(131 stars, last pushed 2024-05-15) distributed through database.dev. That is more than any paid kit
+in the table above does.
+
+**What it does not do, and this is the whole of the remaining distinction.** No access matrix. No
+per-table × command × identity result published anywhere a reader can look without cloning and
+running it. No badge. The string `mutation` does not appear in the repository, so nothing establishes
+that any of those 42 assertions can fail. And its CI (`.github/workflows/tests.yml`) runs
+`supabase test db` **on `pull_request` only** — a direct push to `main` is unverified — pinning
+`supabase/setup-cli@v1` at `version: latest`, which is the unpinned-generator problem keelblock's own
+DEF-016 exists for.
+
+**On its cadence, carefully.** Last tagged release **v2.0.3, 2024-01-14**. Two commits since
+2024-09-01; `HEAD` is a merge dated 2026-08-06. So "abandoned in January 2024" is wrong — it is
+near-dormant with occasional patches, which is a different and less flattering-to-us claim. The only
+CI run the GitHub API still returns (2026-08-06) was **cancelled**, not failed: it produced no
+verdict, and the pull request was merged. That is stated exactly because "their tests fail" would be
+the easy sentence and it is not true.
+
+### Supajump — [supajump/supajump](https://github.com/supajump/supajump), 17 stars
+
+Newer, smaller, same architectural position: Next + Supabase, organizations → teams → users, **72
+`create policy` statements across 15 SQL files** — more policy than Basejump by some margin. Last
+commit 2025-12-11.
+
+**Zero tests of any kind.** No `*.test.*`, no `*.spec.*`, no pgTAP: `plan(` appears in none of its
+SQL. Its only GitHub workflows are `claude.yml` and `claude-code-review.yml`. And it carries **no
+licence** — no `LICENSE` file and no `license` field in `package.json` — which for a starter kit is
+not a detail: absent a licence, the default is all rights reserved.
+
+### What the corrected claim is
+
+Not "nobody tests isolation" — Basejump does, and does it seriously. The distinction that survives is
+one this project already lives by:
+
+> **Shipping runnable tests is not publishing a result, and a passing suite is not a suite shown able
+> to fail.**
+
+A reader who wants to know whether Basejump's isolation holds must clone it, install its helpers,
+start a stack and run it — and when it passes they have a green line, not a per-table × command ×
+identity matrix, and no evidence that a green line was ever capable of being red. That is the gap,
+and it is narrower and more defensible than the one this memo originally claimed.
+
+Four thousand nine hundred stars have still accumulated on a kit (BoxyHQ) whose isolation is a
+function call each route must remember.
 
 **What BoxyHQ is better at, and keelblock should not pretend otherwise:** enterprise surface (SSO, SCIM,
 audit logs, webhooks, API keys — all _delegated to services_ rather than built, which is the right
@@ -104,6 +177,9 @@ including us.
 here (stack, tenancy mechanism, test presence, price) was read from the source, not from a review:
 
 - [boxyhq/saas-starter-kit](https://github.com/boxyhq/saas-starter-kit) · cloned and read: `models/`, `lib/guards/`, `prisma/schema.prisma`, `.github/workflows/`
+- [usebasejump/basejump](https://github.com/usebasejump/basejump) · cloned and read 2026-09-08: `supabase/tests/database/` (all 13 files), `.github/workflows/tests.yml`, `LICENSE.md`, `git log`/`git tag`, and its CI history via the GitHub API
+- [usebasejump/supabase-test-helpers](https://github.com/usebasejump/supabase-test-helpers) · repository metadata read 2026-09-08
+- [supajump/supajump](https://github.com/supajump/supajump) · cloned and read 2026-09-08: SQL, workflows, `package.json`, absence of a licence file
 - [nextacular/nextacular](https://github.com/nextacular/nextacular) · cloned and read
 - [Vercel — Next.js SaaS Starter](https://vercel.com/templates/next.js/next-js-saas-starter)
 - [supastarter.dev](https://supastarter.dev) · feature list and pricing, read directly
@@ -116,4 +192,5 @@ establish a fact about one:
 - [StarterPick — supastarter vs makerkit vs ixartz vs shipfast](https://starterpick.com/guides/supastarter-vs-makerkit-vs-ixartz-vs-shipfast-2026)
 - [buildmvpfast — best SaaS boilerplate 2026](https://www.buildmvpfast.com/blog/best-saas-boilerplate-starter-kit-2026-nextjs)
 - [SaaS Pegasus — boilerplates and starter kits](https://www.saaspegasus.com/guides/saas-boilerplates-and-starter-kits/) _(the bloat/inflexibility critique)_
+- A 2026-09-08 review session's reading of the Basejump and Supajump pages _(used only to find the two candidates; every figure above was then counted in a clone. Two of its specifics did not survive that check — the "January 2024" abandonment, and a characterization of the test suite — which is why it is listed here and not above)_
 - [Vercel — Next.js SaaS Starter](https://vercel.com/templates/next.js/next-js-saas-starter)

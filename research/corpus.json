@@ -205,6 +205,46 @@
       "url": "https://supabase.com/docs/guides/auth/sessions",
       "title": "User sessions",
       "claim": "Access tokens are short lived, usually between 5 minutes and 1 hour; refresh tokens never expire but are single-use. A claim written into an access token is therefore stale for up to the token lifetime."
+    },
+    {
+      "id": "basejump-repo",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://github.com/usebasejump/basejump",
+      "title": "usebasejump/basejump",
+      "claim": "MIT by the text of LICENSE.md (GitHub's detector reports none). 940 stars. 19 .sql files against 2 .ts/.tsx and 13 `create policy` statements — a Postgres extension with a thin template. Last tagged release v2.0.3 on 2024-01-14; two commits since 2024-09-01, HEAD a merge dated 2026-08-06."
+    },
+    {
+      "id": "basejump-pgtap-suite",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://github.com/usebasejump/basejump/tree/main/supabase/tests/database",
+      "title": "Basejump's pgTAP suite",
+      "claim": "13 pgTAP files covering schema, personal and team accounts, invitations, member removal, roles and billing functions. Adversarial rather than happy-path: 42 throws_ok assertions across at least eight identities switched via tests.authenticate_as(), asserting exact RLS refusal messages, including anonymous and cross-user attempts. No access matrix, no published per-table result, no badge, and the string `mutation` appears nowhere in the repository."
+    },
+    {
+      "id": "basejump-ci",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://github.com/usebasejump/basejump/blob/main/.github/workflows/tests.yml",
+      "title": "Basejump CI workflow",
+      "claim": "Runs `supabase test db` on pull_request only, so a direct push to main is unverified, and pins supabase/setup-cli@v1 at `version: latest`. The single run the GitHub API still returns (2026-08-06) was CANCELLED — no verdict — and the pull request was merged."
+    },
+    {
+      "id": "basejump-test-helpers",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://github.com/usebasejump/supabase-test-helpers",
+      "title": "usebasejump/supabase-test-helpers",
+      "claim": "Separate repository, 131 stars, last pushed 2024-05-15, distributed through database.dev — test tooling published for other projects to use."
+    },
+    {
+      "id": "supajump-repo",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://github.com/supajump/supajump",
+      "title": "supajump/supajump",
+      "claim": "17 stars, last commit 2025-12-11. 72 `create policy` statements across 15 SQL files. Zero tests of any kind: no *.test.*, no *.spec.*, and `plan(` appears in no SQL file. Only workflows are claude.yml and claude-code-review.yml. No LICENSE file and no license field in package.json, so the default is all rights reserved."
     }
   ]
 }

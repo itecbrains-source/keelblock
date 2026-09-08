@@ -78,6 +78,27 @@ a test that restores the real defect and asserts the gate goes red. Without that
 agreement rather than evidence, and this repository has now caught two of its own checks passing
 while inspecting nothing.
 
+**The closest thing to a counter-example, named rather than omitted.**
+[Basejump](https://github.com/usebasejump/basejump) is free, MIT, Supabase-native, RLS-based, and it
+ships a real pgTAP suite — 13 files, **42 `throws_ok` denial assertions** across eight identities,
+asserting the exact refusal text for anonymous and cross-user attempts. It even published its test
+helpers as a separate package for other projects. Any claim here that began "nobody tests tenant
+isolation" would be false, and a reader who knew that would be right to stop reading.
+
+The distinction that survives is narrower and is the one this project is actually built on:
+**shipping runnable tests is not publishing a result, and a passing suite is not a suite shown able
+to fail.** To learn whether Basejump's isolation holds you clone it, install its helpers, start a
+stack and run it — and a green line is what you get: no per-table × command × identity matrix, no
+published run, and the string `mutation` appears nowhere in the repository, so nothing establishes
+those 42 assertions were ever capable of going red. Its CI runs on pull requests only, so a direct
+push to `main` is unverified, and it pins the Supabase CLI at `latest` — the unpinned-generator
+problem this repository has a dated deferral for.
+
+Counted from a clone on 2026-09-08, not from a comparison article. The other Supabase-native kit,
+[Supajump](https://github.com/supajump/supajump), carries **72 `create policy` statements and zero
+tests of any kind** — and no licence file at all, which for a starter kit means the default is all
+rights reserved.
+
 **Evidence:** [F-2](../FINDINGS.md) · [F-30](../FINDINGS.md) · [`docs/ACCESS-MATRIX.md`](../../docs/ACCESS-MATRIX.md)
 
 **State.** SPEC-002 is `done` · 10 requirements · 12 of 12 criteria met. Verify: `npm run check`.
@@ -240,13 +261,13 @@ three tables while one file existed on disk.
 
 ## Where keelblock is behind, stated because a battlecard that only wins is marketing
 
-| Axis                  | Field                                       | keelblock                                                           |
-| --------------------- | ------------------------------------------- | ------------------------------------------------------------------- |
-| Feature breadth       | Billing, teams, admin, email, storage, jobs | Tenancy, proofs, gates, auth. The rest is specified, not built.     |
-| Frameworks            | Next / Nuxt / SvelteKit / TanStack / Expo   | Next only, by decision — that is what makes completeness affordable |
-| Payment providers     | Up to five                                  | Stripe, specified, not yet built                                    |
-| Maturity              | Years of production use across many teams   | Days old, and small — run `npm run status` for what actually exists |
-| Enterprise SSO / SCIM | Shipped (BoxyHQ, via Jackson)               | Deferred, with a reason: neither can be verified without an IdP     |
+| Axis                  | Field                                       | keelblock                                                                                                                                                                    |
+| --------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Feature breadth       | Billing, teams, admin, email, storage, jobs | Tenancy, proofs, gates, auth. The rest is specified, not built.                                                                                                              |
+| Frameworks            | Next / Nuxt / SvelteKit / TanStack / Expo   | Next only, by decision — that is what makes completeness affordable                                                                                                          |
+| Payment providers     | Up to five                                  | Stripe, specified, not yet built                                                                                                                                             |
+| Maturity              | Years of production use across many teams   | Days old, and small — and every claim on this page is executable by the reader in under five minutes: `npm run status` for what exists, `npm run check` for whether it holds |
+| Enterprise SSO / SCIM | Shipped (BoxyHQ, via Jackson)               | Deferred, with a reason: neither can be verified without an IdP                                                                                                              |
 
 **The honest positioning.** If the requirement is a broad kit today, buy one of theirs. keelblock is
 for the buyer whose first question is _how do I know a tenant cannot read another tenant's rows_ —
