@@ -179,7 +179,10 @@ enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+# Set to the file's own recommendation rather than left at the floor. keelblock signs in by emailed
+# link, so no password flow uses this today — which is precisely why it would otherwise sit at 6
+# forever and be discovered by whoever first enables one. SPEC-004 REQ-6.
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -269,11 +272,16 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
-# [auth.sessions]
+#
+# STATED, not inherited (SPEC-004 REQ-6, F-31). Supabase leaves both unset, which means a session
+# never expires: it lives until its refresh token is revoked. These are the values the generated
+# comment itself suggested, and shipping them commented out is the difference between a property
+# and a suggestion.
+[auth.sessions]
 # Force log out after the specified duration.
-# timebox = "24h"
+timebox = "24h"
 # Force log out if the user has been inactive longer than the specified duration.
-# inactivity_timeout = "8h"
+inactivity_timeout = "8h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
 # [auth.hook.before_user_created]

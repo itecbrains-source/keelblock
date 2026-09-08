@@ -85,6 +85,102 @@
       "url": "https://github.com/boxyhq/saas-starter-kit",
       "title": "boxyhq/saas-starter-kit",
       "claim": "Tenant isolation by application guards; zero RLS policies; SSO/audit/webhooks delegated to Jackson, Retraced and Svix."
+    },
+    {
+      "id": "supabase-ssr-nextjs",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/auth/server-side/nextjs",
+      "title": "Setting up Server-Side Auth for Next.js",
+      "claim": "Never trust getSession() in server code; getClaims() validates the JWT signature against the project's published public keys every time and is the call used to protect pages and data; the server function is the only checkpoint that always runs and must authorize the request itself."
+    },
+    {
+      "id": "supabase-signing-keys",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/auth/signing-keys",
+      "title": "JWT signing keys",
+      "claim": "The original single shared secret is no longer recommended and kept for backward compatibility; with an asymmetric signing key JWT validation is local and fast and does not involve the Auth server."
+    },
+    {
+      "id": "supabase-going-into-prod",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/deployment/going-into-prod",
+      "title": "Going into production",
+      "claim": "Auth email rate limit is 2 emails per hour and can only be changed with a custom SMTP setup; OTP expiry recommended at 3600 seconds or lower; enterprise mail scanners can consume single-use links before the user clicks them."
+    },
+    {
+      "id": "supabase-redirect-urls",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/auth/redirect-urls",
+      "title": "Redirect URLs",
+      "claim": "redirectTo must match the allowlist; wildcards including globstar are supported but exact redirect paths are recommended in production; Site URL is the default when no redirectTo is given."
+    },
+    {
+      "id": "supabase-cli-config",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/local-development/cli/config",
+      "title": "Supabase CLI config reference",
+      "claim": "Documented [auth] defaults, including enable_confirmations false, jwt_expiry 3600, refresh token rotation enabled with a 10s reuse interval, unset session timebox and inactivity_timeout, and MFA disabled."
+    },
+    {
+      "id": "supabase-branching-config",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/deployment/branching/configuration",
+      "title": "Branching — configuration as code",
+      "claim": "config.toml settings sync to branches on push, and a [remotes] block keyed by project id declares settings for a specific persistent project."
+    },
+    {
+      "id": "supabase-ssr-setall-types",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://github.com/supabase/ssr",
+      "title": "@supabase/ssr type definitions (0.12.6, as installed)",
+      "claim": "setAll receives cookies and a headers object; responses that set auth cookies must not be cached by CDNs or reverse proxies, otherwise one user's session token can be served to a different user; cache headers arrive only with the first cookie write, so a new server client must be created per request; getClaims must be called before the response is generated."
+    },
+    {
+      "id": "nextjs-proxy-convention",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://nextjs.org/docs/app/api-reference/file-conventions/proxy",
+      "title": "proxy.js file convention",
+      "claim": "Middleware is deprecated and renamed to Proxy in v16.0.0, defaulting to the Node.js runtime; a matcher that excludes a path also skips Server Function calls on that path, so a refactor can silently remove coverage; authentication and authorization must be verified inside each Server Function."
+    },
+    {
+      "id": "nextjs-data-security",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://nextjs.org/docs/app/guides/data-security",
+      "title": "How to think about data security in Next.js",
+      "claim": "An exported Server Action is reachable by direct POST even if never imported; a page-level authentication check does not extend to the Server Actions defined within it; the Data Access Layer performs authorization and returns minimal DTOs."
+    },
+    {
+      "id": "ghsa-nextjs-middleware-bypass",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://github.com/vercel/next.js/security/advisories/GHSA-f82v-jwr5-mffw",
+      "title": "GHSA-f82v-jwr5-mffw — Authorization Bypass in Next.js Middleware",
+      "claim": "CVSS 9.1; authorization can be bypassed if the check occurs in middleware, via the x-middleware-subrequest header; patched in 12.3.5/13.5.9/14.2.25/15.2.3; deployments hosted on Vercel are automatically protected."
+    },
+    {
+      "id": "supabase-password-security",
+      "tier": "secondary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/auth/password-security",
+      "title": "Password security",
+      "claim": "Leaked password protection uses the HaveIBeenPwned Pwned Passwords API and is available on the Pro Plan and above. Vendor documentation, but read here for plan availability rather than for a security claim."
+    },
+    {
+      "id": "datadog-nextjs-middleware-bypass",
+      "tier": "secondary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://securitylabs.datadoghq.com/articles/nextjs-middleware-auth-bypass/",
+      "title": "Understanding CVE-2025-29927",
+      "claim": "Practitioner analysis of how the header was exploited. Used to orient only; every asserted fact is cited to the advisory."
     }
   ]
 }

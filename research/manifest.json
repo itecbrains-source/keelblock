@@ -62,6 +62,14 @@
       "verifiedOn": "2026-09-07",
       "specs": ["SPEC-016"],
       "kind": "sourced"
+    },
+    {
+      "file": "07-AUTH-2026.md",
+      "area": "authentication — Supabase Auth and Next.js 16",
+      "volatility": "moderate",
+      "verifiedOn": "2026-09-08",
+      "specs": ["SPEC-004"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {

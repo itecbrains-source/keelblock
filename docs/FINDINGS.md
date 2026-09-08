@@ -883,3 +883,42 @@ The general shape, and it is the R2 weak-acceptance-criterion rule with a real i
 **a test that passes under both branches of the question it was cited to answer is not evidence for
 either.** The tell is available in advance and was written down in this case — an assertion that
 deliberately matches a broad code, with a comment explaining how conveniently broad it is.
+
+## F-34 · The auth cookie that arrives with headers nothing can apply
+
+**2026-09-08 · measured against the local stack while building SPEC-004**
+
+`@supabase/ssr` passes `setAll` a second argument — the cache headers that must travel with any
+response setting an auth cookie, because otherwise "one user's session token can be served to a
+different user". `src/lib/supabase/server.ts` declared `setAll: (list) => …`. One parameter. The
+headers were not ignored; they were never received.
+
+The fix looked obvious: take both, and throw if headers arrive somewhere that cannot apply them.
+**That would have broken sign-in**, and only measuring showed it. Driving `signInWithOtp` through a
+real client against the local stack:
+
+```
+setAll #1  sb-…-code-verifier   headers: Cache-Control, Expires, Pragma
+setAll #2  sb-…-code-verifier   headers: (none)
+setAll #3  sb-…-code-verifier   headers: (none)
+```
+
+Three writes, and only the **first** carries headers — confirming the library's own note that they
+are "delivered only with the first cookie write". The first cookie is the PKCE code verifier, set
+from a Server Action. So a Server Action legitimately writes an auth cookie, legitimately receives
+cache headers, and has **no response object to put them on**. Refusing the write would have left the
+callback with nothing to exchange.
+
+Two things follow.
+
+**The context decides, not the call.** A Server Action answers a POST, which no CDN caches, so the
+headers are genuinely inapplicable rather than dropped — while the same library call on a **GET**
+(the proxy, the auth callback) is the real hazard, and those paths use a response-bound client that
+applies both halves. The rule in the gate is deny-by-default with one exemption, and the exemption
+carries this measurement as its reason rather than a claim that it is fine.
+
+**"Take both arguments" is not the property.** The property is that a response which sets an auth
+cookie is not cacheable, and the parameter is one way to fail it. So the gate refuses a `setAll`
+that declares the second parameter and never reads it as well — a correct signature is not the
+point, and a rule that only counted parameters would pass the version of this defect that keeps
+them.

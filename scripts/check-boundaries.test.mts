@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   SERVICE_ROLE_ALLOWED,
   findAdminReachableFrom,
+  CACHE_HEADER_EXEMPT,
+  PUBLIC_ACTIONS,
   findCycles,
+  findDroppedCacheHeaders,
+  findUnauthorizedActions,
   findUnkeyedCaches,
   importsOf,
   isEntryPoint,
@@ -278,5 +282,165 @@ describe('cache keys (every shape a function is written in)', () => {
 
   it("a file with no 'use cache' is not inspected at all", () => {
     expect(cached('export async function get() { return db(); }')).toEqual([]);
+  });
+});
+
+describe('setAll cache headers (SPEC-004 REQ-4)', () => {
+  const check = (src: string) => findDroppedCacheHeaders(['f.ts'], () => src, []);
+  const client = (setAll: string) =>
+    `createServerClient(url, key, { cookies: { getAll: () => store.getAll(), setAll: ${setAll} } });`;
+
+  it('MUTATION: the real pre-fix signature — one parameter — fails', () => {
+    // This is verbatim what src/lib/supabase/server.ts carried: the headers were not ignored,
+    // they were never received. The library's words for the consequence: "one user's session
+    // token can be served to a different user".
+    const p = check(client('(list) => { list.forEach(c => store.set(c.name, c.value)); }'));
+    expect(p[0]).toMatch(/takes 1 parameter/);
+  });
+
+  it('MUTATION: declared and never read fails — a correct signature is not the point', () => {
+    const p = check(
+      client('(list, headers) => { list.forEach(c => store.set(c.name, c.value)); }'),
+    );
+    expect(p[0]).toMatch(/declares `headers` and never reads it/);
+  });
+
+  it('taking both and using them passes', () => {
+    expect(
+      check(
+        client('(list, headers) => { apply(list); for (const h of Object.keys(headers)) set(h); }'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('a function expression is inspected too, not just an arrow', () => {
+    expect(check(client('function (list) { apply(list); }'))[0]).toMatch(/takes 1 parameter/);
+  });
+
+  it('the exemption list is frozen by value, not capped by length', () => {
+    // A length cap permits swapping any member for any other — how an allowlist loses a guarantee
+    // without ever growing. F-30 paid for this lesson in the gate that certifies the other gates.
+    expect(CACHE_HEADER_EXEMPT.map((e) => e.file)).toEqual(['src/lib/supabase/server.ts']);
+    for (const e of CACHE_HEADER_EXEMPT) expect(e.reason.length).toBeGreaterThan(80);
+  });
+
+  it('exempting a file does not switch the rule off for the others', () => {
+    const bad = 'createServerClient(u, k, { cookies: { setAll: (list) => apply(list) } });';
+    const problems = findDroppedCacheHeaders(['exempt.ts', 'other.ts'], () => bad, [
+      { file: 'exempt.ts', reason: 'x' },
+    ]);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/^other\.ts/);
+  });
+
+  it('the real source tree is clean — and the rule actually looked at something', async () => {
+    const { readdirSync, statSync, readFileSync } = await import('node:fs');
+    const walk = (d: string, o: string[] = []): string[] => {
+      for (const n of readdirSync(d)) {
+        const p = `${d}/${n}`;
+        if (statSync(p).isDirectory()) walk(p, o);
+        else if (/\.tsx?$/.test(p)) o.push(p);
+      }
+      return o;
+    };
+    const files = walk('src');
+    const read = (f: string) => readFileSync(f, 'utf8');
+    expect(findDroppedCacheHeaders(files, read)).toEqual([]);
+    // Non-vacuous, deliberately. "The real tree passes" is satisfied by a rule that inspects
+    // nothing — which is exactly how checkStatusAgreement stayed green while finding no rows at
+    // all. So assert there is something here for it to have looked at.
+    expect(files.filter((f) => /setAll\s*:/.test(read(f))).length).toBeGreaterThan(0);
+  });
+});
+
+describe('Server Action authorization (SPEC-004 REQ-3)', () => {
+  const noResolve = () => null;
+  const check = (src: string, publics = PUBLIC_ACTIONS) =>
+    findUnauthorizedActions(['a.ts'], () => src, noResolve, publics);
+
+  const action = (body: string) => `'use server';\n\nexport async function doThing() { ${body} }`;
+
+  it('MUTATION: an exported action that never authorizes fails', () => {
+    // F-15's shape: the row is reachable, and the check is somewhere the caller must remember.
+    const p = check(action('await db.from("project").delete().eq("id", id);'), []);
+    expect(p[0]).toMatch(/`doThing` never reaches an authorization call/);
+  });
+
+  it('an action calling the authorizer passes', () => {
+    expect(check(action('await getCurrentUser(); await db.delete();'), [])).toEqual([]);
+  });
+
+  it('authorization is followed through the module graph, not just the action body', () => {
+    // Delegating to a DAL function that authorizes is correct. Demanding the call be literally
+    // inline would train people to satisfy the gate rather than the property.
+    const files: Record<string, string> = {
+      'a.ts': `'use server';\nimport { del } from './dal';\nexport async function doThing() { await del(); }`,
+      'dal.ts': `import { getCurrentUser } from '@/lib/auth/dal';\nexport async function del() { await getCurrentUser(); }`,
+    };
+    const problems = findUnauthorizedActions(
+      ['a.ts'],
+      (f: string) => files[f] ?? '',
+      (spec: string) => (spec === './dal' ? 'dal.ts' : null),
+      [],
+    );
+    expect(problems).toEqual([]);
+  });
+
+  it('MUTATION: removing an action from the allowlist fails it — the list is the only opt-out', () => {
+    const src = action('await sendLink();');
+    expect(check(src, [{ action: 'doThing', reason: 'x' }])).toEqual([]);
+    expect(check(src, [])).toHaveLength(1);
+  });
+
+  it('MUTATION: one authorizing action does not launder the others beside it', () => {
+    // The defect the first version of this rule shipped with, caught by its own non-vacuity check:
+    // the module-level answer made every action in a file look authorized as soon as one of them
+    // authorized. `signOut` living next to `requestMagicLink` is exactly that shape.
+    const src = [
+      `'use server';`,
+      `import { getCurrentUser } from '@/lib/auth/dal';`,
+      `export async function signOut() { await getCurrentUser(); }`,
+      `export async function deleteEverything() { await db.from('project').delete(); }`,
+    ].join('\n');
+    const problems = findUnauthorizedActions(
+      ['a.ts'],
+      () => src,
+      () => null,
+      [],
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/`deleteEverything`/);
+  });
+
+  it('a module without a top-level use server is not inspected', () => {
+    expect(check('export async function doThing() { await db.delete(); }', [])).toEqual([]);
+  });
+
+  it('a non-exported function in an action module is not an entry point', () => {
+    expect(check(`'use server';\nasync function helper() { await db.delete(); }`, [])).toEqual([]);
+  });
+
+  it('the public allowlist is frozen by value, and every entry carries a reason', () => {
+    expect(PUBLIC_ACTIONS.map((a) => a.action)).toEqual(['requestMagicLink', 'startOAuth']);
+    for (const a of PUBLIC_ACTIONS) expect(a.reason.length).toBeGreaterThan(80);
+  });
+
+  it('the real source tree is clean — and there are actions for it to have looked at', async () => {
+    const { readdirSync, statSync, readFileSync } = await import('node:fs');
+    const walk = (d: string, o: string[] = []): string[] => {
+      for (const n of readdirSync(d)) {
+        const p = `${d}/${n}`;
+        if (statSync(p).isDirectory()) walk(p, o);
+        else if (/\.tsx?$/.test(p)) o.push(p);
+      }
+      return o;
+    };
+    const files = walk('src');
+    const read = (f: string) => readFileSync(f, 'utf8');
+    expect(findUnauthorizedActions(files, read, (s, f) => resolveImport(s, f))).toEqual([]);
+    // Non-vacuous: emptying the allowlist must produce findings, or the rule inspected nothing.
+    expect(
+      findUnauthorizedActions(files, read, (s, f) => resolveImport(s, f), []).length,
+    ).toBeGreaterThan(0);
   });
 });

@@ -287,6 +287,223 @@ export const isEntryPoint = (file) =>
  */
 export const SERVICE_ROLE_ALLOWED = [];
 
+/**
+ * Contexts with no response to put headers on. **Compared by value in the test, not counted** —
+ * a capped list permits swapping one member for another, which is how an allowlist leaves a
+ * guarantee without ever growing (F-30).
+ */
+export const CACHE_HEADER_EXEMPT = [
+  {
+    file: 'src/lib/supabase/server.ts',
+    reason:
+      'Server Components cannot write cookies at all, and Server Actions answer an uncacheable ' +
+      'POST with no response object to hold headers. MEASURED 2026-09-08: signInWithOtp does ' +
+      'supply headers here on its first write, and there is nowhere to apply them. Every GET path ' +
+      'that may rotate a session uses response-client.ts instead.',
+  },
+];
+
+/**
+ * SPEC-004 REQ-4 — a `setAll` that cannot receive its cache headers.
+ *
+ * This lives in the boundaries gate rather than a twelfth script because it is the SAME question
+ * REQ-4 already asks — *can a response carrying tenant data be cached?* — about the cookie that
+ * identifies the tenant. SPEC-003 makes the gate count a ceiling and the external review's position
+ * is that eleven is already more than the application justifies.
+ *
+ * The defect is real and was in this repository: `setAll: (list) => …` in `server.ts`, one
+ * parameter, so the headers the library supplies were not ignored — they were never received. From
+ * `@supabase/ssr`'s own type definitions: responses that set auth cookies "must not be cached by
+ * CDNs or reverse proxies, otherwise one user's session token can be served to a different user."
+ *
+ * Shape, not behavior: the behavioral proof is `src/lib/supabase/proxy.test.mts`, which drives a
+ * refresh and reads the response. This catches the version of the mistake that a test cannot,
+ * because a `setAll` that never receives the headers has nothing to assert about.
+ *
+ * @param {string[]} files @param {(f: string) => string} read @returns {string[]}
+ */
+export function findDroppedCacheHeaders(files, read, exempt = CACHE_HEADER_EXEMPT) {
+  const problems = [];
+  const skip = new Set(exempt.map((e) => e.file));
+  for (const file of files) {
+    if (skip.has(file)) continue;
+    walkAst(parse(read(file), file), (node) => {
+      if (!ts.isPropertyAssignment(node)) return;
+      if (node.name.getText() !== 'setAll') return;
+      const fn = node.initializer;
+      if (!ts.isArrowFunction(fn) && !ts.isFunctionExpression(fn)) return;
+
+      if (fn.parameters.length < 2) {
+        problems.push(
+          `${file}: \`setAll\` takes ${fn.parameters.length} parameter(s). It receives the cookies ` +
+            `AND the cache headers that must travel with them — a response that sets an auth cookie ` +
+            `and is cacheable serves one user's session token to the next. Take both.`,
+        );
+        return;
+      }
+      // Declaring it and never using it is the same defect wearing a correct signature.
+      const name = fn.parameters[1].name.getText();
+      let used = false;
+      walkAst(fn.body, (n) => {
+        if (ts.isIdentifier(n) && n.text === name && n.parent !== fn.parameters[1]) used = true;
+      });
+      if (!used) {
+        problems.push(
+          `${file}: \`setAll\` declares \`${name}\` and never reads it. The headers are the half ` +
+            `that keeps a session cookie out of a shared cache; accepting them and dropping them is ` +
+            `the same defect with a correct signature.`,
+        );
+      }
+    });
+  }
+  return problems;
+}
+
+/**
+ * Deliberately public Server Actions. **Deny-by-default**: an action not listed here must reach an
+ * authorization call, and adding to this list is the only way to opt out — visibly, with a reason,
+ * in a diff someone reviews. Compared by value in the test, never counted.
+ */
+export const PUBLIC_ACTIONS = [
+  {
+    action: 'requestMagicLink',
+    reason:
+      'Sign-in itself. Requiring a session to request one is a contradiction. It parses its input, ' +
+      'answers identically whether or not an account exists, and is rate-limited by Supabase.',
+  },
+  {
+    action: 'startOAuth',
+    reason:
+      'Sign-in itself, as above. Returns a provider URL and writes only a PKCE code verifier; it ' +
+      'reads no tenant data and mutates nothing.',
+  },
+];
+
+/** Anything that establishes the caller. The DAL is the only place these live. */
+const AUTHORIZERS = ['getCurrentUser'];
+
+/** Every identifier called anywhere inside a node. */
+function callsWithin(node) {
+  const names = new Set();
+  walkAst(node, (n) => {
+    if (!ts.isCallExpression(n)) return;
+    const target = n.expression;
+    if (ts.isIdentifier(target)) names.add(target.text);
+    else if (ts.isPropertyAccessExpression(target)) names.add(target.name.text);
+  });
+  return names;
+}
+
+/**
+ * SPEC-004 REQ-3 — every Server Action authorizes, or is a declared public one.
+ *
+ * This is the rule the field does not have, and F-15 is what its absence looks like in the
+ * most-starred free kit in the category: `getApiKeyById` fetches any tenant's row by id, and a
+ * SEPARATE function the route must remember to call compares the tenant afterwards. Remembering is
+ * the part that fails.
+ *
+ * Next.js documents the exposure in its own words: an exported action "is reachable via a direct
+ * POST request, not just through your application's UI… even if [it] is not imported elsewhere in
+ * your code", and "a page-level authentication check does not extend to the Server Actions defined
+ * within it." Its own mitigations — encrypted action ids, dead-code elimination — are described as
+ * reducing risk "in cases where an authentication layer is missing", not as a boundary.
+ *
+ * **Per action, not per file.** The first version of this asked whether the MODULE reached an
+ * authorizer, and its own non-vacuity assertion caught the consequence within the hour: adding an
+ * authorizing `signOut` to the sign-in module made two unauthenticated actions beside it look
+ * authorized, and emptying the allowlist stopped producing any finding at all. A file-level answer
+ * to a per-entry-point question is a check that stops being able to fail as the file grows.
+ *
+ * Delegation still counts: an action calling a local helper, or a DAL function that authorizes, is
+ * correct. Demanding the call be literally inline would train people to satisfy the gate rather
+ * than the property.
+ *
+ * @param {string[]} files @param {(f: string) => string} read
+ * @param {(spec: string, from: string) => string | null} resolveFn
+ * @param {{action: string, reason: string}[]} [publicActions]
+ * @returns {string[]}
+ */
+export function findUnauthorizedActions(files, read, resolveFn, publicActions = PUBLIC_ACTIONS) {
+  const problems = [];
+  const exempt = new Set(publicActions.map((a) => a.action));
+
+  /** Does this module call an authorizer anywhere, directly or through what it imports? */
+  const moduleAuthorizes = (file, seen = new Set()) => {
+    if (seen.has(file) || seen.size > 12) return false;
+    seen.add(file);
+    let source;
+    try {
+      source = read(file);
+    } catch {
+      return false;
+    }
+    if (AUTHORIZERS.some((a) => new RegExp(`\\b${a}\\s*\\(`).test(source))) return true;
+    return importsOf(source, file)
+      .map((spec) => resolveFn(spec, file))
+      .filter(Boolean)
+      .some((next) => moduleAuthorizes(next, seen));
+  };
+
+  for (const file of files) {
+    const source = read(file);
+    // Module-level 'use server' only. An inline one inside a component is a closure over a page
+    // that has already run its own checks, and is a different shape with a different argument.
+    if (!/^\s*['"]use server['"]/m.test(source.split('\n').slice(0, 3).join('\n'))) continue;
+
+    const ast = parse(source, file);
+    // Local functions this module defines, so an action delegating to one is followed.
+    const local = new Map();
+    walkAst(ast, (n) => {
+      if (ts.isFunctionDeclaration(n) && n.name) local.set(n.name.getText(), n);
+    });
+    // Each imported NAME mapped to the module it came from, so "this action calls something that
+    // authorizes" can be answered per call rather than per file.
+    const nameToModule = new Map();
+    walkAst(ast, (n) => {
+      if (!ts.isImportDeclaration(n) || !n.importClause || !ts.isStringLiteral(n.moduleSpecifier))
+        return;
+      const target = resolveFn(n.moduleSpecifier.text, file);
+      if (!target) return;
+      const clause = n.importClause;
+      if (clause.name) nameToModule.set(clause.name.text, target);
+      if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+        for (const el of clause.namedBindings.elements) nameToModule.set(el.name.text, target);
+      }
+    });
+
+    /** Does this function reach an authorizer — itself, via a local helper, or via an import? */
+    const reaches = (node, seen = new Set()) => {
+      const calls = callsWithin(node);
+      if (AUTHORIZERS.some((a) => calls.has(a))) return true;
+      for (const name of calls) {
+        if (seen.has(name)) continue;
+        seen.add(name);
+        const fn = local.get(name);
+        if (fn && reaches(fn, seen)) return true;
+        const mod = nameToModule.get(name);
+        if (mod && moduleAuthorizes(mod)) return true;
+      }
+      return false;
+    };
+
+    walkAst(ast, (node) => {
+      const isExported = (n) =>
+        ts.canHaveModifiers(n) &&
+        ts.getModifiers(n)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+      if (!ts.isFunctionDeclaration(node) || !node.name || !isExported(node)) return;
+      const name = node.name.getText();
+      if (exempt.has(name) || reaches(node)) return;
+      problems.push(
+        `${file}: Server Action \`${name}\` never reaches an authorization call. An exported ` +
+          `action is a public POST endpoint whether or not any UI calls it, and a page-level check ` +
+          `does not extend to it. Call ${AUTHORIZERS.join(' or ')}, or declare it in ` +
+          `PUBLIC_ACTIONS with a reason.`,
+      );
+    });
+  }
+  return problems;
+}
+
 function main() {
   const files = walk(SRC);
   const read = (f) => readFileSync(f, 'utf8');
@@ -298,6 +515,8 @@ function main() {
       ? findAdminReachableFrom(entries, read, (s, f) => resolveImport(s, f))
       : []),
     ...findUnkeyedCaches(files, read),
+    ...findDroppedCacheHeaders(files, read),
+    ...findUnauthorizedActions(files, read, (s, f) => resolveImport(s, f)),
     ...findCycles(files, read, (s, f) => resolveImport(s, f)),
   ];
 

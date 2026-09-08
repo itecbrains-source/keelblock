@@ -8,13 +8,13 @@ the contested part honestly labeled rather than silently. SPEC-028 is the worked
 because FAQ rich results were removed on a specific date, and both common beliefs about what that
 means are wrong.
 
-Governed by [`docs/PRODUCT.md`](../docs/PRODUCT.md) and the [ADRs](../docs/adr/). Format is the
-playbook's `_TEMPLATE.spec.md`: intent · scope/non-scope · sources of truth · REQ/AC · DoD ·
+Governed by [`docs/PRODUCT.md`](../docs/PRODUCT.md) and the [ADRs](../docs/adr/). Format is
+[`_TEMPLATE.spec.md`](_TEMPLATE.spec.md): intent · scope/non-scope · sources of truth · REQ/AC · DoD ·
 deferrals. **Thin.** A spec that outgrows the feature it governs has failed its own purpose.
 
-Status: **Phase 1 authored** (`draft`) — SPEC-001/002/003. The remaining twelve are `planned`
-and are deliberately not written yet: specification authored far ahead of contact rots, and the
-template's own instruction is to keep it thin.
+Most rows below are `planned` and deliberately not written yet: specification authored far ahead of
+contact rots, and the template's own instruction is to keep it thin. **For what is authored and what
+is open, run `npm run status`** — it reads the repository rather than a sentence someone maintained.
 
 | SPEC                                   | Title                                                                                        | Bars          | ADRs          | Status                                                                                               |
 | -------------------------------------- | -------------------------------------------------------------------------------------------- | ------------- | ------------- | ---------------------------------------------------------------------------------------------------- |
@@ -23,7 +23,7 @@ template's own instruction is to keep it thin.
 | SPEC-002                               | Proof harness — four test layers, access matrix, mutation proofs                             | B-2, B-4      | 005           | **partial** (unit + generated + intent + matrix + mutation proofs built; journey layer pending auth) |
 | SPEC-003                               | Gates — freshness, service-role boundary, cache keys, supply chain                           | B-3, B-4, B-9 | 004, 007      | **done** (REQ-1..9, all mutation-proven)                                                             |
 | **Phase 2 — identity**                 |                                                                                              |               |               |
-| SPEC-004                               | Auth — magic link, OAuth, session, route protection                                          | —             | 002           | planned                                                                                              |
+| SPEC-004                               | Auth — magic link, OAuth, session, route protection                                          | —             | 002, 011      | **partial** (session substrate + cache-header rule; sign-in next)                                    |
 | SPEC-005                               | Organizations & roles — create, switch, settings, RBAC                                       | B-2           | 001, 002      | planned                                                                                              |
 | SPEC-006                               | Invitations — invite, accept, decline, join, revoke, role change                             | B-2           | 001, 002      | planned                                                                                              |
 | **Phase 3 — money**                    |                                                                                              |               |               |

@@ -2,9 +2,13 @@
   "home": {
     "title": "keelblock",
     "tagline": "Multi-tenant SaaS starter — tenant isolation enforced by the database and proven on every commit.",
-    "foundation": "Foundation only. See the access matrix for what the database currently permits."
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signedInAs": "Signed in as {email}"
   },
-  "loading": { "label": "Loading" },
+  "loading": {
+    "label": "Loading"
+  },
   "error": {
     "title": "Something went wrong",
     "body": "This page could not load. It has not shown you partial or stale data — it stopped instead.",
@@ -15,5 +19,16 @@
     "title": "Not found",
     "body": "This page does not exist, or you do not have access to it. Those are deliberately indistinguishable — telling them apart would confirm that a resource exists to someone not entitled to know.",
     "back": "Back to start"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "We email you a link. There is no password to forget or leak.",
+    "email": "Email address",
+    "submit": "Email me a link",
+    "sending": "Sending",
+    "sent": "If that address has an account, a sign-in link is on its way. The link expires, and can be used once.",
+    "linkFailed": "That link did not work. It may have expired, already been used, or been opened in a different browser than the one that requested it. Request a new one.",
+    "continueWith": "Continue with {provider}",
+    "providerFailed": "That provider could not be reached. Try the email link instead."
   }
 }
