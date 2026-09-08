@@ -1354,3 +1354,40 @@ every new migration — the feature's included — then running today's suite pa
 buyer's edited page keeps saying what they made it say. Schema is cheap to accept and expensive to
 skip: it is additive, its tests come with it, and a half-adopted schema is a state neither side has
 ever tested. Product code is the opposite, and touching it is what makes the supastarter warning true.
+
+## F-47 · The flagship guide taught the defect
+
+**2026-09-08 · found by reading the guide against work done the same day · fixed in `CONTRIBUTING.md`**
+
+`WEBSITE-AND-DOCS.md` names "Add a tenant-scoped table" as the flagship guide, because it is "the most
+common task and the one where people leak data". The recipe in `CONTRIBUTING.md` said:
+
+```sql
+alter table public.thing enable row level security;
+```
+
+`ENABLE`, not `FORCE`. That is precisely the defect `organization_invitation` shipped with hours
+earlier (F-45's run) — on Supabase the owner is `postgres`, not a superuser but carrying
+`rolbypassrls`, so `ENABLE` alone leaves the owner reading every tenant's rows and every `SECURITY
+DEFINER` function with it, because those run as the owner. Measured on a table built exactly as the
+guide said:
+
+```
+RLS forced? false
+```
+
+The same measurement found a second gap, in the opposite direction. Default privileges were
+deliberately stripped from this schema (`20260908140000`), so the recipe's table has no grant at all:
+
+```
+authenticated SELECT grant: false
+```
+
+A table nobody can read. That one fails **closed**, so it costs a confused half-hour rather than a
+leak — but it means the flagship guide, as written, did not work.
+
+The uncomfortable part is the sequencing. The schema guard learned to catch a missing `FORCE` on
+2026-09-08 because a table shipped without it; the guide that teaches people to write those tables was
+not read on the same day, and would have kept teaching it. **A gate catching a defect is not the same
+as the defect being unlearned**, and the documentation is where it gets unlearned. That is the
+argument for ADR-019 rather than a general belief that documentation is good.

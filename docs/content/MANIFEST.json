@@ -283,6 +283,12 @@
       "what": "the acceptance bar for upgradability and the ADR describing the upgrade policy contradicted each other, and it only showed up when someone satisfied the bar literally",
       "to": ["blog", "docs"],
       "angle": "Two documents both written carefully, both reasonable, mutually unsatisfiable: the ADR promises selective adoption of security fixes, the bar demands the current suite pass — and the current suite tests features a selective adopter does not have. The resolution is a genuine design position worth stating: schema is cumulative and adopted whole, product code is the buyer's and is never touched. Schema is cheap to accept and expensive to skip; product code is the reverse."
+    },
+    {
+      "id": "F-47",
+      "what": "the guide for the task where people leak data taught the exact defect a gate had learned to catch hours earlier",
+      "to": ["blog", "docs"],
+      "angle": "A gate catching a defect is not the same as the defect being unlearned. The schema guard learned about missing FORCE ROW LEVEL SECURITY the same day, from a real table that shipped without it — and the flagship guide teaching people to write those tables was not read, so it would have kept teaching it. Measured rather than reasoned: a table built exactly as the guide said reports RLS forced? false, and separately has no grant at all, so it is also unreachable. One gap fails open and one fails closed, which is a useful pair."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",
@@ -379,5 +385,16 @@
       "oneLine": "*Ask what happens when they fix a security bug and you cloned in March — then ask to see the test.*",
       "artifacts": ["scripts/upgrade.mjs", ".github/workflows/check.yml"]
     }
-  ]
+  ],
+  "documentation": {
+    "SPEC-001": "CONTRIBUTING.md",
+    "SPEC-002": "docs/TESTING.md",
+    "SPEC-004": "docs/AUTHORIZATION.md",
+    "SPEC-005": "docs/AUTHORIZATION.md",
+    "SPEC-013": "docs/TESTING.md"
+  },
+  "$noDocumentation": {
+    "SPEC-003": "The gates document themselves at the point of failure: every one names the file, the line and the fix, and AGENTS.md carries the table of what each catches. A separate page describing them would be a second copy that goes stale the first time a message is improved.",
+    "SPEC-006": "Covered by CONTRIBUTING.md's authoring recipes and by the invitation flow being the product surface itself. Revisit when the first task guide for invitations exists — a stranger inviting a teammate follows the UI, not a page."
+  }
 }

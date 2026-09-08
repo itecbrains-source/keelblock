@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
-import { findingIds, parseFaq, checkContent, checkDifferentiators } from './check-content.mjs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import {
+  findingIds,
+  parseFaq,
+  checkContent,
+  checkDifferentiators,
+  checkDocumentation,
+} from './check-content.mjs';
 
 const manifest = JSON.parse(readFileSync('docs/content/MANIFEST.json', 'utf8'));
 const findings = findingIds(readFileSync('docs/FINDINGS.md', 'utf8'));
@@ -167,5 +173,69 @@ describe('differentiators are written up as they ship', () => {
     // it appeared twice.
     const p = checkContent(manifest, [...findings, findings[0]], [], yes);
     expect(p.some((x: string) => /appears twice in FINDINGS.md/.test(x))).toBe(true);
+  });
+});
+
+describe('checkDocumentation — ADR-019, the rule that had a paragraph while its sibling had a gate', () => {
+  const done = [{ id: 'SPEC-001', status: 'done' }];
+  const yes = () => true;
+
+  it('a spec naming documentation that exists is fine', () => {
+    const m = { documentation: { 'SPEC-001': 'CONTRIBUTING.md' } };
+    expect(checkDocumentation(m, done, yes)).toEqual([]);
+  });
+
+  it('MUTATION: a done spec with neither an entry nor an excuse is caught', () => {
+    // The whole of the finding: six specs shipped `done`, the flagship guide was wrong for all of
+    // it, and nothing failed. The differentiator rule beside this one would have caught the same
+    // omission in competitive copy on the first push.
+    const problems = checkDocumentation({}, done, yes);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('SPEC-001');
+    expect(problems[0]).toMatch(/documentation/i);
+  });
+
+  it('MUTATION: naming a page that does not exist is caught, not taken on trust', () => {
+    const m = { documentation: { 'SPEC-001': 'docs/guides/imaginary.md' } };
+    expect(checkDocumentation(m, done, () => false)[0]).toMatch(/does not resolve|imaginary/);
+  });
+
+  it('an excuse works, and being both declared and excused does not', () => {
+    const realReason = 'documented at the point of failure rather than on a page of its own';
+    expect(checkDocumentation({ $noDocumentation: { 'SPEC-001': realReason } }, done, yes)).toEqual(
+      [],
+    );
+    const both = checkDocumentation(
+      {
+        documentation: { 'SPEC-001': 'CONTRIBUTING.md' },
+        $noDocumentation: { 'SPEC-001': 'a reason long enough to pass the length rule' },
+      },
+      done,
+      yes,
+    );
+    expect(both[0]).toMatch(/both/);
+  });
+
+  it('MUTATION: an excuse too short to be a reason is refused', () => {
+    // `$noDifferentiator` has the same weakness and accepts it; this at least refuses a shrug.
+    expect(checkDocumentation({ $noDocumentation: { 'SPEC-001': 'n/a' } }, done, yes)[0]).toMatch(
+      /reason/,
+    );
+  });
+
+  it('a draft spec is not asked for documentation yet', () => {
+    expect(checkDocumentation({}, [{ id: 'SPEC-007', status: 'draft' }], yes)).toEqual([]);
+  });
+
+  it('is not vacuous: the real manifest and the real spec set agree', () => {
+    // Reads the repository, so this fails the day a spec ships `done` without its page.
+    const manifest = JSON.parse(readFileSync('docs/content/MANIFEST.json', 'utf8'));
+    const specs = readdirSync('spec')
+      .filter((f) => /^SPEC-\d+/.test(f))
+      .map((f) => ({
+        id: f.slice(0, 8),
+        status: (readFileSync(`spec/${f}`, 'utf8').match(/^> Status: `(\w+)`/m) ?? [, '?'])[1],
+      }));
+    expect(checkDocumentation(manifest, specs, (p: string) => existsSync(p))).toEqual([]);
   });
 });

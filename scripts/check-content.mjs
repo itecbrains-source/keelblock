@@ -102,6 +102,66 @@ export function checkContent(manifest, findings, faq, exists) {
 }
 
 /**
+ * ADR-019 · every shipped spec names where its documentation lives.
+ *
+ * The sibling rule above refuses a `done` spec with no competitive copy. Nothing refused one with no
+ * documentation, and the difference was not theoretical: six specs shipped `done` while the flagship
+ * "add a tenant-scoped table" guide taught `enable row level security` without `force` — the exact
+ * defect a gate had learned to catch the same day (F-47). A gate catching a defect is not the same as
+ * the defect being unlearned, and documentation is where it gets unlearned.
+ *
+ * Most specs satisfy this immediately, which is the point: the rule is not asking for new writing, it
+ * is asking for the link between a spec and the page a stranger reads, so that when one moves the
+ * other is visibly stale.
+ *
+ * @param {{documentation?: Record<string,string>, $noDocumentation?: Record<string,string>}} manifest
+ * @param {Array<{id: string, status: string}>} specs
+ * @param {(p: string) => boolean} exists
+ * @returns {string[]}
+ */
+export function checkDocumentation(manifest, specs, exists) {
+  const problems = [];
+  const declared = manifest.documentation ?? {};
+  const excused = manifest.$noDocumentation ?? {};
+
+  for (const spec of specs) {
+    if (spec.status !== 'done' && spec.status !== 'partial') continue;
+    const page = declared[spec.id];
+    const excuse = excused[spec.id];
+
+    if (page && excuse) {
+      problems.push(`${spec.id} is both declared and excused — decide which`);
+      continue;
+    }
+    if (page) {
+      if (!exists(page)) {
+        problems.push(
+          `${spec.id}: documentation \`${page}\` does not resolve. Naming a page is a promise; ` +
+            `the gate opens it.`,
+        );
+      }
+      continue;
+    }
+    if (excuse) {
+      // The same weakness `$noDifferentiator` carries, accepted for the same reason — but a shrug
+      // is not a reason, and "n/a" is a shrug.
+      if (excuse.length < 20) {
+        problems.push(
+          `${spec.id}: "${excuse}" is too short to be a reason for shipping no documentation.`,
+        );
+      }
+      continue;
+    }
+    problems.push(
+      `${spec.id} is ${spec.status} and names no documentation. Say where a stranger reads how to ` +
+        `use it (an existing page is fine) in \`documentation\`, or say in \`$noDocumentation\` why ` +
+        `this spec ships nothing a reader needs. B-5 is that a stranger gets there on the docs alone.`,
+    );
+  }
+  return problems;
+}
+
+/**
  * Every shipped differentiator is written up — the rule that stops "we built it, nobody can tell".
  *
  * The material pipeline routed FINDINGS from day one, and that half worked. It keys on `F-*`, and a
@@ -197,6 +257,7 @@ function main() {
   const problems = [
     ...checkContent(manifest, findings, faq, (p) => existsSync(p)),
     ...checkDifferentiators(manifest, specs, battlecard, findings, (p) => existsSync(p)),
+    ...checkDocumentation(manifest, specs, (p) => existsSync(p)),
   ];
 
   if (problems.length) {

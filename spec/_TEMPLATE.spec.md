@@ -111,6 +111,13 @@
       field does instead, evidence that resolves, and a battlecard section — or an entry in
       `$noDifferentiator` saying why this ships nothing worth claiming. The `content` gate refuses a
       `done` or `partial` spec that has neither.
+- [ ] **Documented.** A `documentation` entry in `docs/content/MANIFEST.json` naming where a stranger
+      reads how to use this — an existing page is fine and usually right — or a `$noDocumentation`
+      entry saying why this spec ships nothing a reader needs. The `content` gate refuses a `done` or
+      `partial` spec that has neither (ADR-019). It was added because six specs shipped `done` while
+      the flagship "add a tenant-scoped table" guide taught the exact defect a gate had learned to
+      catch the same day (F-47): a gate catching a defect is not the same as the defect being
+      unlearned.
 - [ ] **Validation note:** <the spec-specific bar — see below>
 
 <!--
