@@ -32,7 +32,11 @@ describe('contracts gate', () => {
 
   it('MUTATION: a done criterion citing a file that does not exist fails', () => {
     const p = checkContracts(
-      [spec({ evidence: [{ ac: 'AC-1', path: 'gone.sql', status: 'done' }] })],
+      [
+        spec({
+          evidence: [{ ac: 'AC-1', paths: ['gone.sql'], status: 'done', cited: '`gone.sql`' }],
+        }),
+      ],
       no,
     );
     expect(p[0]).toMatch(/a claim, not a record/);
@@ -45,7 +49,7 @@ describe('contracts gate', () => {
         [
           spec({
             status: 'partial',
-            evidence: [{ ac: 'AC-9', path: 'later.ts', status: 'planned' }],
+            evidence: [{ ac: 'AC-9', paths: ['later.ts'], status: 'planned', cited: '`later.ts`' }],
           }),
         ],
         no,
@@ -55,7 +59,13 @@ describe('contracts gate', () => {
 
   it('MUTATION: a glob is refused — it cannot be verified, so it is not evidence', () => {
     const p = checkContracts(
-      [spec({ evidence: [{ ac: 'AC-1', path: 'tests/*.sql', status: 'done' }] })],
+      [
+        spec({
+          evidence: [
+            { ac: 'AC-1', paths: ['tests/*.sql'], status: 'done', cited: '`tests/*.sql`' },
+          ],
+        }),
+      ],
       yes,
     );
     expect(p[0]).toMatch(/cites a glob/);
@@ -93,5 +103,54 @@ describe('contracts gate', () => {
     expect(
       checkStatusAgreement([spec({ status: 'done' })], '| SPEC-001 | x | B-2 | 001 | **done** |'),
     ).toEqual([]);
+  });
+});
+
+// ── R-2 / R-3: the two ways evidence checking used to be optional ──────────────
+// The parser captured the FIRST backticked token and required the cell to begin with one. So a
+// criterion could cite any number of missing files as long as its first existed, and a criterion
+// whose evidence read as prose was not parsed at all — never checked, and silent about it.
+
+describe('evidence parsing', () => {
+  const row = (ac: string, evidence: string, status = '**done**') =>
+    `| ${ac} | REQ-1 | test | ${evidence} | ${status} |`;
+  const spec = (rows: string[]) =>
+    parseSpec('SPEC-001', ['> Status: `partial`', '', ...rows].join('\n'));
+
+  it('captures EVERY path in a cell, not only the first', () => {
+    const s = parseSpec('SPEC-001', row('AC-1', '`a/first.yml` and `b/second.yml`'));
+    expect(s.evidence[0].paths).toEqual(['a/first.yml', 'b/second.yml']);
+  });
+
+  it('MUTATION: a second cited file that does not exist fails', () => {
+    // The real defect: SPEC-002 AC-7 cited check.yml and nightly.yml, the second did not exist, and
+    // the gate reported "all evidence present" because it only ever looked at the first.
+    const s = spec([row('AC-7', '`.github/workflows/check.yml` and `nightly.yml`')]);
+    const problems = checkContracts([s], (p) => p !== 'nightly.yml');
+    expect(problems.join(' ')).toContain('nightly.yml');
+  });
+
+  it('MUTATION: a done criterion whose evidence is prose fails instead of being skipped', () => {
+    // SPEC-003 AC-7 and AC-8 were both invisible to the gate for exactly this reason.
+    const s = spec([row('AC-7', 'Playbook gates wired, with a proof for each')]);
+    expect(s.evidence).toHaveLength(1); // parsed, where it used to vanish
+    expect(checkContracts([s], () => true).join(' ')).toContain('cites nothing checkable');
+  });
+
+  it('a backticked word that is not a path is not demanded as a file', () => {
+    // `hreflang` and `@defer` are legitimately backticked. Demanding them as files is how a gate
+    // teaches authors to delete backticks — which turns the check off for that row.
+    const s = parseSpec('SPEC-001', row('AC-1', 'derives `hreflang` from `docs/adr/ADR-010.md`'));
+    expect(s.evidence[0].paths).toEqual(['docs/adr/ADR-010.md']);
+  });
+
+  it('and removing the backticks cannot dodge it — zero paths still fails', () => {
+    const s = spec([row('AC-1', 'derives hreflang correctly')]);
+    expect(checkContracts([s], () => true).join(' ')).toContain('cites nothing checkable');
+  });
+
+  it('a planned criterion citing nothing is fine — a plan is not a record', () => {
+    const s = spec([row('AC-1', 'still being designed', 'planned')]);
+    expect(checkContracts([s], () => true)).toEqual([]);
   });
 });

@@ -3,11 +3,9 @@ name: check
 on:
   push: { branches: [main] }
   pull_request:
-  schedule:
-    # Weekly clean-clone build. A template has no users to exercise it, so this is the substitute:
-    # it installs from scratch on a current runtime and runs everything. It is the only thing that
-    # catches the rot no dependency check can see — that the project no longer installs at all.
-    - cron: '0 6 * * 1'
+
+# The scheduled clean-clone build lives in nightly.yml. It was weekly here, which caught time-based
+# rot up to seven days late and did not match the claim in PRODUCT.md that the proof runs every night.
 
 jobs:
   check:
@@ -28,7 +26,7 @@ jobs:
         with: { version: latest }
       - run: supabase start
 
-      # Runs all six gates and reports every failure, not just the first.
+      # Runs every gate and reports every failure, not just the first.
       - run: npm run check
 
       # The access matrix is evidence, so it is published from the run that produced it.

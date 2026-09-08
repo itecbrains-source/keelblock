@@ -23,6 +23,7 @@ type Workflow = {
 const load = (text: string) => parse(text) as Workflow;
 const raw = readFileSync('.github/workflows/check.yml', 'utf8');
 const wf = load(raw);
+const nightly = load(readFileSync('.github/workflows/nightly.yml', 'utf8'));
 
 const steps = (job: string, w: Workflow = wf): Step[] => w.jobs[job]?.steps ?? [];
 const runs = (job: string, w: Workflow = wf) => steps(job, w).map((s) => String(s.run ?? ''));
@@ -51,13 +52,40 @@ describe('CI workflow', () => {
     expect(uses('secrets').some((u) => u.includes('gitleaks'))).toBe(true);
   });
 
-  it('has the weekly clean-clone build — the substitute for having users', () => {
-    const schedules = wf.on?.schedule ?? [];
+  it('the scheduled build is NIGHTLY, because that is what PRODUCT.md claims', () => {
+    // It was weekly, and the claim said "every commit and every night". A schedule that runs on
+    // Mondays catches time-based rot up to seven days late, and the difference is the whole of
+    // SPEC-002 REQ-6.
+    const schedules = nightly.on?.schedule ?? [];
     expect(
       schedules.length,
       'no scheduled run: nothing exercises the template between commits',
     ).toBeGreaterThan(0);
-    expect(schedules[0].cron).toMatch(/^\S+ \S+ \S+ \S+ \S+$/);
+    const [, , dom, month, dow] = schedules[0].cron.split(/\s+/);
+    expect(
+      [dom, month, dow].every((f) => f === '*'),
+      `cron "${schedules[0].cron}" does not run every day`,
+    ).toBe(true);
+  });
+
+  it('the nightly clean-clone build installs from scratch and runs every gate', () => {
+    expect(runs('clean-clone', nightly).some((r) => r.startsWith('npm ci'))).toBe(true);
+    expect(runs('clean-clone', nightly).some((r) => r.includes('npm run check'))).toBe(true);
+  });
+
+  it('the range-drift job resolves ranges fresh — `npm ci` cannot catch what it exists to catch', () => {
+    // REQ-6's stated reason for nightly is "the dependency that changed behavior under a caret
+    // range". `npm ci` installs the lockfile exactly, so a nightly built on it delivers the
+    // artifact and not the property. This asserts the job cannot regress into that.
+    const installs = runs('range-drift', nightly).filter((r) => r.startsWith('npm '));
+    expect(
+      installs.some((r) => r.startsWith('npm install')),
+      'no fresh resolution',
+    ).toBe(true);
+    expect(
+      installs.some((r) => r.startsWith('npm ci')),
+      '`npm ci` defeats this job',
+    ).toBe(false);
   });
 
   it('preserves the access matrix even when the run fails', () => {

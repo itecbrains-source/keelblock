@@ -20,7 +20,20 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 const SPEC_DIR = 'spec';
 
 /**
- * @typedef {{ id: string, status: string, contracts: string[], evidence: Array<{ac: string, path: string, status: string}> }} Spec
+ * A backticked token is evidence only if it could be a file. `@defer`, `hreflang` and
+ * `npm run check` are all legitimately backticked and none of them is a path — demanding them as
+ * files is how a gate teaches people to delete backticks, which silently disables the check for
+ * that row. So path-likeness decides what is DEMANDED, and a `done` row that yields no path at all
+ * fails separately. Removing the backticks cannot dodge that: it yields zero paths either way.
+ */
+const PATHLIKE = /\/|\.(md|tsx?|mts|mjs|jsx?|sql|json|ya?ml|toml|txt|sh)$/;
+
+/** `| AC-1 | REQ-1 | test | evidence | done |` -> its cells, trimmed. */
+const CELLS = /^\s*\|(.+)\|\s*$/;
+
+/**
+ * @typedef {{ac: string, paths: string[], status: string, cited: string}} Evidence
+ * @typedef {{ id: string, status: string, contracts: string[], evidence: Evidence[] }} Spec
  * @param {string} id @param {string} text @returns {Spec}
  */
 export function parseSpec(id, text) {
@@ -31,11 +44,30 @@ export function parseSpec(id, text) {
   // the difference between a useful rule and a nagging one: a `partial` spec legitimately has
   // `planned` criteria whose files do not exist yet, and demanding them would train people to
   // ignore the gate.
-  const evidence = [
-    ...text.matchAll(
-      /^\|\s*(AC-[\w.]+)\s*\|[^|]*\|[^|]*\|\s*`([^`]+)`[^|]*\|\s*\*{0,2}([\w ]+?)\*{0,2}\s*\|/gm,
-    ),
-  ].map((m) => ({ ac: m[1], path: m[2], status: m[3].trim() }));
+  //
+  // Parsed as CELLS, not matched as a line. The previous regex captured the FIRST backticked token
+  // and required the evidence cell to begin with one, which produced two silent holes: a criterion
+  // citing two files had only its first checked, and a criterion whose evidence read as prose was
+  // not parsed at all — so it was never checked, and nothing said so. The more the author wrote,
+  // the less the gate looked at.
+  const evidence = [];
+  for (const line of text.split('\n')) {
+    const row = CELLS.exec(line);
+    if (!row) continue;
+    const cells = row[1].split('|').map((c) => c.trim());
+    if (cells.length < 5) continue;
+    const ac = /^(AC-[\w.]+)$/.exec(cells[0])?.[1];
+    if (!ac) continue;
+    const cited = cells[3];
+    evidence.push({
+      ac,
+      cited,
+      status: cells[4].replace(/\*/g, '').trim(),
+      paths: [...cited.matchAll(/`([^`]+)`/g)]
+        .map((m) => m[1].trim())
+        .filter((t) => PATHLIKE.test(t)),
+    });
+  }
   return { id, status, contracts, evidence };
 }
 
@@ -50,19 +82,29 @@ export function checkContracts(specs, exists) {
   const byId = new Map(specs.map((s) => [s.id, s]));
 
   for (const spec of specs) {
-    // 1 · evidence for a criterion claiming `done` must exist. A `planned` criterion is a plan.
-    for (const { ac, path, status } of spec.evidence) {
+    // 1 · evidence for a criterion claiming `done` must exist — ALL of it. A `planned` criterion is
+    //     a plan. A `done` one that names nothing openable is a claim wearing a record's clothes.
+    for (const { ac, paths, status, cited } of spec.evidence) {
       if (status !== 'done') continue;
-      // A glob is a description, not a path — and cannot be verified, so it is refused outright.
-      if (/[*?]/.test(path)) {
+      if (!paths.length) {
         problems.push(
-          `${spec.id} ${ac} cites a glob \`${path}\` — name the file, or the claim cannot be checked`,
+          `${spec.id} ${ac} is marked done and cites nothing checkable: "${cited}". ` +
+            `Name the file that proves it — a criterion nobody can open is a claim, not a record.`,
         );
-      } else if (!exists(path)) {
-        problems.push(
-          `${spec.id} ${ac} is marked done and cites \`${path}\`, which does not exist. ` +
-            `A criterion that names evidence nobody can open is a claim, not a record.`,
-        );
+        continue;
+      }
+      for (const path of paths) {
+        // A glob is a description, not a path — and cannot be verified, so it is refused outright.
+        if (/[*?]/.test(path)) {
+          problems.push(
+            `${spec.id} ${ac} cites a glob \`${path}\` — name the file, or the claim cannot be checked`,
+          );
+        } else if (!exists(path)) {
+          problems.push(
+            `${spec.id} ${ac} is marked done and cites \`${path}\`, which does not exist. ` +
+              `A criterion that names evidence nobody can open is a claim, not a record.`,
+          );
+        }
       }
     }
     // 2 · a spec claiming `done` must actually be closed

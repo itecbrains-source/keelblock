@@ -1,0 +1,56 @@
+name: nightly
+
+# SPEC-002 REQ-6. Per-commit CI proves the code you wrote is correct. Nightly proves the code you
+# did NOT write is still correct — and a template with no users has no other mechanism for noticing.
+#
+# Two jobs, because they catch different things and one cannot do the other's work.
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  # What only TIME changes: a new runner image, a Node patch, a `latest` Supabase CLI, a rebuilt
+  # Docker image, and the freshness stamps, which expire on a date rather than on a commit. This is
+  # also the clean-clone build — the only thing that catches the rot no dependency check can see,
+  # that the project no longer installs at all.
+  clean-clone:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 26, cache: npm }
+      # postinstall scripts are a live supply-chain attack vector (ADR-007).
+      - run: npm ci --ignore-scripts
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.12' }
+      - run: python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: supabase start
+      - run: npm run check
+      # The access matrix is evidence, so it is published from the run that produced it.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: access-matrix-nightly
+          path: docs/ACCESS-MATRIX.md
+
+  # The caret range REQ-6 actually names, and the reason this job exists separately: `npm ci`
+  # installs the lockfile exactly, so it can NEVER surface a dependency that changed behavior inside
+  # a range we already accept. Only a fresh resolution can. It runs without the database because the
+  # question is "does the new resolution still behave", not "is the schema correct" — and it is
+  # `continue-on-error` deliberately: a range moving under us is news, not a broken build, and a
+  # nightly that cries wolf about somebody else's release gets muted within a week.
+  range-drift:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 26 }
+      - run: npm install --no-save --no-audit --ignore-scripts
+      - run: git --no-pager diff --stat -- package-lock.json || true
+      - run: npx tsc --noEmit
+      - run: npm test
