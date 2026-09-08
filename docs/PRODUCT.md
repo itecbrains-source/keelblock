@@ -135,7 +135,7 @@ That is worth more to an agent than any amount of documentation, because it conv
 bottleneck — a human reading generated code — into something the agent runs itself.
 
 Same property, same value, for a human team: a new hire's first pull request is checked by the same
-twelve gates instead of by a senior engineer's attention.
+the gate suite instead of by a senior engineer's attention.
 
 The bar is not nextacular. It is MakerKit ($349–649), Supastarter (€349–€1,499), Achromatic and
 ShipFast ($199–299) — funded products with years of head start.
@@ -161,7 +161,7 @@ boilerplate category: the product is a _copy_, so the moment you clone it you ar
 maintenance forever. Every kit in the table has this problem and none advertises a solution, because
 there isn't one — which is exactly why solving it is worth more than a sixth payment provider.
 
-## Scope — thirteen areas, one framework
+## Scope — one framework
 
 **Next.js only.** No Nuxt, no SvelteKit, no TanStack Start, no React Native. That is the decision
 that makes feature-completeness affordable rather than a slogan: Supastarter maintains the same
@@ -250,7 +250,7 @@ It is the feature where keelblock's thesis produces a **visibly better answer ra
 
 ## Definition of done for v1
 
-- [ ] All six acceptance bars demonstrably met, each by its named artifact.
+- [ ] Every acceptance bar demonstrably met, each by its named artifact.
 - [ ] Every SPEC `done`, or its gap covered by an open `DEF-*` with a machine-evaluable trigger.
 - [ ] The gates green, and each gate's mutation proof passing.
 - [ ] A published access matrix showing who can read and write what, per role, per table.

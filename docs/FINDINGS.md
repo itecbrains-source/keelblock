@@ -457,7 +457,7 @@ measurement, a rejected option — durable, and they belong in a file. A count, 
 
 So `npm run status` reads the repository, and `--check` verifies that **no document asserts a
 countable fact that has gone stale.** On its first run it found one — in `AGENTS.md`, written by me,
-claiming twelve gates where there were eleven. The fix was not to correct the number. It was to stop
+claiming `twelve gates` where there were eleven. The fix was not to correct the number. It was to stop
 asserting it and point at the command.
 
 **It also exposed the closure failure this mechanism exists for.** `SPEC-001` read `done` with **2 of

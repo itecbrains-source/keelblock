@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { census, checkCountClaims, COUNTABLE } from './status.mjs';
+import { census, checkCountClaims, claimsIn, COUNTABLE, numberOf } from './status.mjs';
 
 const c = census();
 
@@ -42,10 +42,56 @@ describe('derived status', () => {
     expect(checkCountClaims({ 'd.md': `${c.findings + 5} **findings**` }, c)).toHaveLength(1);
   });
 
-  it('a spelled-out number is left alone — it is prose about the concept, not a claim', () => {
-    // "twelve gates" in a sentence is not a count anyone will act on; flagging it would make the
-    // gate annoying enough to be disabled, which costs more than the drift it prevents.
-    expect(checkCountClaims({ 'd.md': 'twelve gates guard this repository' }, c)).toEqual([]);
+  it('MUTATION: a SPELLED-OUT number is caught — the old premise was false here', () => {
+    // This test previously asserted the opposite, on the reasoning that "a spelled-out number is
+    // almost always prose about the concept, not a claim about the count". That is an empirical
+    // claim about how humans write, and in this repository it was wrong: EVERY stale count was
+    // spelled out. Eighteen of them, including the line in AGENTS.md that told a coding agent the
+    // decision record held eleven entries when it held fifteen — an agent that believes it will not
+    // go looking for the other four.
+    const p = checkCountClaims({ 'd.md': 'twelve gates guard this repository' }, c);
+    expect(p).toHaveLength(1);
+    expect(p[0]).toContain('twelve gates');
+  });
+
+  it('MUTATION: the number that was actually wrong on the front page is caught', () => {
+    expect(checkCountClaims({ 'AGENTS.md': '`docs/adr/` — eleven decisions' }, c)).toHaveLength(1);
+  });
+
+  it('an inline code span is a QUOTATION, not a claim', () => {
+    // Without this, a finding about a stale count cannot quote the stale count, and the rule
+    // becomes one you are unable to document inside the repository it governs.
+    expect(
+      checkCountClaims({ 'd.md': 'claiming `twelve gates` where there were eleven' }, c),
+    ).toEqual([]);
+  });
+
+  it('but a fenced transcript IS a claim, because a reader acts on it', () => {
+    // The worst instance was a fenced block in README.md showing `npm run check` printing six
+    // ticks. A reader who runs the command sees thirteen.
+    const doc = ['```', '✓ six gates', '```'].join('\n');
+    expect(checkCountClaims({ 'README.md': doc }, c)).toHaveLength(1);
+  });
+
+  it('the numeral vocabulary covers what this repository actually writes', () => {
+    for (const word of ['six', 'eight', 'eleven', 'twelve', 'thirteen', 'sixteen', 'nineteen']) {
+      expect(
+        checkCountClaims({ 'd.md': `${word} gates` }, c).length,
+        `"${word}" is not recognized as a number`,
+      ).toBe(word === 'eleven' ? 0 : 1); // eleven is the true gate count
+    }
+  });
+
+  it('numberOf reads both forms, and nothing else', () => {
+    expect(numberOf('12')).toBe(12);
+    expect(numberOf('twelve')).toBe(12);
+    expect(numberOf('Twelve')).toBe(12);
+    expect(numberOf('gazillion')).toBeUndefined();
+  });
+
+  it('claimsIn strips inline spans and keeps fences', () => {
+    expect(claimsIn('a `six gates` b')).not.toContain('six gates');
+    expect(claimsIn('```\nsix gates\n```')).toContain('six gates');
   });
 
   it('every AC status is a closed vocabulary — nothing invents its own', () => {

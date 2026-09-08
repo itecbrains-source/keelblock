@@ -33,7 +33,7 @@ A port is affordable or not depending on what has to be rewritten. In keelblock,
 | Portable as-is                                        | Rewritten per framework                      |
 | ----------------------------------------------------- | -------------------------------------------- |
 | `supabase/` — schema, policies, pgTAP suites          | `src/app/` — routes, layouts                 |
-| `scripts/` — all twelve gates, the access matrix      | `src/components/`                            |
+| `scripts/` — every gate, the access matrix            | `src/components/`                            |
 | `spec/`, `docs/adr/` — every decision and requirement | the framework adapter in `src/lib/supabase/` |
 | `messages/` — translations                            |                                              |
 

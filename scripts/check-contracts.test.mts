@@ -138,7 +138,7 @@ describe('evidence parsing', () => {
   });
 
   it('a backticked word that is not a path is not demanded as a file', () => {
-    // `hreflang` and `@defer` are legitimately backticked. Demanding them as files is how a gate
+    // `hreflang` and a deferral marker are legitimately backticked. Demanding them as files is how a gate
     // teaches authors to delete backticks — which turns the check off for that row.
     const s = parseSpec('SPEC-001', row('AC-1', 'derives `hreflang` from `docs/adr/ADR-010.md`'));
     expect(s.evidence[0].paths).toEqual(['docs/adr/ADR-010.md']);

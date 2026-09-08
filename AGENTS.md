@@ -70,13 +70,13 @@ in the change that broke it.
 
 ## Where the answers are
 
-| Question                                                | File                                                           |
-| ------------------------------------------------------- | -------------------------------------------------------------- |
-| What is keelblock for, and what is it deliberately not? | `docs/PRODUCT.md`                                              |
-| Why is it built this way?                               | `docs/adr/` — eleven decisions, each with the rejected options |
-| What is true that we measured?                          | `docs/FINDINGS.md` — including our own mistakes                |
-| What is built, and what is next?                        | `spec/README.md`                                               |
-| What did we decide not to do yet?                       | `spec/DEFERRAL_REGISTRY.md`                                    |
+| Question                                                | File                                                       |
+| ------------------------------------------------------- | ---------------------------------------------------------- |
+| What is keelblock for, and what is it deliberately not? | `docs/PRODUCT.md`                                          |
+| Why is it built this way?                               | `docs/adr/` — every decision, with the options it rejected |
+| What is true that we measured?                          | `docs/FINDINGS.md` — including our own mistakes            |
+| What is built, and what is next?                        | `spec/README.md`                                           |
+| What did we decide not to do yet?                       | `spec/DEFERRAL_REGISTRY.md`                                |
 
 ## Before you author a spec
 

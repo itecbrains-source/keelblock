@@ -44,7 +44,7 @@ goes red. A green run is evidence rather than agreement.
 
 ### Have you found anything real, or is this theoretical?
 
-Twenty-two findings with reproductions in [`docs/FINDINGS.md`](FINDINGS.md). The one with the widest
+Every finding in [`docs/FINDINGS.md`](FINDINGS.md) carries a reproduction. The one with the widest
 reach: on a default Supabase project, an unauthenticated `anon` role could **`TRUNCATE` every tenant
 table** ([F-1](FINDINGS.md)). RLS does not apply to `TRUNCATE`, so no policy and no policy test could
 see it. It affects every project inheriting the same defaults.

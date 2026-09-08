@@ -20,7 +20,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 const SPEC_DIR = 'spec';
 
 /**
- * A backticked token is evidence only if it could be a file. `@defer`, `hreflang` and
+ * A backticked token is evidence only if it could be a file. A deferral marker, `hreflang` and
  * `npm run check` are all legitimately backticked and none of them is a path — demanding them as
  * files is how a gate teaches people to delete backticks, which silently disables the check for
  * that row. So path-likeness decides what is DEMANDED, and a `done` row that yields no path at all

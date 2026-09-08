@@ -1,6 +1,6 @@
 # SPEC-003: Gates
 
-> Status: `done` (all nine gates built and mutation-proven) ·
+> Status: `done` (every gate built and mutation-proven) ·
 > Contracts: SPEC-001, SPEC-002, SPEC-016, SPEC-028 · Bars: **B-3**, **B-4**, **B-9** · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [007](../docs/adr/ADR-007-supply-chain-and-freshness.md)
 
 ## Intent
@@ -12,7 +12,7 @@ runs them.
 
 ## Scope / non-scope
 
-- **In scope:** the eight gates below · the rules common to all of them · `npm run check` · CI and
+- **In scope:** the gates below · the rules common to all of them · `npm run check` · CI and
   pre-commit wiring · the supply-chain baseline.
 - **Out of scope:** the policy tests (SPEC-002) · accessibility and performance budgets (SPEC-015,
   which will add gates obeying the rules defined here) · anything that belongs to an existing tool
@@ -144,5 +144,5 @@ Adopted verbatim from the playbook, because it is the failure mode this spec is 
 > If this machinery ever grows larger than a feature, it has failed its own purpose — cut it back. The
 > point is to make drift and debt **visible and cheap to correct**, not impossible.
 
-Nine gates is the ceiling, not a floor. A tenth needs a promise nothing else holds and a defect that
+The gate count is a ceiling, not a floor. A tenth needs a promise nothing else holds and a defect that
 actually happened.

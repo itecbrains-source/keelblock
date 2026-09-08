@@ -49,7 +49,7 @@ opaque policy functions. See [F-2](docs/FINDINGS.md).
 
 ## What we found by measuring
 
-[`docs/FINDINGS.md`](docs/FINDINGS.md) — eight findings, each with a reproduction:
+[`docs/FINDINGS.md`](docs/FINDINGS.md) — every finding with a reproduction:
 
 - **`anon` could TRUNCATE every tenant table** on a default Supabase project. RLS does not apply to
   TRUNCATE, so no policy and no policy test could see it.
@@ -63,7 +63,7 @@ Two of the eight were keelblock's own mistakes. They are published for the same 
 
 ## What's in it
 
-Sixteen areas, **Next.js only** — no Nuxt, no SvelteKit, no TanStack Start, no React Native. That is
+**Next.js only** — no Nuxt, no SvelteKit, no TanStack Start, no React Native. That is
 what makes feature-completeness affordable rather than a slogan: the field maintains the same feature
 set across three frameworks, so keelblock has roughly three times the budget per feature.
 
@@ -113,15 +113,23 @@ supabase start
 npm run check
 ```
 
-`npm run check` runs six gates and **reports every failure, not just the first**:
+`npm run check` runs every gate and **reports every failure, not just the first**:
 
 ```
-✓ typegen    route types are generated
-✓ typecheck  types are sound
-✓ lint       no lint regressions
-✓ unit       pure logic is correct
-✓ policy     the database enforces isolation
-✓ matrix     the published access matrix is current
+════ summary ════
+  ✓ typegen     route types are generated
+  ✓ typecheck   types are sound
+  ✓ format      one style, so review is about content
+  ✓ lint        no lint regressions
+  ✓ unit        pure logic is correct
+  ✓ locale      translations are complete and all used
+  ✓ unused      no dead code or unused dependencies
+  ✓ freshness   nothing has quietly gone stale
+  ✓ promises    every claim is owned, researched, tracked
+  ✓ boundaries  the app cannot route around RLS
+  ✓ schema      every tenant table is protected
+  ✓ policy      the database enforces isolation
+  ✓ generated   no committed generated artifact is stale
 ```
 
 ### Running CI locally
@@ -233,7 +241,7 @@ the committed one · are the required secrets actually set._ Specified in
 | Upgradability — a security fix must be able to reach you       | [ADR-008](docs/adr/ADR-008-upgradability.md)              |
 | Open core — proof is free, audit evidence is paid              | [ADR-009](docs/adr/ADR-009-open-core-boundary.md)         |
 
-Scope, non-goals and the ten acceptance bars: [`docs/PRODUCT.md`](docs/PRODUCT.md).
+Scope, non-goals and the acceptance bars: [`docs/PRODUCT.md`](docs/PRODUCT.md).
 
 ## Contributing
 

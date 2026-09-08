@@ -20,9 +20,9 @@ specced and not yet built — see [`spec/README.md`](spec/README.md).
   policy catalog by probing as each identity, committed, diffable, and stale copies fail the build.
 - **Four-layer test strategy** — unit, generated policy (`rlsautotest`), hand-written intent, and
   journey (pending auth). 21 intent assertions; 54 generated.
-- **`npm run check`** — six gates, all failures reported rather than the first, ~14s.
+- **`npm run check`** — every gate, all failures reported rather than the first.
 - Organization creation as a `SECURITY DEFINER` RPC, so there is no unconstrained INSERT policy.
-- CI with a weekly clean-clone build and gitleaks over full history; MIT license; security policy;
+- CI per commit, a nightly clean-clone build and a nightly fresh dependency resolution, gitleaks over full history; MIT license; security policy;
   contributor guide; honest `error` and `not-found` states; the three Supabase clients, with the
   service-role client behind a `server-only` import boundary.
 

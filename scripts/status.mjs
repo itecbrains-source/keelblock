@@ -46,6 +46,12 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
     adrs: fs.readdirSync('docs/adr').filter((f) => f.endsWith('.md')).length,
     memos: fs.readdirSync('research').filter((f) => f.endsWith('.md')).length,
     sources: JSON.parse(read('research/corpus.json') || '{"sources":[]}').sources.length,
+    // The scope list is written inline as "1. … · 2. … · 19. …", so the markers are the count.
+    scopeAreas: (
+      (read('docs/PRODUCT.md').split(/^## Scope/m)[1] ?? '')
+        .split(/^## /m)[0]
+        .match(/(?:^|·\s*)(\d+)\.\s/gm) ?? []
+    ).length,
     bars: (read('docs/PRODUCT.md').match(/^\| B-\d+/gm) ?? []).length,
     openDefs,
     closedDefs,
@@ -57,24 +63,82 @@ export const COUNTABLE = {
   findings: (c) => c.findings,
   gates: (c) => c.gates,
   ADRs: (c) => c.adrs,
+  decisions: (c) => c.adrs,
+  areas: (c) => c.scopeAreas,
   'acceptance bars': (c) => c.bars,
   'research memos': (c) => c.memos,
   'primary sources': (c) => c.sources,
 };
 
 /**
+ * Spelled-out numerals, because this repository spells them.
+ *
+ * The rule used to be digits-only, and said so: "a spelled-out number is almost always prose about
+ * the concept, not a claim about the count." That is an empirical claim about how humans write, and
+ * in THIS repository it was false — every stale count in it was spelled out, including the one in
+ * AGENTS.md that told a coding agent the decision record held eleven ADRs when it held fourteen.
+ * A gate whose justification is an assumption about the text should be tested against the text.
+ */
+const NUMERALS = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+};
+
+/** @param {string} token @returns {number} */
+export const numberOf = (token) =>
+  /^\d+$/.test(token) ? Number(token) : NUMERALS[token.toLowerCase()];
+
+/**
  * Verify every count asserted in prose against the real one.
  * @param {Record<string, string>} docs @param {ReturnType<typeof census>} c @returns {string[]}
  */
+/**
+ * An inline code span is a QUOTATION or a literal, not a claim the document is making — which is
+ * what lets a finding about a stale count quote the stale count. Fenced blocks are deliberately NOT
+ * exempt: the worst instance of this defect was a fenced transcript in README.md showing the output
+ * of `npm run check`, and a reader acts on a transcript exactly as on a sentence.
+ * @param {string} text
+ */
+export const claimsIn = (text) =>
+  text
+    .split(/(```[\s\S]*?```)/g)
+    .map((part, i) => (i % 2 ? part : part.replace(/`[^`\n]*`/g, ' ')))
+    .join('');
+
 export function checkCountClaims(docs, c) {
   const problems = [];
-  for (const [file, text] of Object.entries(docs)) {
+  for (const [file, raw] of Object.entries(docs)) {
+    const text = claimsIn(raw);
     for (const [noun, measure] of Object.entries(COUNTABLE)) {
       const actual = measure(c);
-      // "22 findings", "**12** gates", "twelve ADRs" is not matched — digits only, deliberately:
-      // a spelled-out number is almost always prose about the concept, not a claim about the count.
-      for (const m of text.matchAll(new RegExp(`(\\d+)\\s+\\*{0,2}${noun}\\b`, 'gi'))) {
-        if (Number(m[1]) !== actual) {
+      // Digits or words, bold or not. Fenced code blocks are scanned too, deliberately: the worst
+      // instance of this defect was a fenced transcript in README.md showing the output of
+      // `npm run check` with six ticks in it, which is a claim a reader will act on.
+      const NUMBER = `(\\d+|${Object.keys(NUMERALS).join('|')})`;
+      const re = new RegExp(`\\*{0,2}\\b${NUMBER}\\b\\*{0,2}\\s+\\*{0,2}${noun}\\b`, 'gi');
+      for (const m of text.matchAll(re)) {
+        if (numberOf(m[1]) !== actual) {
           problems.push(
             `${file}: says "${m[1]} ${noun}", but there are ${actual}. ` +
               `A count in prose goes stale the moment reality moves — cite \`npm run status\` instead, ` +
@@ -92,7 +156,15 @@ function walkDocs() {
   const visit = (dir) => {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
+      // docs/review is an external review, dated and quoted. Its counts are a record of what was
+      // true on the day it was written — "fixing" them would falsify the finding, which is the
+      // opposite of what this gate is for. This checks claims the project makes about ITSELF.
+      // docs/review is an external review, dated and quoted. research/ memos report their OWN
+      // results ("Seven findings; four change the specs") and carry a re-verify header. Both are
+      // records of what was true on a date; "fixing" their numbers would falsify them. This gate
+      // checks the claims the project makes about ITSELF, now.
       if (p.includes('node_modules') || p.includes('.venv')) continue;
+      if (p.includes('docs/review') || p.startsWith('research')) continue;
       if (statSync(p).isDirectory()) visit(p);
       else if (extname(p) === '.md') out[p] = readFileSync(p, 'utf8');
     }

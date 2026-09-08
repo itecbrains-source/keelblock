@@ -90,7 +90,7 @@ stale the moment reality moves, and a gate now checks them against the real thin
 ## Before you open a PR
 
 ```bash
-npm run check      # all six gates
+npm run check      # every gate
 npm run verify     # run the CI workflow locally (see the README for what it can and cannot cover)
 ```
 
