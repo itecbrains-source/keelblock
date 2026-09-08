@@ -69,6 +69,11 @@ jobs:
           diff src/lib/db/database.types.ts /tmp/ci-database.types.ts > /tmp/types.diff || true
           npm run access-matrix || true
           cp docs/ACCESS-MATRIX.md /tmp/ci-ACCESS-MATRIX.md || true
+          # The battlecard is the third generated artifact. If it goes stale in CI the diff is the
+          # only thing worth downloading, and a diagnostics step that knows about two of three
+          # artifacts is the shape of every gap this repository keeps finding.
+          node scripts/battlecard.mjs || true
+          cp docs/content/BATTLECARD.md /tmp/ci-BATTLECARD.md || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -77,6 +82,7 @@ jobs:
             /tmp/ci-database.types.ts
             /tmp/types.diff
             /tmp/ci-ACCESS-MATRIX.md
+            /tmp/ci-BATTLECARD.md
 
   # Dependency vulnerabilities. Built in, no dependency of its own, and fails only on high severity —
   # a gate that fires on every transitive `low` gets ignored within a week.
