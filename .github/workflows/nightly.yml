@@ -27,7 +27,18 @@ jobs:
         with: { python-version: '3.12' }
       - run: python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
       - uses: supabase/setup-cli@v1
-        with: { version: latest }
+        with:
+          # PINNED, and it has to be. `supabase gen types` is a code GENERATOR, so its output is a
+          # function of its own version as well as of the schema: 2.117.0 parenthesizes conditional
+          # types that 2.109.0 leaves bare. `check-generated` compares the committed artifact
+          # byte-for-byte, so with `version: latest` it reported "the schema has changed since it was
+          # generated" on a run where the schema had not changed — twice, on 2026-09-08, costing two
+          # diagnostic cycles before the artifact upload showed a twenty-line formatting diff.
+          #
+          # A generated artifact can only be compared against a pinned generator. Upgrading this is a
+          # deliberate act: bump it, regenerate, and commit the diff in the SAME change. DEF-016
+          # carries the review date so the pin cannot quietly become the old version nobody chose.
+          version: 2.109.0
       - run: supabase start
       # --strict: a degraded gate is a rule that did not run. On a laptop that can be a
       # hotel network; on a runner with a network it is news, so it fails here.
