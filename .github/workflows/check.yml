@@ -31,12 +31,27 @@ jobs:
       # hotel network; on a runner with a network it is news, so it fails here.
       - run: npm run check -- --strict
 
-      # The access matrix is evidence, so it is published from the run that produced it.
+      # What THIS run generated, not what the repository committed.
+      #
+      # The previous version uploaded docs/ACCESS-MATRIX.md straight from the checkout and called it
+      # "published from the run that produced it" -- but `check` runs the generator in --check mode,
+      # which compares and never writes, so the artifact was the committed copy either way. It could
+      # not have shown a disagreement, which is the only thing anyone would download it for.
+      - name: capture what this run generated
+        if: always()
+        run: |
+          supabase gen types typescript --local > /tmp/ci-database.types.ts || true
+          diff src/lib/db/database.types.ts /tmp/ci-database.types.ts > /tmp/types.diff || true
+          npm run access-matrix || true
+          cp docs/ACCESS-MATRIX.md /tmp/ci-ACCESS-MATRIX.md || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: access-matrix
-          path: docs/ACCESS-MATRIX.md
+          name: generated-by-this-run
+          path: |
+            /tmp/ci-database.types.ts
+            /tmp/types.diff
+            /tmp/ci-ACCESS-MATRIX.md
 
   # Dependency vulnerabilities. Built in, no dependency of its own, and fails only on high severity —
   # a gate that fires on every transitive `low` gets ignored within a week.
