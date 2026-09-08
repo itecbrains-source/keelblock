@@ -1,5 +1,12 @@
 # Verification of the dispositions
 
+```yaml
+record: 05
+commit: de36d49
+date: 2026-09-08
+score: 45
+```
+
 **Independent check of `DISPOSITIONS.md`, run 2026-09-08 by the reviewer, against `de36d49`.**
 
 `DISPOSITIONS.md` is the implementer's account of what was fixed. This is a second account, produced

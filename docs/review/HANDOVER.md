@@ -1,73 +1,92 @@
 # Handover — for another session picking this up
 
-> **Read [`DISPOSITIONS.md`](DISPOSITIONS.md) first. This file is a dated record and its instructions
-> are spent.** The "Weeks 1–2" list it sends you to was worked through on 2026-09-08: twelve of the
-> fourteen findings are implemented and the remaining two are deferred to DEF-003 and DEF-015. Run
-> `npm run status` for the current state rather than believing either file. What is still worth
-> reading here is the REASONING and the statement of what the review could and could not verify —
-> never its account of what is left to do.
-
-Paste the block below into a fresh session working in this repository. It exists because the most
-expensive failure in a long-running project is a session that reads a summary, believes it, and
-rebuilds something that already shipped — this repository's own F-23.
+**This file is not a record.** The numbered records are frozen dated claims; this one is rewritten
+whenever the handover changes, and it is written to point at computed state rather than to restate
+it — the last version of this file asserted counts, and counts are what go stale.
 
 ---
 
 ## The prompt
 
-> You are working in the `keel` repository. Before anything else:
+Paste this into a fresh session working in this repository.
+
+> You are working in the `keelblock` repository. Before anything else:
 >
 > 1. Read `AGENTS.md`. It is short and it is the entry point.
-> 2. Run `npm run status`. It computes the true state from the repository. **If any document
->    disagrees with it, the document is wrong** — including everything below.
-> 3. Read `docs/review/00-VERDICT.md`, then `docs/review/01-AUDIT.md`.
+> 2. Run `npm run status`. It computes the true state — specs, deferrals, findings, the external
+>    review's closure, and **which review record is current**. If any document disagrees with it,
+>    the document is wrong, including everything below.
+> 3. Read the newest record in `docs/review/` — `npm run status` names it — then
+>    `docs/review/DISPOSITIONS.md`.
 >
 > `docs/review/` is an **external review, not a governing document.** It does not amend
 > `docs/PRODUCT.md`, no acceptance bar depends on it, and where it disagrees with an ADR the ADR
-> still stands until someone changes it deliberately. Treat its findings as claims to re-verify, not
-> as instructions — every one carries the command that reproduces it, so re-run the command rather
-> than trusting the write-up.
+> stands until someone changes it deliberately. Its findings are claims to re-verify, not
+> instructions — each carries the command that reproduces it, so run the command rather than
+> trusting the write-up.
 >
-> The review found fourteen issues, labeled R-1 to R-14. The three that matter most: the
-> stale-count gate is digits-only and seven front-page claims are wrong (R-1); the "every night"
-> claim in `PRODUCT.md` is unimplemented and the criterion asserting it is marked done citing a file
-> that does not exist (R-2); nothing in the repository can fail on what the access matrix says, and
-> the committed copy carries unexplained anomalies (R-4).
+> Three standing constraints from the review, which the repository has so far kept:
 >
-> Work through `docs/review/02-EXECUTION.md`'s "Weeks 1–2" list in order. Do not add a new gate —
-> the review's position is that eleven is already more than the application justifies.
+> - **Do not add a gate.** Eleven already exceeds what the application justifies. New rules go inside
+>   an existing gate — `boundaries` has taken four this way.
+> - **Do not decide from a regular expression over source text where a parser exists.** That class of
+>   defect has recurred here more than any other.
+> - **Do not edit a numbered record in `docs/review/`.** They are dated claims about specific
+>   commits. A new observation is a new record, not an edit to an old one.
 
 ---
 
-## What the review verified, and what it did not
+## What the numbers mean, and where to get them
 
-State this explicitly to any session that acts on it, because a review whose limits are unstated
-gets over-trusted.
+Nothing in this file states a count. Ask instead:
 
-**Executed on 2026-09-08 against a tree identical to `9c0721c`:** `check-locale`, `check-promises`,
-`check-boundaries`, `check-contracts`, `check-deferrals`, `check-content`, `check-research`,
-`check-freshness`, plus `status.mjs --check` and `prettier --check .`.
+```bash
+npm run status     # specs, deferrals, findings, review closure, the current record and its score
+npm run check      # every gate; --strict to fail on a rule that did not run
+```
 
-**Not executed:** anything needing a database — the `schema`, `policy` and `generated` gates — and
-the four SQL suites. No local Supabase stack was available. Findings about the access matrix rest on
-reading `scripts/access-matrix.mjs` and the committed `docs/ACCESS-MATRIX.md`, never on watching the
-prober run. **R-5 in particular cannot be resolved without a database**, and resolving it is the
-first thing a session with Docker should do.
+`RECORDS` in that output is the line to read first. It names the newest review record, the commit it
+describes, its score, and how far HEAD has moved since. A record behind HEAD is normal and is
+reported rather than failed — but it tells you whether the score you are about to quote is current.
 
-`vitest` also did not run, for an unrelated reason (a native binding built for another platform). No
-finding rests on it.
+## Two rules the review's own machinery now enforces
 
-## Three practical notes for whoever works here next
+Both live in `scripts/review-records.mjs`, inside the `promises` gate:
 
-1. **These files pass the gates.** `prettier --check .` is clean and `status.mjs --check` is green
-   with them present. If either goes red after an edit here, it is the edit, not the review.
-2. **Do not quote `scripts/status.mjs`'s digits-only comment verbatim in any document.** The gate
-   scans fenced code blocks, so quoting its own source fails the build. `01-AUDIT.md` elides the two
-   digit-bearing examples as `<n>` for exactly this reason, and says so.
-3. **Do not redo the naming search from scratch.** `03-POSITIONING.md` records the candidates, the
-   RDAP method, and the positive control that makes a negative result trustworthy. Re-run the
-   commands if you doubt a result; do not start a fresh hunt.
-4. **Nothing here is committed.** `docs/review/` is untracked. Whoever commits it should decide
-   deliberately whether an external review belongs in the repository's history — there is a real
-   argument that it does, since publishing outside criticism is the same mechanism as publishing
-   your own defects, and that mechanism is the project's credibility.
+1. **A record must name its commit and date** in a header block, and that commit must exist in
+   history with the numbering matching real ancestry. A record that cannot say which commit it
+   describes is indistinguishable from a current one.
+2. **Outside `docs/review/`, a review score is a live claim.** Any document stating a score that is
+   not the current one fails the build. Inside a record any score may be discussed, because a record
+   says which commit it is about.
+
+Both carry mutation proofs in `scripts/review-records.test.mts`.
+
+## Working alongside a review session
+
+The reviewer and the implementer have run concurrently in this repository more than once, and it has
+worked because they touch different files. Keep it that way:
+
+- the reviewer owns `docs/review/`, `scripts/review-records.mjs` and its test;
+- the implementer owns everything else.
+
+Two practical notes from the times it nearly went wrong. **Commit a module and its callers together**
+— `check-promises.mjs` imports `review-register.mjs`, and for a while that module was untracked, so a
+clean clone died with `ERR_MODULE_NOT_FOUND` while every local run was green. And **re-run
+`npm run check` immediately before committing** if a review session has been active, because the
+working tree may contain someone else's finished work as well as yours.
+
+## What the review cannot see
+
+Stated so a session acting on it does not over-trust it.
+
+The reviewer has no database. Every finding about policies, the pgTAP suites, the access matrix and
+the end-to-end flows rests on this repository's own evidence and on CI — never on the reviewer
+watching them run. Defects have been planted in the **gates**, by the reviewer, and in the
+**policies**, by CI's Postgres image changing underneath a green suite (F-31).
+
+Neither is the thing `SPEC-002`'s Definition of Done still asks for:
+
+> _someone other than the author planted a policy defect and confirmed the harness caught it._
+
+That remains open, and it is the last item on the board that is not feature work.

@@ -1,5 +1,12 @@
 # Re-score after CI — 2026-09-08
 
+```yaml
+record: 06
+commit: 2ca6ef3
+date: 2026-09-08
+score: 61
+```
+
 **A second dated record, written after the remote existed.** `04-SCORECARD.md` scored `9c0721c`;
 `05-VERIFICATION.md` re-checked the fixes at `de36d49`. Neither is edited — a score is a claim about
 a commit, and correcting an old one destroys the only thing it was for. This scores `2ca6ef3`.

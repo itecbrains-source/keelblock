@@ -1,5 +1,11 @@
 # Verdict
 
+```yaml
+record: 00
+commit: 9c0721c
+date: 2026-09-08
+```
+
 ## What keel is
 
 A multi-tenant B2B SaaS starter for Next.js 16 / React 19 / Supabase / Stripe, MIT-licensed, whose

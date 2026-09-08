@@ -16,8 +16,30 @@ The brief was to assume the project fails and go looking for the reason. Read
 | [`04-SCORECARD.md`](04-SCORECARD.md)       | A rubric with thresholds, today's score, and how to re-score without opinion   |
 | [`05-VERIFICATION.md`](05-VERIFICATION.md) | An independent re-check of the dispositions, by planting each defect again     |
 | [`06-RESCORE-CI.md`](06-RESCORE-CI.md)     | Re-score after the remote and the first green CI runs                          |
+| [`07-RESCORE-AUTH.md`](07-RESCORE-AUTH.md) | Re-score after the INSERT discrepancy closed and sign-in shipped               |
 | [`DISPOSITIONS.md`](DISPOSITIONS.md)       | **The only live file here** — one row per finding, enforced by `npm run check` |
 | [`DISPOSITIONS.md`](DISPOSITIONS.md)       | **What was done about each finding.** The only live file here                  |
+
+## The records are frozen; which one is current is not
+
+Each numbered record is a **dated claim about one commit** and is never edited — a score corrected
+after the fact is a score about nothing. Each carries a header block naming its commit, its date and,
+where it has one, its score.
+
+What keeps that from rotting is not discipline, it is the same split the rest of this repository
+uses: **durable claims are written down, volatile state is computed.**
+
+```bash
+npm run status     # RECORDS  8 dated · newest 07-… at e4e840e, scoring 69 — describes HEAD
+```
+
+`scripts/review-records.mjs`, inside the `promises` gate, holds the rest: a record's commit must
+exist in history, the numbering must match real ancestry, and — the rule that matters —
+**outside these records, no document may state a score that is not the current one.** Inside a
+record any score may be discussed, because a record says which commit it is about.
+
+A record being behind HEAD is **reported, never a failure.** Every commit after a review would
+otherwise break the build, and a review that punishes committing does not get done twice.
 
 ## Status of this review
 

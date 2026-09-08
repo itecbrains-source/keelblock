@@ -1,5 +1,11 @@
 # Execution
 
+```yaml
+record: 02
+commit: 9c0721c
+date: 2026-09-08
+```
+
 _How a team of experts would build this, what they would do differently, and what they would stop
 doing today._
 

@@ -1,5 +1,11 @@
 # Positioning
 
+```yaml
+record: 03
+commit: 9c0721c
+date: 2026-09-08
+```
+
 _Market, name, moat and commercial model — every external claim below was read on 2026-09-08 and is
 sourced at the end. Re-verify before acting on it; that is this repository's own rule and it applies
 to its reviewers._

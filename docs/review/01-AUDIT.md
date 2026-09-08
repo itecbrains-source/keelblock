@@ -1,5 +1,11 @@
 # Audit
 
+```yaml
+record: 01
+commit: 9c0721c
+date: 2026-09-08
+```
+
 Fourteen findings, ordered by severity. Each carries the command that reproduces it, run on
 2026-09-08 against a working tree identical to `9c0721c`.
 

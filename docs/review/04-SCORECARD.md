@@ -1,5 +1,12 @@
 # Scorecard
 
+```yaml
+record: 04
+commit: 9c0721c
+date: 2026-09-08
+score: 36
+```
+
 _A rubric for evaluating a SaaS starter kit — keel or any competitor — on properties that can be
 checked rather than admired._
 
