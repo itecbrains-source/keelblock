@@ -18,6 +18,11 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import {
+  parseDispositions,
+  parseFindings,
+  summarize as summarizeReview,
+} from './review-register.mjs';
 
 /** Everything countable, computed from the repository. Exported for tests. */
 export function census(fs = { readFileSync, readdirSync, existsSync }) {
@@ -53,9 +58,24 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
         .match(/(?:^|·\s*)(\d+)\.\s/gm) ?? []
     ).length,
     bars: (read('docs/PRODUCT.md').match(/^\| B-\d+/gm) ?? []).length,
+    review: reviewState(),
     openDefs,
     closedDefs,
   };
+}
+
+/**
+ * The external review's state, computed. Nothing writes it down, because a "CLOSED" banner is the
+ * kind of sentence this command exists to stop people writing.
+ */
+function reviewState() {
+  const audit = 'docs/review/01-AUDIT.md';
+  const register = 'docs/review/DISPOSITIONS.md';
+  if (!existsSync(audit) || !existsSync(register)) return null;
+  return summarizeReview(
+    parseFindings(readFileSync(audit, 'utf8')),
+    parseDispositions(readFileSync(register, 'utf8')),
+  );
 }
 
 /** The nouns whose counts appear in prose, and how each is measured. Exported for tests. */
@@ -211,7 +231,14 @@ function main() {
   console.log(`
   DEFERRALS  ${c.openDefs} open · ${c.closedDefs} closed
   GATES      ${c.gates} · run \`npm run check\`
-  EVIDENCE   ${c.findings} findings · ${c.adrs} ADRs · ${c.memos} memos · ${c.sources} pinned sources
+  EVIDENCE   ${c.findings} findings · ${c.adrs} ADRs · ${c.memos} memos · ${c.sources} pinned sources${
+    c.review
+      ? `
+  REVIEW     ${c.review.total} findings · ${c.review.implemented} implemented · ${c.review.refuted} refuted · ${c.review.deferred} deferred — ${
+    c.review.closed ? 'CLOSED' : `OPEN (${c.review.open.join(', ')})`
+  }`
+      : ''
+  }
   BARS       ${c.bars} acceptance bars — coverage checked by the promises gate
   OPEN WORK  ${openAcs.length} acceptance criteria not yet done
 

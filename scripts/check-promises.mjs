@@ -7,14 +7,20 @@
  *   · every acceptance bar in PRODUCT.md has an owning spec, and that spec exists
  *   · every deferral has a real reason and a machine-evaluable trigger, and none has fired
  *   · every code marker names a deferral that exists
+ *   · every finding of the external review is implemented, refuted or deferred
+ *
+ * The review rule lives here rather than in a twelfth gate on purpose. SPEC-003 makes the gate count
+ * a ceiling, the review's own advice was not to add one, and an accepted external finding is a
+ * commitment — which is precisely what this gate already exists to keep honest.
  *
  * The bar rule exists because of a measured failure. Bar B-3 promised "nothing more than one major
  * behind, and staleness fails the build" while no freshness gate existed at all — an unbacked claim
  * sitting in the product definition for a week, and nothing in the repository noticed. **This is the
  * gate that would have.**
  */
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { checkRegister, parseDispositions, parseFindings, summarize } from './review-register.mjs';
 
 /**
  * Pull `B-n` ids out of the PRODUCT.md acceptance-bar table. Exported for tests.
@@ -109,6 +115,35 @@ function main() {
       (pending.length ? ` (${pending.length} resting on specs not yet authored)` : ''),
   );
   for (const p of pending) console.log(`  · ${p}`);
+
+  // An accepted external finding is a commitment like any other.
+  const AUDIT = 'docs/review/01-AUDIT.md';
+  const REGISTER = 'docs/review/DISPOSITIONS.md';
+  if (existsSync(AUDIT)) {
+    if (!existsSync(REGISTER)) {
+      console.error(`promises: FAILED\n\n  [review] ${AUDIT} exists and ${REGISTER} does not.`);
+      console.error('  A review nobody answered is a review nobody finished reading.');
+      process.exit(1);
+    }
+    const findings = parseFindings(readFileSync(AUDIT, 'utf8'));
+    const rows = parseDispositions(readFileSync(REGISTER, 'utf8'));
+    const registry = readFileSync('spec/DEFERRAL_REGISTRY.md', 'utf8');
+    const reviewProblems = checkRegister(findings, rows, {
+      exists: (p) => existsSync(p),
+      openDefs: registry.split(/^## Closed/m)[0].match(/DEF-\d+/g) ?? [],
+      allDefs: registry.match(/DEF-\d+/g) ?? [],
+    });
+    if (reviewProblems.length) {
+      console.error('promises: FAILED\n');
+      for (const p of reviewProblems) console.error(`  [review] ${p}`);
+      process.exit(1);
+    }
+    const r = summarize(findings, rows);
+    console.log(
+      `  · review: ${r.implemented} implemented, ${r.refuted} refuted, ${r.deferred} deferred ` +
+        `of ${r.total} — ${r.closed ? 'CLOSED' : `OPEN (${r.open.join(', ')})`}`,
+    );
+  }
 
   // The other two halves of the same promise, each with its own tests.
   for (const script of [
