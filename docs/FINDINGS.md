@@ -371,3 +371,25 @@ The same gate had a second, quieter defect: it counted **2** tenant-scoped table
 It looked for an `organization_id` column, and the `organization` table does not reference itself —
 so **the root table, the most important one in the schema, was invisible to the guard protecting
 it.** Now covered, and pinned by a pgTAP case that disables RLS on the root and asserts it is caught.
+
+## F-20 · The grep-versus-parse trap, three times, by the person who gated against it
+
+**2026-09-07 · a pattern worth naming rather than a defect worth fixing**
+
+Three times in this project, a check matched text that merely *mentioned* the thing it was looking
+for:
+
+1. **SPEC-003 rule 5** was written because a `toContain` over a CI workflow is satisfied by a comment.
+   The rule was correct and I wrote it deliberately.
+2. **The audit verification script** then reported the `--passWithNoTests` gate as unfixed — matching
+   the comment that explains why the flag was removed. Ten minutes after writing rule 5.
+3. **The portability test** reported that `check-locale.mjs` imports `next/link` — matching the
+   string inside the regex that *detects* that import. Written while adding a rule about it.
+
+Each was caught by a test, none by review, and the third by a test written in the same commit as the
+rule it violated.
+
+**The lesson is not "be careful."** Care demonstrably does not work here — the same person made the
+same mistake three times while actively thinking about it. The lesson is structural: **a check that
+matches text will eventually match a mention.** Parse the AST, the parsed workflow, or the import
+statement — or accept that the check reports its own bugs as the codebase's.

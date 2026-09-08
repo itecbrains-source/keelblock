@@ -11,9 +11,13 @@ describe('portability (ADR-012)', () => {
   it('every gate exists', () => expect(gates.length).toBeGreaterThanOrEqual(8));
 
   it('no gate imports a framework — they read files, the database, or package.json', () => {
+    // Match an import STATEMENT at the start of a line, not any `from '…'` anywhere in the file.
+    // The first version matched the string 'next/link' inside check-locale's own detection regex and
+    // reported it as an import. That is the grep-versus-parse trap for the third time in this
+    // project, made by the person who wrote a gate about it — hence a test rather than a habit.
     for (const g of gates) {
       const src = readFileSync(`scripts/${g}`, 'utf8');
-      const imports = [...src.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
+      const imports = [...src.matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)].map((m) => m[1]);
       for (const spec of imports) {
         expect(/^next|^react|^@next/.test(spec), `${g} imports ${spec} — the gate suite must survive a port`)
           .toBe(false);
