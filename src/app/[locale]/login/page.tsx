@@ -34,6 +34,7 @@ export default async function Login({ searchParams }: PageProps<'/[locale]/login
           submit: t('submit'),
           sending: t('sending'),
           sent: t('sent'),
+          tooSoon: t('tooSoon'),
           continueWith: t('continueWith'),
           providerFailed: t('providerFailed'),
         }}

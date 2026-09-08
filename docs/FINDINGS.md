@@ -1054,3 +1054,37 @@ class the journey layer (DEF-002) exists for, and the strongest argument yet for
 Components enabled and a `redirect()`-based auth check has it, and none of them will notice, because
 the page looks empty and the browser does navigate to the sign-in screen. The visible symptom is
 indistinguishable from working.
+
+## F-39 · A refusal reported as a success, for the whole life of the feature
+
+**2026-09-08 · found by the journey layer on its first real run · fixed in `src/app/[locale]/login/actions.ts`**
+
+Requesting a sign-in link twice in quick succession returns `429` — _"For security purposes, you can
+only request this after 0 seconds."_ The action ignored it:
+
+```ts
+await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
+return sent; // ← whatever happened
+```
+
+So the person was told **"a sign-in link is on its way"**, no email was sent, and nothing was
+recorded anywhere. They wait, nothing arrives, they try again, and the throttle refuses again.
+
+The swallow was deliberate and the reasoning was half right. Sign-in is an account-enumeration
+surface, so the same answer must come back whether or not an account exists. **That requires hiding
+whether an ACCOUNT EXISTS. It does not require hiding that the provider refused**, and conflating the
+two produced a screen that lies.
+
+A throttle is safe to surface: it is keyed on the address the person just typed, so telling them to
+wait discloses nothing they did not supply. Anything else stays generic to the caller and is now
+logged for the operator — silence there is how a misconfigured mail provider looks exactly like a
+working one.
+
+**Three green layers did not see it**, and could not have. The unit tests mock the client, so the
+error never exists. The intent and generated layers never reach the application. It took a browser
+walking the real form, and it was the first thing that walk found.
+
+Worth stating plainly because it is the argument for the layer: this defect shipped inside SPEC-004,
+which had twelve acceptance criteria, a verified end-to-end magic-link round trip recorded in the
+spec, and a manual smoke test of ten auth paths. Every one of those exercised the HAPPY path once.
+Nobody asks for a second link while testing.

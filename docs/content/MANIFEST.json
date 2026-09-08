@@ -235,6 +235,12 @@
       "what": "with Cache Components a route cannot refuse with an HTTP redirect — it returns 200 and page chrome",
       "to": ["blog", "docs", "faq"],
       "angle": "Applies to every Next.js app with cacheComponents and a redirect-based auth check, and none of them will notice: the page looks empty and the browser does navigate to sign-in. Four approaches measured, including one that fails the build. The honest half is that we corrected our own spec's wording rather than the measurement."
+    },
+    {
+      "id": "F-39",
+      "what": "a 429 throttle was reported to the user as 'a sign-in link is on its way', for the whole life of the feature",
+      "to": ["blog", "docs", "faq"],
+      "angle": "The argument for the journey layer in one defect: three green test layers could not see it, and the first browser walk found it immediately. Also a precise correction to a real security practice — anti-enumeration requires hiding whether an account exists, not hiding that the provider refused."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

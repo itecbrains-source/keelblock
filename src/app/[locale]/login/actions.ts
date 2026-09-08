@@ -43,10 +43,25 @@ export async function requestMagicLink(
   if (!parsed.success) return sent;
 
   const supabase = await createClient();
-  await supabase.auth.signInWithOtp({
+  const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data,
     options: { emailRedirectTo: await callbackUrl(next) },
   });
+
+  // Anti-enumeration means not revealing whether an ACCOUNT EXISTS. It does not mean reporting a
+  // refusal as a success. This swallowed a `429` for the whole of SPEC-004's life, so a person who
+  // asked twice in quick succession was told a link was on its way and never received one, with
+  // nothing recorded anywhere (F-39).
+  //
+  // A throttle is safe to surface: it is keyed on the address that was typed, not on whether that
+  // address has an account, so saying "wait a moment" tells an attacker nothing they did not
+  // already supply.
+  if (error?.status === 429) return { status: 'error', message: 'too soon' };
+  if (error) {
+    // Anything else stays generic to the caller and loud to the operator. Silence here is how a
+    // misconfigured mail provider looks exactly like a working one.
+    console.error('sign-in email failed', { code: error.code, status: error.status });
+  }
   return sent;
 }
 

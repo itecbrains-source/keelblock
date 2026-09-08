@@ -67,6 +67,36 @@ jobs:
       # "published from the run that produced it" -- but `check` runs the generator in --check mode,
       # which compares and never writes, so the artifact was the committed copy either way. It could
       # not have shown a disagreement, which is the only thing anyone would download it for.
+      # The journey layer — SPEC-002's fourth test layer, DEF-002.
+      #
+      # In `check`, on every push, and the browser install is the cost of that. It is ~15s of run
+      # time against a suite that takes seconds, and the alternative — nightly only — was rejected
+      # for a specific reason: F-38 is a defect that three green unit tests could not see, and a
+      # nightly gate finds that class the morning AFTER it is pushed. The whole argument for this
+      # layer is that it sees what the others cannot, which is worth nothing a day late.
+      #
+      # `--with-deps` is omitted: the runner image already carries the shared libraries, and adding
+      # it costs a minute of apt for nothing.
+      - run: npx playwright install chromium
+      - name: journey layer
+        # Keys read from the running stack rather than written down. They are the local demo keys —
+        # identical on every machine and not secret — but hardcoding them here would be a second
+        # copy that goes stale when the CLI changes them, and a reader could not tell that from a
+        # leaked credential.
+        run: |
+          eval "$(npx supabase status -o env | sed 's/^/export /')"
+          NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
+          NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY" \
+          SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          KEELBLOCK_MAILPIT_URL="$INBUCKET_URL" \
+          npm run journey
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: journey-traces
+          path: test-results/
+          retention-days: 7
+
       - name: capture what this run generated
         if: always()
         run: |

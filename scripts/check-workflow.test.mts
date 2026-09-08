@@ -28,6 +28,8 @@ const nightly = load(readFileSync('.github/workflows/nightly.yml', 'utf8'));
 const steps = (job: string, w: Workflow = wf): Step[] => w.jobs[job]?.steps ?? [];
 const runs = (job: string, w: Workflow = wf) => steps(job, w).map((s) => String(s.run ?? ''));
 const uses = (job: string, w: Workflow = wf) => steps(job, w).map((s) => String(s.uses ?? ''));
+const stepsUsing = (job: string, prefix: string, w: Workflow = wf): Step[] =>
+  steps(job, w).filter((s) => String(s.uses ?? '').startsWith(prefix));
 const stepUsing = (job: string, prefix: string, w: Workflow = wf) =>
   steps(job, w).find((s) => String(s.uses ?? '').startsWith(prefix));
 
@@ -91,7 +93,12 @@ describe('CI workflow', () => {
   it('preserves the access matrix even when the run fails', () => {
     // Evidence is worth least exactly when a run goes red, which is when a default `if: success()`
     // would throw it away.
-    const upload = stepUsing('check', 'actions/upload-artifact');
+    // BY NAME, not by action. A second upload step (the journey layer's traces) was added and this
+    // silently began asserting about that one instead — the first-match helper was fine while there
+    // was one upload and became a different question the moment there were two.
+    const upload = stepsUsing('check', 'actions/upload-artifact').find(
+      (s) => s.with?.name === 'generated-by-this-run',
+    );
     expect(upload, 'the access matrix is never uploaded').toBeDefined();
     expect(upload?.if).toBe('always()');
     expect(String(upload?.with?.path)).toContain('ACCESS-MATRIX');

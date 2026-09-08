@@ -19,6 +19,7 @@ export function SignInForm({
     submit: string;
     sending: string;
     sent: string;
+    tooSoon: string;
     continueWith: string;
     providerFailed: string;
   };
@@ -50,7 +51,11 @@ export function SignInForm({
           {pending ? labels.sending : labels.submit}
         </button>
         <p aria-live="polite" className="min-h-5 text-sm text-black/60 dark:text-white/60">
-          {state.status === 'sent' ? labels.sent : ''}
+          {state.status === 'sent'
+            ? labels.sent
+            : state.message === 'too soon'
+              ? labels.tooSoon
+              : ''}
         </p>
       </form>
 

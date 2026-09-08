@@ -29,7 +29,8 @@
     "sent": "If that address has an account, a sign-in link is on its way. The link expires, and can be used once.",
     "linkFailed": "That link did not work. It may have expired, already been used, or been opened in a different browser than the one that requested it. Request a new one.",
     "continueWith": "Continue with {provider}",
-    "providerFailed": "That provider could not be reached. Try the email link instead."
+    "providerFailed": "That provider could not be reached. Try the email link instead.",
+    "tooSoon": "You asked for a link a moment ago. Wait a few seconds and try again."
   },
   "orgs": {
     "title": "Organizations",

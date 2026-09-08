@@ -15,7 +15,8 @@
     "generate": "node scripts/check-generated.mjs",
     "status": "node scripts/status.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "journey": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
