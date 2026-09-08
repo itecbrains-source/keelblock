@@ -1,6 +1,6 @@
 # SPEC-013: Upgrade path
 
-> Status: `partial` · Bars: **B-10** · Research: [`research/10-UPGRADE-PATH.md`](../research/10-UPGRADE-PATH.md) · ADRs: [008](../docs/adr/ADR-008-upgradability.md), [003](../docs/adr/ADR-003-data-access.md)
+> Status: `done` · Bars: **B-10** · Research: [`research/10-UPGRADE-PATH.md`](../research/10-UPGRADE-PATH.md) · ADRs: [008](../docs/adr/ADR-008-upgradability.md), [003](../docs/adr/ADR-003-data-access.md)
 > Contracts: SPEC-001, SPEC-002, SPEC-003 ·
 
 ## Intent
@@ -98,7 +98,7 @@ buyer's files are unchanged. Until it runs on the runner it is a script somebody
 | AC-5 | REQ-5    | test   | `scripts/upgrade.test.mts` — a generated artifact is neither taken nor left silently; it is reported for regeneration                                                                                                                                                          | **done** |
 | AC-6 | REQ-6    | test   | `scripts/upgrade.test.mts` — the plan's `leave` and `regenerate` sets are returned rather than discarded, which is what the script prints                                                                                                                                      | **done** |
 | AC-7 | REQ-7    | test   | `scripts/check-workflow.test.mts` — asserts against the PARSED workflow that the job scaffolds at the previous tag, resets the scaffold, and fails the build unless the buyer's files are unchanged; mutation-proven by removing the guard step                                | **done** |
-| AC-8 | REQ-7    | test   | the `upgrade` job runs green on the runner, from a tag that exists on the remote                                                                                                                                                                                               | planned  |
+| AC-8 | REQ-7    | test   | `docs/TESTING.md` — the first green run (34282685924, 2026-09-08) recorded from its LOG rather than its badge: the tag it scaffolded at, the buyer's own migration applied first, the two applied out of order, every file in today's suite, and no change under `src/`        | **done** |
 
 ## Definition of Done
 
@@ -106,8 +106,10 @@ buyer's files are unchanged. Until it runs on the runner it is a script somebody
 - [x] The experiment run once and what broke written down — F-45, F-46 — rather than a mechanism
       shipped as though nothing had.
 - [x] ADR-008's incorrect claim corrected in the ADR rather than quietly worked around.
-- [ ] **AC-8**: the job green on the runner. It cannot pass until `v0.1.0` is pushed and one run has
-      executed, so this spec is `partial` and B-10 is **not claimed** until it is.
+- [x] **AC-8**: green on the runner, run 34282685924. The log was read rather than the badge: it
+      names the tag it scaffolded at, the buyer's own migration, the two it applied out of order, and
+      every test file in today's suite. A job that passes on its first run is exactly when to check
+      it did the work.
 
 ## Out-of-spec log
 

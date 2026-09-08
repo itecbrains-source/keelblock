@@ -69,3 +69,35 @@ dominates a cold run at roughly 20 seconds.
 (DEF-019), so the one journey that signs in through the form — rather than by injecting a session —
 skips when the quota is spent, naming the count it saw. CI starts a fresh stack, so it never skips
 there.
+
+## The upgrade job, and its first green run
+
+B-10's proof is not a document, it is a job: scaffold a buyer at the previous release, let them
+diverge, apply the upgrade, and run **today's** suite against what comes out. It lives in
+`.github/workflows/check.yml` as `upgrade` and runs on every push.
+
+Recorded here because a badge says only that something passed, and the question worth answering is
+what it did. **Run 34282685924, 2026-09-08** — the first execution — read from its log rather than its
+result:
+
+```
+scaffolding at v0.1.0
+Applying migration 20260910090000_buyer_customer_note.sql     ← the buyer's own work
+upgrade: took 31 upstream-owned file(s) from db682a9
+upgrade: applying migrations with --include-all (see F-45: out-of-order is expected)
+Applying migration 20260908160000_invitations.sql
+Applying migration 20260908170000_null_safe_is_org_admin.sql  ← the security fix
+upgrade: LEFT 33 file(s) alone — they are yours
+upgrade: REGENERATE these — they describe YOUR schema, not ours
+… 001 ok · 002 ok · 003 ok · 004 ok · 005 ok · 006-invitations ok · failure-message ok
+Result: PASS
+```
+
+Four things that log establishes and a green tick would not: it scaffolded at a **tag** rather than at
+`HEAD` (upgrading HEAD to HEAD is a job that can only pass); the buyer's own migration was applied
+**before** the upgrade, so the out-of-order case was actually reached; today's full suite ran,
+including the two files that did not exist at `v0.1.0`; and the final step found no change under
+`src/` or `messages/`, which is the property that makes the path safe to run unattended.
+
+**The buyer is synthetic.** keelblock has no users and no deployment (DEF-001). This proves the path
+works, not that anyone has walked it.

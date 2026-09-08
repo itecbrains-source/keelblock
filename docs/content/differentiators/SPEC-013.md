@@ -40,8 +40,11 @@ until someone satisfied the bar literally — F-46); and a generated artifact **
 all**, because upstream's copy describes upstream's schema and the buyer has tables upstream has never
 heard of.
 
-**What is not yet proven, stated because the rest of this page is only worth reading if this line is
-here:** the CI job that scaffolds at the previous tag and runs today's suite against the upgraded
-project is written and has not yet had its first green run on the runner. B-10 is **not claimed**
-until it does — the spec says `partial` and its AC-8 is open. The experiment above was run by hand,
-once, on a synthetic buyer; keelblock has no users and nobody has upgraded anything.
+**It runs on every push**, and its log is the evidence rather than its badge: run 34282685924
+scaffolds at the previous tag, gives that buyer a migration dated after the fix they are about to
+receive, applies the upgrade, and runs today's full suite against the result — then fails the build
+if a single file the buyer owns has changed.
+
+**What that does not prove, stated because the rest of this page is only worth reading if this line
+is here:** the buyer is **synthetic**. keelblock has no users and no deployment, and nobody has upgraded
+anything. What is proven is that the path works, not that it has been walked.

@@ -25,8 +25,9 @@ repository rather than this paragraph.
   file "never conflicts"; that claim is now corrected in the ADR rather than worked around (F-45).
   The ownership boundary is a list in `scripts/upgrade.mjs` with a mutation proof that an upgrade
   never takes a path under `src/`, and the path is executed by a CI job rather than documented.
-  **B-10 is not claimed**: the job has not yet had its first green run, so SPEC-013 is `partial` and
-  its AC-8 is open.
+  **B-10 is claimed** as of run 34282685924, whose log was read rather than its badge: it names the
+  tag, the buyer's own migration, the two applied out of order, and every file in today's suite. The
+  buyer is synthetic — keelblock has no users, and nobody has upgraded anything.
 
 ### Added
 
