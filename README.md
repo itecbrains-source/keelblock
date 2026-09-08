@@ -81,6 +81,22 @@ SSO to third-party services — a buyer gets integration code and three vendor b
 trail lives *outside* the isolation boundary the product claims. keel builds the three that are
 **tenant-isolation surfaces** natively and proves them; delivery infrastructure stays a seam.
 
+## Starting a session
+
+```bash
+npm run status
+```
+
+**Computed from the repository, never written down.** What is built, what is open, how many
+acceptance criteria remain — read from the specs, the registry and the gates themselves.
+
+This exists because the most expensive failure in a long-running project is not a bug: it is reading
+a status document, believing it, and rebuilding something that shipped weeks ago. The rule here is
+**durable claims are written down; volatile state is computed** — and a gate enforces it, failing the
+build when any document asserts a count that has gone stale ([F-23](docs/FINDINGS.md)).
+
+If a document ever disagrees with `npm run status`, the document is wrong.
+
 ## Getting started
 
 **Prerequisites:** Node 26 · Docker (for the local Supabase stack) · the

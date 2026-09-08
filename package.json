@@ -12,7 +12,8 @@
     "check": "node scripts/check.mjs",
     "test": "vitest run",
     "verify": "node scripts/verify.mjs",
-    "generate": "node scripts/check-generated.mjs"
+    "generate": "node scripts/check-generated.mjs",
+    "status": "node scripts/status.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

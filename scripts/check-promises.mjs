@@ -101,8 +101,8 @@ function main() {
   for (const p of pending) console.log(`  · ${p}`);
 
   // The other two halves of the same promise, each with its own tests.
-  for (const script of ['scripts/check-deferrals.mjs', 'scripts/check-research.mjs', 'scripts/check-contracts.mjs', 'scripts/check-content.mjs']) {
-    const r = spawnSync('node', [script], { stdio: 'inherit' });
+  for (const script of ['scripts/check-deferrals.mjs', 'scripts/check-research.mjs', 'scripts/check-contracts.mjs', 'scripts/check-content.mjs', 'scripts/status.mjs']) {
+    const r = spawnSync('node', [script, ...(script.endsWith('status.mjs') ? ['--check'] : [])], { stdio: 'inherit' });
     if (r.status !== 0) process.exit(r.status ?? 1);
   }
 }

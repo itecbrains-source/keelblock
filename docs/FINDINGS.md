@@ -442,3 +442,45 @@ Two refinements followed, both from being wrong once:
   worse than not having it.
 - **A glob is not evidence.** `supabase/tests/intent/*.test.sql` cannot be verified, so it is refused
   outright rather than passed as approximately true.
+
+## F-23 · Documentation that asserts a count is documentation that will lie
+
+**2026-09-08 · `scripts/status.mjs`**
+
+The most expensive failure in a long-running project is not a bug — it is a session reading a status
+document, believing it, and rebuilding something that shipped weeks ago. Every hand-maintained status
+page becomes that document, because nothing updates it when reality moves.
+
+The rule that follows: **durable claims are written down; volatile state is computed.** A decision, a
+measurement, a rejected option — durable, and they belong in a file. A count, a status, a
+"what's left" — volatile, and asking a file for them is how a project starts lying to itself.
+
+So `npm run status` reads the repository, and `--check` verifies that **no document asserts a
+countable fact that has gone stale.** On its first run it found one — in `AGENTS.md`, written by me,
+claiming twelve gates where there were eleven. The fix was not to correct the number. It was to stop
+asserting it and point at the command.
+
+**It also exposed the closure failure this mechanism exists for.** `SPEC-001` read `done` with **2 of
+14** acceptance criteria still marked `planned`; `SPEC-003` read `done` with **0 of 9**. Both were
+genuinely complete — the work shipped, the header was updated, and the table was never reconciled.
+A reader cannot distinguish that from a reader being misled. There is now a closure rule: a spec
+claiming `done` with an open criterion fails the build.
+
+## F-24 · A test that touches shared state is the flake that disables the suite
+
+**2026-09-08 · `scripts/gate-health.test.mts`**
+
+The meta-gate asserts every gate is deterministic — and did it by spawning **every** gate twice,
+including those that query the database. Inside a full `check` run it failed once and then passed on
+every retry.
+
+That is the worst possible failure mode for a gate suite. A flaky suite is a disabled suite, and the
+discipline goes with it. The cause was that a *unit* test had been coupled to state it does not own.
+
+Determinism is now asserted over gates that read only the working tree. The four that reach the
+network or the database are excluded **with the reason stated**, because their determinism is a
+property of that external state rather than of the gate — and it is checked where it belongs, by
+`check` running them against the real thing.
+
+The exclusion list is pinned and may only shrink. *An exclusion list is where a determinism guarantee
+goes to die.*

@@ -1,50 +1,225 @@
 {
-  "$comment": "Where each piece of material goes. Written as it is produced, not mined later — the reasoning is freshest the day it is discovered, and a finding nobody routed is a finding nobody uses.",
+  "$comment": "Where each piece of material goes. Written as it is produced, not mined later \u2014 the reasoning is freshest the day it is discovered, and a finding nobody routed is a finding nobody uses.",
   "$destinations": {
     "landing": "A section of the marketing site (docs/WEBSITE-AND-DOCS.md defines the seven).",
     "faq": "A question a buyer or developer actually asks.",
     "docs": "A page in the technical documentation.",
-    "blog": "Worth a post of its own — a measured finding with a reproduction that nobody else can publish.",
+    "blog": "Worth a post of its own \u2014 a measured finding with a reproduction that nobody else can publish.",
     "internal": "Deliberately not published. Needs a reason."
   },
   "material": [
-    { "id": "F-1", "what": "anon could TRUNCATE every tenant table on a default Supabase project", "to": ["blog", "landing", "faq"],
-      "angle": "The strongest single artifact keel has. It affects every project inheriting Supabase's defaults, RLS does not cover TRUNCATE, and the reproduction is four lines." },
-    { "id": "F-2", "what": "the leading generated RLS suite confirms a total cross-tenant leak as green", "to": ["blog", "landing", "docs"],
-      "angle": "Why keel has two policy layers. The tool is excellent and states its own limit; the demonstration is what makes the argument." },
-    { "id": "F-3", "what": "FORCE ROW LEVEL SECURITY does not stop the owner on Supabase", "to": ["blog", "docs"],
-      "angle": "Corrects advice the tooling itself prints. Narrow, verifiable, useful to anyone on Supabase." },
-    { "id": "F-4", "what": "a cross-tenant write is invisible to the attacker", "to": ["docs", "faq"],
-      "angle": "Explains why read-based isolation tests cannot work, in one sentence." },
-    { "id": "F-5", "what": "a failing USING on UPDATE is a silent no-op", "to": ["docs"], "angle": "Shapes every write test anyone writes here." },
-    { "id": "F-6", "what": "Cache Components break every authenticated page in Next 16", "to": ["blog", "docs"],
-      "angle": "Anyone adopting Next 16 with auth hits this. The trilemma table is the whole post." },
-    { "id": "F-7", "what": "EXECUTE on a new function defaults to PUBLIC", "to": ["docs"], "angle": "One line in the tenant-table recipe." },
-    { "id": "F-8", "what": "an unconstrained INSERT policy made the access matrix cry wolf", "to": ["blog", "docs"],
-      "angle": "Our own defect, and the reason a matrix with a false positive is worse than none." },
-    { "id": "F-9", "what": "an admin could demote the owner and seize the organisation", "to": ["blog", "docs"],
-      "angle": "Ours. Pairs with F-10 as the argument for auditing a suite you wrote yourself." },
-    { "id": "F-10", "what": "the last owner could orphan an organisation", "to": ["docs"], "angle": "Pairs with F-9." },
-    { "id": "F-11", "what": "auth.uid() reads two settings and tools clear only one", "to": ["internal"],
-      "angle": "Too specific to one tool's fixture behaviour to be broadly useful; it is documented where it matters, in the gate." },
-    { "id": "F-12", "what": "a deferred constraint trigger is invisible to a statement-level test", "to": ["docs"],
-      "angle": "A correct protection no test can observe is indistinguishable from an absent one." },
-    { "id": "F-13", "what": "keel's own unit gate could not fail", "to": ["blog", "landing", "faq"],
-      "angle": "The most credible thing we can publish, because it is against us. Publishing it is what makes the other twenty-one believable." },
-    { "id": "F-14", "what": "an overclaimed guarantee, corrected", "to": ["docs"], "angle": "Scope note on what the triggers do and do not bind." },
-    { "id": "F-15", "what": "in an app-layer model the other tenant's row is in memory before the check", "to": ["landing", "blog", "faq"],
-      "angle": "THE explanation of why keel exists, and a competitor wrote the code that demonstrates it." },
-    { "id": "F-16", "what": "strict CSP, static prerendering, working hydration — pick two", "to": ["blog", "docs", "faq"],
-      "angle": "Explains keel's report-only default, and is genuinely useful to anyone shipping a CSP on Next." },
-    { "id": "F-17", "what": "NEXT_PUBLIC_ on a credential publishes it, and nothing warns you", "to": ["blog", "docs"],
-      "angle": "Short, alarming, true, and no kit examined checks for it." },
-    { "id": "F-18", "what": "keel inherited two-majors-behind rot from create-next-app on day two", "to": ["blog", "landing"],
-      "angle": "The anti-rot argument, demonstrated on ourselves rather than asserted." },
-    { "id": "F-19", "what": "a gate that misreports its own failure sends you to debug the wrong thing", "to": ["docs"], "angle": "Ours." },
-    { "id": "F-20", "what": "the grep-versus-parse trap, three times, by the person who gated against it", "to": ["blog", "docs"],
-      "angle": "Care demonstrably does not work; structure does. The most transferable lesson here." },
-    { "id": "F-21", "what": "a specific date, from an agency blog, in a spec", "to": ["blog", "docs"],
-      "angle": "Why the corpus exists. An unverifiable specific is more dangerous than an obvious guess." },
-    { "id": "F-22", "what": "two records of one fact disagreeing, and the gate that hid it", "to": ["docs"], "angle": "Ours." }
+    {
+      "id": "F-1",
+      "what": "anon could TRUNCATE every tenant table on a default Supabase project",
+      "to": [
+        "blog",
+        "landing",
+        "faq"
+      ],
+      "angle": "The strongest single artifact keel has. It affects every project inheriting Supabase's defaults, RLS does not cover TRUNCATE, and the reproduction is four lines."
+    },
+    {
+      "id": "F-2",
+      "what": "the leading generated RLS suite confirms a total cross-tenant leak as green",
+      "to": [
+        "blog",
+        "landing",
+        "docs"
+      ],
+      "angle": "Why keel has two policy layers. The tool is excellent and states its own limit; the demonstration is what makes the argument."
+    },
+    {
+      "id": "F-3",
+      "what": "FORCE ROW LEVEL SECURITY does not stop the owner on Supabase",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "Corrects advice the tooling itself prints. Narrow, verifiable, useful to anyone on Supabase."
+    },
+    {
+      "id": "F-4",
+      "what": "a cross-tenant write is invisible to the attacker",
+      "to": [
+        "docs",
+        "faq"
+      ],
+      "angle": "Explains why read-based isolation tests cannot work, in one sentence."
+    },
+    {
+      "id": "F-5",
+      "what": "a failing USING on UPDATE is a silent no-op",
+      "to": [
+        "docs"
+      ],
+      "angle": "Shapes every write test anyone writes here."
+    },
+    {
+      "id": "F-6",
+      "what": "Cache Components break every authenticated page in Next 16",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "Anyone adopting Next 16 with auth hits this. The trilemma table is the whole post."
+    },
+    {
+      "id": "F-7",
+      "what": "EXECUTE on a new function defaults to PUBLIC",
+      "to": [
+        "docs"
+      ],
+      "angle": "One line in the tenant-table recipe."
+    },
+    {
+      "id": "F-8",
+      "what": "an unconstrained INSERT policy made the access matrix cry wolf",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "Our own defect, and the reason a matrix with a false positive is worse than none."
+    },
+    {
+      "id": "F-9",
+      "what": "an admin could demote the owner and seize the organisation",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "Ours. Pairs with F-10 as the argument for auditing a suite you wrote yourself."
+    },
+    {
+      "id": "F-10",
+      "what": "the last owner could orphan an organisation",
+      "to": [
+        "docs"
+      ],
+      "angle": "Pairs with F-9."
+    },
+    {
+      "id": "F-11",
+      "what": "auth.uid() reads two settings and tools clear only one",
+      "to": [
+        "internal"
+      ],
+      "angle": "Too specific to one tool's fixture behaviour to be broadly useful; it is documented where it matters, in the gate."
+    },
+    {
+      "id": "F-12",
+      "what": "a deferred constraint trigger is invisible to a statement-level test",
+      "to": [
+        "docs"
+      ],
+      "angle": "A correct protection no test can observe is indistinguishable from an absent one."
+    },
+    {
+      "id": "F-13",
+      "what": "keel's own unit gate could not fail",
+      "to": [
+        "blog",
+        "landing",
+        "faq"
+      ],
+      "angle": "The most credible thing we can publish, because it is against us. Publishing it is what makes the other twenty-one believable."
+    },
+    {
+      "id": "F-14",
+      "what": "an overclaimed guarantee, corrected",
+      "to": [
+        "docs"
+      ],
+      "angle": "Scope note on what the triggers do and do not bind."
+    },
+    {
+      "id": "F-15",
+      "what": "in an app-layer model the other tenant's row is in memory before the check",
+      "to": [
+        "landing",
+        "blog",
+        "faq"
+      ],
+      "angle": "THE explanation of why keel exists, and a competitor wrote the code that demonstrates it."
+    },
+    {
+      "id": "F-16",
+      "what": "strict CSP, static prerendering, working hydration \u2014 pick two",
+      "to": [
+        "blog",
+        "docs",
+        "faq"
+      ],
+      "angle": "Explains keel's report-only default, and is genuinely useful to anyone shipping a CSP on Next."
+    },
+    {
+      "id": "F-17",
+      "what": "NEXT_PUBLIC_ on a credential publishes it, and nothing warns you",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "Short, alarming, true, and no kit examined checks for it."
+    },
+    {
+      "id": "F-18",
+      "what": "keel inherited two-majors-behind rot from create-next-app on day two",
+      "to": [
+        "blog",
+        "landing"
+      ],
+      "angle": "The anti-rot argument, demonstrated on ourselves rather than asserted."
+    },
+    {
+      "id": "F-19",
+      "what": "a gate that misreports its own failure sends you to debug the wrong thing",
+      "to": [
+        "docs"
+      ],
+      "angle": "Ours."
+    },
+    {
+      "id": "F-20",
+      "what": "the grep-versus-parse trap, three times, by the person who gated against it",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "Care demonstrably does not work; structure does. The most transferable lesson here."
+    },
+    {
+      "id": "F-21",
+      "what": "a specific date, from an agency blog, in a spec",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "Why the corpus exists. An unverifiable specific is more dangerous than an obvious guess."
+    },
+    {
+      "id": "F-22",
+      "what": "two records of one fact disagreeing, and the gate that hid it",
+      "to": [
+        "docs"
+      ],
+      "angle": "Ours."
+    },
+    {
+      "id": "F-23",
+      "what": "documentation that asserts a count is documentation that will lie",
+      "to": [
+        "blog",
+        "docs",
+        "faq"
+      ],
+      "angle": "The durable-versus-volatile rule, and a mechanism for it. This is the one every long-running project needs and almost none has."
+    },
+    {
+      "id": "F-24",
+      "what": "a test that touches shared state is the flake that disables the suite",
+      "to": [
+        "docs"
+      ],
+      "angle": "Ours. Short, and the reasoning generalises to any test suite."
+    }
   ]
 }

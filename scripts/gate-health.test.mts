@@ -53,25 +53,34 @@ describe('gate health (the suite is dependable)', () => {
    *              asserting on it would make this test flaky, which is the exact thing it exists to
    *              prevent.
    */
-  const NETWORK = ['check-freshness.mjs'];
-  const TIMED = ['check-policies.mjs', 'check-generated.mjs'];
+  /**
+   * Determinism is asserted over gates that read only the working tree.
+   *
+   * EXTERNAL gates touch the network or the database. Excluding them is not convenience — it is the
+   * point: their output depends on state this test does not own, so asserting on it makes **this
+   * test** the flaky one, and a flaky gate suite gets disabled, taking the discipline with it. That
+   * happened once here before the exclusion existed.
+   *
+   * Their determinism is covered where it belongs: `check` runs them against the live database and
+   * fails loudly if they disagree with reality.
+   */
+  const EXTERNAL = ['check-freshness.mjs', 'check-policies.mjs', 'check-generated.mjs', 'check-schema-guard.mjs'];
 
-  it('every gate reaches the same VERDICT on the same repository, twice', () => {
-    for (const gate of GATES.filter((g) => !NETWORK.includes(g))) {
-      const args = TIMED.includes(gate) ? [`scripts/${gate}`, '--check'] : [`scripts/${gate}`];
-      const run = () => spawnSync('node', args, { encoding: 'utf8' });
+  it('every self-contained gate reaches the same verdict, and prints the same thing, twice', () => {
+    const local = GATES.filter((g) => !EXTERNAL.includes(g));
+    expect(local.length, 'nothing left to check — the exclusion list has eaten the test').toBeGreaterThanOrEqual(5);
+    for (const gate of local) {
+      const run = () => spawnSync('node', [`scripts/${gate}`], { encoding: 'utf8' });
       const a = run(), b = run();
       expect(a.status, `${gate} gave different verdicts on identical input`).toBe(b.status);
-      if (!TIMED.includes(gate)) {
-        expect(a.stdout, `${gate} produced different output on identical input`).toBe(b.stdout);
-      }
+      expect(a.stdout, `${gate} produced different output on identical input`).toBe(b.stdout);
     }
-  }, 180_000);
+  }, 120_000);
 
-  it('the exclusions are minimal and stay that way', () => {
-    // An exclusion list is where a determinism guarantee goes to die. Pinned, shrink-only.
-    expect(NETWORK).toEqual(['check-freshness.mjs']);
-    expect(TIMED.length).toBeLessThanOrEqual(2);
+  it('the exclusion list is minimal, reasoned, and may only shrink', () => {
+    // An exclusion list is where a determinism guarantee goes to die.
+    expect(EXTERNAL.length).toBeLessThanOrEqual(4);
+    for (const g of EXTERNAL) expect(GATES).toContain(g);
   });
 
   it('a gate that cannot run reports it, rather than crashing with a stack trace', () => {

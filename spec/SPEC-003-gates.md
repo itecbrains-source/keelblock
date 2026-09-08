@@ -101,15 +101,15 @@ Named so the set stays small and nobody rebuilds a solved thing: **secret scanni
 
 | AC | Verifies | Method | Evidence | Status |
 |----|----------|--------|----------|--------|
-| AC-1 | REQ-1 | test | `scripts/check-freshness.test.mts` — incl. proofs that an expired stamp, a two-major drift, and an offline run with a stale stamp all fail | planned |
-| AC-2 | REQ-2 | test | `supabase/tests/intent/004-schema-guard.test.sql` — adding a scoped table with no policy, and a write policy without `WITH CHECK`, each fail | planned |
-| AC-3 | REQ-3 | test | `scripts/check-boundaries.test.mts` — an import chain from a page to the service-role client fails | planned |
-| AC-4 | REQ-4 | test | `scripts/check-boundaries.test.mts` — a tenant-scoped `use cache` without the organisation in its key fails | planned |
-| AC-5 | REQ-5 | inspection | `.github/workflows/check.yml` — `--ignore-scripts`, gitleaks over full history, weekly clean-clone build | planned |
-| AC-6 | REQ-6 | test | `scripts/check-promises.test.mts` — removing a spec's ownership of a bar fails | planned |
-| AC-7 | REQ-7 | test | Playbook gates wired, with a proof for each: an orphan `@defer`, a REQ with no AC, a dead source path | planned |
-| AC-8 | REQ-8 | demonstration | Timed `npm run check` recorded in `scripts/check.test.mts`; all failures reported in one pass | planned |
-| AC-9 | REQ-9 | test | `scripts/check-deferrals.test.mts` — an entry whose blocker is not external, and one whose title reports breakage, are both refused | planned |
+| AC-1 | REQ-1 | test | `scripts/check-freshness.test.mts` — incl. proofs that an expired stamp, a two-major drift, and an offline run with a stale stamp all fail | **done** |
+| AC-2 | REQ-2 | test | `supabase/tests/intent/004-schema-guard.test.sql` — adding a scoped table with no policy, and a write policy without `WITH CHECK`, each fail | **done** |
+| AC-3 | REQ-3 | test | `scripts/check-boundaries.test.mts` — an import chain from a page to the service-role client fails | **done** |
+| AC-4 | REQ-4 | test | `scripts/check-boundaries.test.mts` — a tenant-scoped `use cache` without the organisation in its key fails | **done** |
+| AC-5 | REQ-5 | inspection | `.github/workflows/check.yml` — `--ignore-scripts`, gitleaks over full history, weekly clean-clone build | **done** |
+| AC-6 | REQ-6 | test | `scripts/check-promises.test.mts` — removing a spec's ownership of a bar fails | **done** |
+| AC-7 | REQ-7 | test | Playbook gates wired, with a proof for each: an orphan `@defer`, a REQ with no AC, a dead source path | **done** |
+| AC-8 | REQ-8 | demonstration | Timed `npm run check` recorded in `scripts/check.test.mts`; all failures reported in one pass | **done** |
+| AC-9 | REQ-9 | test | `scripts/check-deferrals.test.mts` — an entry whose blocker is not external, and one whose title reports breakage, are both refused | **done** |
 
 ## Definition of Done
 

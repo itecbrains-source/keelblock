@@ -76,6 +76,17 @@ A marker in code (`@defer DEF-001`) must name a registry entry, or the gate reje
 **Rule 0: a deferral is scope you chose not to build. A defect is never a deferral.** If you broke
 it, you fix it in the change that broke it.
 
+## Closing work
+
+A spec claiming `done` must have **every acceptance criterion** closed — done, or deferred to a
+`DEF-*`. The build fails otherwise, because the alternative is what happened here before the rule
+existed: SPEC-001 read `done` with 2 of 14 criteria still `planned`, and a reader could not tell that
+apart from being misled ([F-23](docs/FINDINGS.md)).
+
+**Do not write a count into a document.** Numbers of findings, gates, specs, bars — all of them go
+stale the moment reality moves, and a gate now checks them against the real thing. Cite
+`npm run status` instead.
+
 ## Before you open a PR
 
 ```bash

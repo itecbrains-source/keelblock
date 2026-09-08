@@ -26,8 +26,13 @@ Under RLS the row is never selected. There is no second step to forget.
 ## How you know you are right
 
 ```bash
-npm run check          # 12 gates, all failures reported at once, ~30s
+npm run status         # what is built, what is open — computed, never written down
+npm run check          # every gate, all failures reported at once
 ```
+
+**Start with `npm run status`.** It reads the repository rather than a summary someone maintained,
+so it cannot tell you a feature is unbuilt three weeks after it shipped. If a document ever disagrees
+with it, the document is wrong.
 
 **You cannot make this pass by being persuasive.** Every gate has a mutation proof — a test that
 restores the real defect and asserts the gate goes red — so a green run is evidence, not agreement.

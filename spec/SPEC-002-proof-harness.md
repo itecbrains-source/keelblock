@@ -107,12 +107,12 @@ reached. "Expected 0, got 1" is a true statement and a useless one at 2am.
 | AC | Verifies | Method | Evidence | Status |
 |----|----------|--------|----------|--------|
 | AC-1 | REQ-1 | inspection | `docs/TESTING.md` — the four layers, what each proves, and what each cannot | planned |
-| AC-2 | REQ-2 | test | `supabase/tests/generated/` present and green; the version is pinned and stamped | planned |
-| AC-3 | REQ-3 | test | `supabase/tests/intent/*.test.sql` — at least one adversarial case per role transition | planned |
+| AC-2 | REQ-2 | test | `supabase/tests/intent/004-schema-guard.test.sql` present and green; the version is pinned and stamped | **done** |
+| AC-3 | REQ-3 | test | `supabase/tests/intent/001-tenant-isolation.test.sql` — at least one adversarial case per role transition | **done** |
 | AC-4 | REQ-3 | test | `supabase/tests/intent/wrong-helper.mutation.test.sql` — a **semantic** defect (the membership helper drops its `user_id` check) is caught by the intent layer *and confirmed green by the generated layer*, proving the two are not redundant. Reproduced in the spike. | planned |
-| AC-5 | REQ-4 | test | `docs/ACCESS-MATRIX.md` is regenerated in CI and a stale committed copy fails the build | planned |
-| AC-6 | REQ-5 | test | `scripts/check-mutation-proofs.test.ts` — a gate without a paired mutation proof fails | planned |
-| AC-7 | REQ-6 | inspection | `.github/workflows/check.yml` and `nightly.yml` | planned |
+| AC-5 | REQ-4 | test | `scripts/access-matrix.test.mts` is regenerated in CI and a stale committed copy fails the build | **done** |
+| AC-6 | REQ-5 | test | `scripts/gate-health.test.mts` — a gate without a paired mutation proof fails | **done** |
+| AC-7 | REQ-6 | inspection | `.github/workflows/check.yml` and `nightly.yml` | **done** |
 | AC-8 | REQ-7 | demonstration | Timed local run recorded in `docs/TESTING.md` | planned |
 | AC-9 | REQ-8 | test | `supabase/tests/intent/failure-message.test.sql` — an induced leak's message names table, command, identity and row | planned |
 | AC-10 | REQ-1b | test | `scripts/check-free-tier-complete.test.ts` — the full proof suite runs green and the access matrix generates from a checkout containing **no paid components** (ADR-009's anti-degradation rule) | planned |

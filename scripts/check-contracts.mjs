@@ -61,14 +61,31 @@ export function checkContracts(specs, exists) {
         );
       }
     }
-    // 2 · a contract must point at a real spec
+    // 2 · a spec claiming `done` must actually be closed
+    //
+    // The failure this catches is the one that makes documentation stale: work ships, the header is
+    // updated, and the acceptance table is never reconciled. SPEC-001 read `done` with 2 of 14
+    // criteria still `planned`, and SPEC-003 read `done` with 0 of 9 — for several commits, while
+    // both were genuinely complete. A reader cannot tell that from a reader who is being misled.
+    if (spec.status === 'done') {
+      const open = spec.evidence.filter((e) => e.status !== 'done' && !/^deferred/i.test(e.status));
+      if (open.length) {
+        problems.push(
+          `${spec.id} is marked done with ${open.length} criteri${open.length === 1 ? 'on' : 'a'} ` +
+          `not closed (${open.map((o) => `${o.ac}: ${o.status}`).join(', ')}). ` +
+          `Close them, defer them with a DEF, or the spec is not done.`
+        );
+      }
+    }
+
+    // 3 · a contract must point at a real spec
     for (const other of spec.contracts) {
       const target = byId.get(other);
       if (!target) {
         problems.push(`${spec.id} contracts ${other}, which is not an authored spec`);
         continue;
       }
-      // 3 · and it must be reciprocated
+      // 4 · and it must be reciprocated
       if (!target.contracts.includes(spec.id)) {
         problems.push(
           `${spec.id} contracts ${other}, but ${other} does not name ${spec.id} back. ` +
