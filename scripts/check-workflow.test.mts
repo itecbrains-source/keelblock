@@ -162,3 +162,50 @@ describe('CI workflow', () => {
     ); // structure: not fooled
   });
 });
+
+describe('the upgrade job proves B-10 rather than describing it', () => {
+  // Parsed, never matched over text — a `toContain` here would be satisfied by the explanatory
+  // comment above the job, which says all of these words.
+  const upgradeRuns = runs('upgrade').join('\n');
+
+  it('scaffolds at the PREVIOUS tag, not at HEAD', () => {
+    // Upgrading HEAD to HEAD is a job that can only pass.
+    expect(wf.jobs.upgrade, 'the upgrade job exists').toBeDefined();
+    expect(upgradeRuns).toMatch(/git tag --sort=-creatordate/);
+    expect(upgradeRuns).toMatch(/git worktree add/);
+  });
+
+  it('gives the buyer a migration dated AFTER the fix they receive', () => {
+    // F-45: this is the whole reason `supabase migration up` refuses. A fixture dated before the
+    // fix would make the job pass without ever reaching the defect it exists to cover.
+    expect(upgradeRuns).toContain('20260910090000_buyer_customer_note.sql');
+    const fixture = readFileSync('.github/workflows/fixtures/buyer_customer_note.sql', 'utf8');
+    expect(fixture, 'the buyer plants a real tenant table').toMatch(/create table public\./);
+  });
+
+  it('resets the scaffold, because a second checkout shares the first one’s database', () => {
+    // F-45's near-miss: both checkouts carry the same project_id, so `supabase start` reuses the
+    // volume and the "fresh" buyer comes up already holding the fix. Without this the job proves
+    // that a fix which was already applied is applied.
+    expect(upgradeRuns).toMatch(/supabase db reset/);
+  });
+
+  it('runs the CURRENT suite against the upgraded project', () => {
+    expect(upgradeRuns).toMatch(/supabase test db/);
+  });
+
+  it('AC-7 · fails the build if the upgrade edited a file the buyer owns', () => {
+    // The safety property. A job that upgrades and never checks this would pass while overwriting
+    // the buyer's work, which is the single failure this whole path exists to avoid.
+    expect(upgradeRuns).toMatch(/git diff --quiet HEAD -- src messages/);
+    expect(upgradeRuns).toMatch(/exit 1/);
+  });
+
+  it('MUTATION: a job missing the buyer-untouched guard is caught', () => {
+    const without = load(
+      raw.replace(/\s+- name: the buyer's own code survived[\s\S]*?exit 1; \}\n/, '\n'),
+    );
+    const guarded = runs('upgrade', without).join('\n');
+    expect(guarded).not.toMatch(/git diff --quiet HEAD -- src messages/);
+  });
+});

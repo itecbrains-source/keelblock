@@ -121,6 +121,58 @@ jobs:
 
   # Dependency vulnerabilities. Built in, no dependency of its own, and fails only on high severity —
   # a gate that fires on every transitive `low` gets ignored within a week.
+  # B-10 · the upgrade path, executed rather than documented.
+  #
+  # PRODUCT.md calls upgradability the deepest structural failure in this category, and the two paid
+  # kits answer it with a git remote — MakerKit's page does not mention conflicts, and supastarter's
+  # says out loud that updating "will become harder" the more you use the product. A claim to have
+  # solved that is worth nothing as prose, so this scaffolds a synthetic buyer at the previous tag,
+  # lets them diverge, applies the upgrade, and runs TODAY's suite against the result.
+  #
+  # The buyer here is synthetic: keelblock has no users and no deployment (DEF-001). What this proves is
+  # that the path works, not that anybody has walked it.
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        # Tags, and full history: the job's first act is to find the previous release.
+        with: { fetch-depth: 0 }
+
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.109.0 }
+
+      - name: scaffold a buyer at the previous tag, and let them diverge
+        run: |
+          TAG="$(git tag --sort=-creatordate | head -1)"
+          if [ -z "$TAG" ]; then echo "no release tag yet — nothing to upgrade FROM"; exit 1; fi
+          echo "scaffolding at $TAG"
+          git worktree add /tmp/scaffold "$TAG"
+          # The buyer's own work, months after they cloned. The migration is deliberately dated AFTER
+          # the fix they are about to receive, because that is the ordinary case and it is what makes
+          # `supabase migration up` refuse (F-45).
+          cp .github/workflows/fixtures/buyer_customer_note.sql \
+             /tmp/scaffold/supabase/migrations/20260910090000_buyer_customer_note.sql
+
+      - name: the buyer's stack, at their own schema
+        working-directory: /tmp/scaffold
+        run: supabase start && supabase db reset
+
+      - name: apply the upgrade
+        working-directory: /tmp/scaffold
+        # The buyer's product code is never touched; only upstream-owned paths are taken. The script
+        # is the documented path, so this job and the documentation cannot drift.
+        run: node "$GITHUB_WORKSPACE/scripts/upgrade.mjs" "$GITHUB_SHA" /tmp/scaffold
+
+      - name: TODAY's suite, against the upgraded project
+        working-directory: /tmp/scaffold
+        run: supabase test db
+
+      - name: the buyer's own code survived
+        working-directory: /tmp/scaffold
+        run: |
+          git diff --quiet HEAD -- src messages \
+            || { echo "the upgrade edited files the buyer owns"; git diff --stat HEAD -- src messages; exit 1; }
+
   audit:
     runs-on: ubuntu-latest
     steps:

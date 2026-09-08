@@ -271,6 +271,18 @@
       "what": "the same test-versus-navigation race as F-42, in a different file, surfaced by CI on a documentation-only commit",
       "to": ["blog", "docs"],
       "angle": "The recurrence is what makes it publishable: once is bad luck, twice is a class. The rule that falls out is sharper than 'add a wait' — when the page is going to navigate, assert on the RESPONSE, not the DOM, because a response body is a fixed artifact and the DOM is a moving one. Also a second data point for the uncomfortable half of F-42: a green local run can be evidence of a faster machine rather than of correct code."
+    },
+    {
+      "id": "F-45",
+      "what": "the upgrade path's central assumption — that a new migration file always applies however far a project has diverged — was false the first time it was tested",
+      "to": ["blog", "docs", "landing"],
+      "angle": "The category's deepest problem, attacked with a real experiment rather than a claim, and the claim lost. `supabase migration up` refuses a fix whose version sorts before the buyer's own later work, which is the ORDINARY case. Publishable because the correction is small and the reasoning error was total, and because two further things broke that nobody predicts: a second checkout silently shares the first one's database (so the experiment nearly proved a fix had arrived when it was already there), and a generated artifact cannot be shipped by an upgrade at all — upstream's copy describes upstream's schema, and the buyer has tables upstream has never heard of."
+    },
+    {
+      "id": "F-46",
+      "what": "the acceptance bar for upgradability and the ADR describing the upgrade policy contradicted each other, and it only showed up when someone satisfied the bar literally",
+      "to": ["blog", "docs"],
+      "angle": "Two documents both written carefully, both reasonable, mutually unsatisfiable: the ADR promises selective adoption of security fixes, the bar demands the current suite pass — and the current suite tests features a selective adopter does not have. The resolution is a genuine design position worth stating: schema is cumulative and adopted whole, product code is the buyer's and is never touched. Schema is cheap to accept and expensive to skip; product code is the reverse."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",
@@ -352,6 +364,20 @@
         "supabase/migrations/20260908160000_invitations.sql",
         "src/lib/orgs/invitations.ts"
       ]
+    },
+    {
+      "spec": "SPEC-013",
+      "claim": "The upgrade path is tested rather than described: which files an upgrade may take is a list in code with a mutation proof that it never touches product code, and the strategy's own load-bearing assumption was measured false the first time a synthetic buyer was upgraded — and corrected in the ADR rather than worked around.",
+      "rivals": "MakerKit documents `git pull upstream main` and its page does not mention merge conflicts. supastarter's own documentation states that updating \"will become harder\" with every change you make to your application, because you are rebasing your code onto theirs. Neither publishes a test that an upgrade works, and neither addresses what happens to generated artifacts that describe the buyer's schema rather than the vendor's.",
+      "evidence": [
+        "research/10-UPGRADE-PATH.md",
+        "docs/adr/ADR-008-upgradability.md",
+        "spec/SPEC-013-upgrade-path.md",
+        "scripts/upgrade.test.mts"
+      ],
+      "battlecard": "An upgrade path that was tested before it was claimed",
+      "oneLine": "*Ask what happens when they fix a security bug and you cloned in March — then ask to see the test.*",
+      "artifacts": ["scripts/upgrade.mjs", ".github/workflows/check.yml"]
     }
   ]
 }

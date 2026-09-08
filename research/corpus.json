@@ -245,6 +245,46 @@
       "url": "https://github.com/supajump/supajump",
       "title": "supajump/supajump",
       "claim": "17 stars, last commit 2025-12-11. 72 `create policy` statements across 15 SQL files. Zero tests of any kind: no *.test.*, no *.spec.*, and `plan(` appears in no SQL file. Only workflows are claude.yml and claude-code-review.yml. No LICENSE file and no license field in package.json, so the default is all rights reserved."
+    },
+    {
+      "id": "rails-app-update",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://guides.rubyonrails.org/upgrading_ruby_on_rails.html",
+      "title": "Upgrading Ruby on Rails",
+      "claim": "`bin/rails app:update` runs an INTERACTIVE session prompting per file (`Overwrite …? [Ynaqdh]`); diff/merge tools are pluggable via THOR_DIFF/THOR_MERGE. The guide does not classify files as framework-owned vs application-owned. New behaviour ships as a new file per version, config/initializers/new_framework_defaults_X_Y.rb."
+    },
+    {
+      "id": "expo-prebuild",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://docs.expo.dev/workflow/prebuild/",
+      "title": "Expo — Prebuild / Continuous Native Generation",
+      "claim": "android/ and ios/ are generated from config and treated as short-lived. 'If you modify the generated directories manually then you risk losing your changes the next time you run npx expo prebuild --clean. Instead, use config plugins.' --clean warns on uncommitted changes because it deletes and recreates the native projects."
+    },
+    {
+      "id": "next-codemods",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://nextjs.org/docs/app/guides/upgrading/codemods",
+      "title": "Next.js — Codemods",
+      "claim": "Codemods apply breaking-API changes programmatically. Where an automatic migration is not possible the codemod inserts a comment or typecast and 'Your build will error until these comments are explicitly removed' — a transform that cannot finish fails loudly rather than half-applying."
+    },
+    {
+      "id": "makerkit-update",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://makerkit.dev/docs/next-supabase-turbo/installation/clone-repository",
+      "title": "MakerKit — Clone the repository",
+      "claim": "Documents an `upstream` remote and `git pull upstream main`, advising it be run regularly. The page does not mention merge conflicts at all; the only warned failure is forgetting to run the package install afterwards."
+    },
+    {
+      "id": "supastarter-update",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supastarter.dev/docs/nextjs/codebase/update",
+      "title": "supastarter — Update the codebase",
+      "claim": "Upgrade is `git pull upstream main --allow-unrelated-histories --rebase`. Their own words: 'with every change you make to your application, it will become harder to update your code base, because you are essentially rebasing your code on top of the latest supastarter code with Git' and 'If you have any merge conflicts, you will have to resolve them manually.'"
     }
   ]
 }

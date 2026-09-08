@@ -86,6 +86,14 @@
       "verifiedOn": "2026-09-08",
       "specs": ["SPEC-006"],
       "kind": "sourced"
+    },
+    {
+      "file": "10-UPGRADE-PATH.md",
+      "area": "upgrade & migration strategy",
+      "volatility": "stable",
+      "verifiedOn": "2026-09-08",
+      "specs": ["SPEC-013"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {

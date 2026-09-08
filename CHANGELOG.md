@@ -9,10 +9,24 @@ entries are what make the rest worth believing. Full reproductions live in
 
 ## [Unreleased]
 
-The tenancy foundation, the proof harness, the gates, sign-in, organizations and invitations
-(SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-006). Billing and the remaining product
-surfaces are specced and not built — run `npm run status`, which reads the repository rather than
-this paragraph.
+The tenancy foundation, the proof harness, the gates, sign-in, organizations, invitations and the
+upgrade path (SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-006, SPEC-013). Billing and the
+remaining product surfaces are specced and not built — run `npm run status`, which reads the
+repository rather than this paragraph.
+
+### Added
+
+- **The upgrade path (SPEC-013), and the experiment that corrected it.** `PRODUCT.md` calls
+  upgradability the deepest structural failure in this category. A synthetic buyer was scaffolded at
+  `v0.1.0` — cut before the `is_org_admin` NULL fix so the payload was a real security fix — given
+  their own later migration and a product edit, and handed the fix. It did not apply:
+  `supabase migration up` refuses a migration whose version sorts before the buyer's last applied
+  one, which is the ordinary case. ADR-008 had chosen its whole strategy on the claim that such a
+  file "never conflicts"; that claim is now corrected in the ADR rather than worked around (F-45).
+  The ownership boundary is a list in `scripts/upgrade.mjs` with a mutation proof that an upgrade
+  never takes a path under `src/`, and the path is executed by a CI job rather than documented.
+  **B-10 is not claimed**: the job has not yet had its first green run, so SPEC-013 is `partial` and
+  its AC-8 is open.
 
 ### Added
 

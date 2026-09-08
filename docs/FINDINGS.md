@@ -1279,3 +1279,78 @@ A response body is a fixed artifact. The DOM is a moving one, and this test was 
 a question about a fixed one. A `waitForURL` before reading would also have gone green while leaving
 the assertion pointed at whatever happened to be rendered by then — which is the login page, not the
 thing the test is named after.
+
+## F-45 · The upgrade path's central assumption was false, and the experiment nearly measured nothing
+
+**2026-09-08 · found by running the B-10 experiment for the first time · ADR-008 corrected, `scripts/upgrade.mjs` encodes the result**
+
+ADR-008 chose its whole upgrade strategy on one empirical claim:
+
+> "Policies are migrations. A fixed policy ships as a _new_ migration file. **New files never
+> conflict** — a project pulls it in and applies it, however much it has diverged."
+
+A synthetic buyer was scaffolded at `v0.1.0` — cut deliberately before the `is_org_admin` NULL fix, so
+the payload was the real F-40 security fix rather than a stand-in — given their own migration dated
+after it and an edit to a product page, then handed the fix. The result:
+
+```
+Found local migration files to be inserted before the last migration on remote database.
+```
+
+The claim is true about text and false about behaviour. The file conflicts with nothing; the **CLI
+refuses to apply it**, because its version sorts before the buyer's last applied migration. And that
+is not an edge case — it is the ordinary one, because the buyer kept working after they cloned, so
+their migrations are always dated later than a fix authored before their work. The single most
+important class of security fix was blocked by the mechanism ADR-008 said made it conflict-free.
+
+`--include-all` applies it, and the fix then genuinely lands: `is_org_admin` moved from `NULL` to
+`false` on the buyer's database. So the correction is small — the flag is required, and it is not a
+workaround but the right instruction for an append-only schema — but the _reasoning_ in ADR-008 was
+wrong, and nobody would have found it by reading.
+
+**Two more things broke, and one of them nearly invalidated the experiment.**
+
+**The scaffold shared the upstream database.** Both checkouts carry the same `project_id` in
+`config.toml`, so `supabase start` in the scaffold reused the same Docker volume — the "fresh" buyer
+came up already holding upstream's schema, security fix included. Measured before noticing: the
+buyer's migration history contained `20260908170000` before the upgrade had been applied. An
+experiment run in that state proves the fix arrives when it was already there. `supabase db reset`
+in the scaffold is what makes the buyer's database actually theirs.
+
+**A generated artifact cannot be delivered by an upgrade.** After the upgrade, upstream's committed
+`database.types.ts` contains `organization_invitation` and not the buyer's `customer_note`; the
+buyer's contains neither. **Neither file is correct**, because each describes a schema the other does
+not have — so shipping upstream's copy would overwrite the buyer's knowledge of their own tables with
+a stranger's. Generated artifacts are regenerated locally and never delivered, which is a case none
+of the four ecosystems surveyed in `research/10-UPGRADE-PATH.md` addresses.
+
+The reassuring half, which was not designed and is the better news: the **schema guard travelled with
+the scaffold and governed the buyer's own table**. `customer_note` — a table upstream has never seen —
+was checked for RLS, `FORCE`, and a tenanted `WITH CHECK` by a rule the buyer inherited and never
+wrote.
+
+## F-46 · B-10's bar and ADR-008's policy contradicted each other
+
+**2026-09-08 · found by satisfying the bar literally · both corrected in SPEC-013**
+
+ADR-008 says the path is for security: _"Security fixes must reach existing projects; cosmetic changes
+need not."_ B-10 says the proof is _"a CI job that scaffolds at the previous tag, applies the upgrade
+path, and runs the current suite green."_
+
+Both are reasonable and they cannot both be met. A buyer who takes only the security fix — exactly the
+buyer ADR-008 describes — fails the current suite, and it was measured rather than argued:
+
+```
+tests/intent/006-invitations.test.sql:30: ERROR:  function public.invite_member(...) does not exist
+Failed 19/19 subtests
+```
+
+Not a bug. The current suite tests a **feature** the buyer deliberately did not adopt. The bar as
+written silently assumes whole-release adoption while the ADR promises selective adoption.
+
+The resolution is a real design decision rather than a wording fix, and it was measured too:
+**schema is cumulative and adopted whole; product code is the buyer's and is never touched.** Applying
+every new migration — the feature's included — then running today's suite passes completely, while the
+buyer's edited page keeps saying what they made it say. Schema is cheap to accept and expensive to
+skip: it is additive, its tests come with it, and a half-adopted schema is a state neither side has
+ever tested. Product code is the opposite, and touching it is what makes the supastarter warning true.

@@ -77,3 +77,36 @@ the service-role client), and by accepting that the path is **best-effort for pr
 guaranteed only for the security surface**. That limit is stated plainly in the docs rather than
 discovered: promising a clean upgrade for code the user rewrote would be the kind of claim keelblock exists
 to not make.
+
+## Addendum, 2026-09-08 — the load-bearing claim was wrong, and the correction is small
+
+This ADR chose Option C on one empirical claim, quoted here before it is corrected:
+
+> "Policies are migrations. A fixed policy ships as a _new_ migration file. **New files never
+> conflict** — a project pulls it in and applies it, however much it has diverged."
+
+The first time it was tested (F-45) the buyer's project answered:
+
+```
+Found local migration files to be inserted before the last migration on remote database.
+```
+
+True about text, false about behaviour. The file conflicts with nothing and the CLI refuses it anyway,
+because its version sorts **before** the buyer's last applied migration — the ordinary case, since the
+buyer kept working after they cloned. `--include-all` applies it and the fix genuinely lands, so
+Option C survives; but it survives with an instruction attached, not by construction, and that
+distinction is the difference between a design and a hope.
+
+Two things this ADR did not consider, both measured in the same run:
+
+- **Generated artifacts belong to neither side.** `database.types.ts` and the access matrix describe
+  the BUYER's schema. Upstream's copies name tables the buyer does not have and omit tables the buyer
+  wrote. They are regenerated locally and never delivered.
+- **B-10's bar contradicted this ADR's own policy** (F-46). "Security fixes must reach existing
+  projects; cosmetic changes need not" cannot coexist with "runs the current suite green", because
+  the current suite tests the features a selective adopter skipped. Settled in SPEC-013: **schema is
+  cumulative and adopted whole; product code is the buyer's and is never touched.**
+
+The file-layout discipline this ADR demands is now written down as code rather than intention —
+`UPSTREAM_OWNED` in `scripts/upgrade.mjs`, with a mutation proof that an upgrade never takes a path
+under `src/`.
