@@ -5,8 +5,8 @@
 
 ## Intent
 
-Establish the organisation/membership model and the row-level security that makes tenant isolation a
-property of the database rather than a convention the application remembers. This spec is keel's
+Establish the organization/membership model and the row-level security that makes tenant isolation a
+property of the database rather than a convention the application remembers. This spec is keelblock's
 product claim in its most literal form: every requirement here is something the field's paid kits
 leave to the reader.
 
@@ -16,7 +16,7 @@ leave to the reader.
   tenant-scoped table, deny by default, with `WITH CHECK` on writes · the membership predicate and its
   index · `SECURITY DEFINER` helper hardening · the service-role boundary · the machine-derivable
   scoped-table set that later gates depend on.
-- **Out of scope:** authentication itself (SPEC-004) · organisation CRUD surfaces (SPEC-005) ·
+- **Out of scope:** authentication itself (SPEC-004) · organization CRUD surfaces (SPEC-005) ·
   invitations (SPEC-006) · the tests that prove all this (SPEC-002 — deliberately a separate spec, so
   the proof cannot quietly become "the code we wrote passes the tests we wrote").
 
@@ -32,11 +32,11 @@ leave to the reader.
 ### REQ-1 — `organization` is the root tenant entity
 
 A single root table. Membership is explicit in `organization_member (organization_id, user_id, role)`,
-referencing `auth.users`. A user belongs to many organisations with an independent role in each.
+referencing `auth.users`. A user belongs to many organizations with an independent role in each.
 
 ### REQ-2 — every tenant-scoped table carries `organization_id` directly
 
-No policy resolves tenancy through a join chain. The column is denormalised on purpose (ADR-001): it
+No policy resolves tenancy through a join chain. The column is denormalized on purpose (ADR-001): it
 makes each policy one indexed predicate, and it makes "is this table tenant-scoped?" answerable by
 inspecting the table — which is what REQ-8 depends on.
 
@@ -58,7 +58,7 @@ Two facts from the spike (`research/03-SPIKE-RESULTS.md` F-3, F-4) shape this re
   that attempts a cross-tenant _write_ and asserts rejection.
 - **Presence is not enough.** The defect's policy _has_ a `WITH CHECK`; it is `true`. A check for
   `polwithcheck IS NULL` misses it entirely. The requirement is a clause that actually constrains the
-  organisation, and the gate must reject a trivially-true one.
+  organization, and the gate must reject a trivially-true one.
 
 ### REQ-5 — the membership predicate is indexed and evaluated once per query
 
@@ -92,9 +92,9 @@ into a component tree, and every use site carries a one-line justification. A se
 reachable from a rendered page is a total isolation bypass and would make every other requirement here
 decorative.
 
-### REQ-10 — organisation deletion leaves nothing behind
+### REQ-10 — organization deletion leaves nothing behind
 
-Deleting an organisation removes or anonymises all its rows by explicit `ON DELETE` behaviour declared
+Deleting an organization removes or anonymises all its rows by explicit `ON DELETE` behavior declared
 per table, not by application cleanup. An orphaned row with a dangling `organization_id` is
 unreachable by policy and therefore invisible to every proof in SPEC-002 — a leak nobody can see.
 
@@ -102,7 +102,7 @@ unreachable by policy and therefore invisible to every proof in SPEC-002 — a l
 
 Measured in the spike (F-2): on Supabase, `postgres` is **not a superuser but carries `BYPASSRLS`**,
 and `FORCE ROW LEVEL SECURITY` does **not** stop it — postgres read every row across both
-organisations with FORCE enabled.
+organizations with FORCE enabled.
 
 Two consequences:
 
@@ -135,7 +135,7 @@ policy in this repository can prevent it, which means no policy test — generat
 ever have seen it. It is a Supabase default, so every project inheriting it carries the same grant.
 
 Exploitability, stated honestly: PostgREST exposes no TRUNCATE verb (verified — 404), so this is not
-a remote zero-click. It is a defence-in-depth failure that converts any SQL injection in a
+a remote zero-click. It is a defense-in-depth failure that converts any SQL injection in a
 `SECURITY INVOKER` function, or a leaked role credential, from a scoped read into total data loss.
 
 So: `TRUNCATE`, `REFERENCES` and `TRIGGER` are revoked from `anon` and `authenticated`, and the
@@ -147,14 +147,14 @@ default privileges are altered so a table created later cannot silently reintrod
 | ----- | ------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | AC-1  | REQ-1, REQ-2 | test       | `supabase/migrations/20260907120000_tenancy_foundation.sql`                                                                                                                              | **done** |
 | AC-2  | REQ-3        | test       | `supabase/tests/intent/001-tenant-isolation.test.sql` — anon and a foreign member are denied on every scoped table                                                                       | **done** |
-| AC-3  | REQ-4        | test       | `supabase/tests/intent/001-tenant-isolation.test.sql` — a member cannot INSERT or UPDATE a row into another organisation, asserted **as the writer** (the row is invisible to them, F-3) | **done** |
+| AC-3  | REQ-4        | test       | `supabase/tests/intent/001-tenant-isolation.test.sql` — a member cannot INSERT or UPDATE a row into another organization, asserted **as the writer** (the row is invisible to them, F-3) | **done** |
 | AC-3b | REQ-4        | test       | `supabase/tests/intent/004-schema-guard.test.sql` — a write policy whose `WITH CHECK` is trivially true is rejected (F-4)                                                                | **done** |
 | AC-4  | REQ-5        | analysis   | `supabase/migrations/20260907120000_tenancy_foundation.sql` — `EXPLAIN` output showing index use and one-time `auth.uid()` evaluation                                                    | **done** |
 | AC-5  | REQ-6        | test       | `supabase/tests/intent/001-tenant-isolation.test.sql` — every definer function reachable from a policy has a pinned `search_path`                                                        | **done** |
 | AC-6  | REQ-7        | test       | `supabase/tests/intent/003-membership-invariants.test.sql` — the SQL role matrix and the TypeScript one are equal                                                                        | **done** |
 | AC-7  | REQ-8        | test       | `supabase/tests/intent/004-schema-guard.test.sql` — the catalog query returns the expected set, and fails when a scoped table is added without a policy                                  | **done** |
 | AC-8  | REQ-9        | test       | `scripts/check-boundaries.test.mts` — importing the service-role client from a client-reachable module fails the gate                                                                    | **done** |
-| AC-9  | REQ-10       | test       | `supabase/tests/intent/003-membership-invariants.test.sql` — after deletion, no row anywhere retains the organisation id                                                                 | **done** |
+| AC-9  | REQ-10       | test       | `supabase/tests/intent/003-membership-invariants.test.sql` — after deletion, no row anywhere retains the organization id                                                                 | **done** |
 | AC-10 | REQ-11       | test       | `supabase/tests/intent/001-tenant-isolation.test.sql` — no definer function reachable by `authenticated` returns a row type                                                              | **done** |
 | AC-11 | REQ-11       | inspection | `supabase/migrations/20260907120000_tenancy_foundation.sql` — the reviewed inventory, with a test that fails when an unlisted role gains the attribute                                   | **done** |
 | AC-12 | REQ-11       | test       | `supabase/tests/intent/001-tenant-isolation.test.sql` — the membership helper is not callable by `anon`                                                                                  | **done** |
@@ -171,6 +171,6 @@ default privileges are altered so a table created later cannot silently reintrod
 
 ## Deferrals
 
-None yet. A second scoping level (workspaces within an organisation) is a documented extension point
+None yet. A second scoping level (workspaces within an organization) is a documented extension point
 in ADR-001, not deferred work: it is out of scope by decision, and filing it as debt would be filing a
 deferral for something nobody chose to build.

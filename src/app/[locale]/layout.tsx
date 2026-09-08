@@ -9,7 +9,7 @@ const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'keel',
+  title: 'keelblock',
   description: 'Multi-tenant SaaS starter with tenant isolation proven on every commit.',
 };
 

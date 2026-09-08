@@ -1,17 +1,17 @@
 # Smoke test results — 2026-09-07
 
 Five assumptions that sat under the specs unverified. Four held; **one did not, and it changes an ADR.**
-Run in a throwaway worktree with its own Supabase stack on dedicated ports. keel runs its own
-isolated stack (`project_id = keel`, ports 547xx) so it never contends with anything else on the
+Run in a throwaway worktree with its own Supabase stack on dedicated ports. keelblock runs its own
+isolated stack (`project_id = keelblock`, ports 547xx) so it never contends with anything else on the
 machine — worth knowing if you develop several Supabase projects side by side.
 
-| #   | Assumption                                           | Result                                              |
-| --- | ---------------------------------------------------- | --------------------------------------------------- |
-| S-1 | Next 16 builds on Node 26                            | ✅ 16.3.4, Turbopack, TS checked, clean             |
-| S-2 | A keel stack starts without disturbing the live ones | ✅ 546xx, 22 live containers unaffected             |
-| S-3 | **`@supabase/ssr` works with Cache Components**      | ❌ **broke the build — see below**                  |
-| S-4 | rlsautotest behaves the same on a real stack         | ✅ plus one new CRITICAL                            |
-| S-5 | `supabase test db` runs pgTAP                        | ✅ 2/2, incl. cross-tenant INSERT rejection (42501) |
+| #   | Assumption                                                | Result                                              |
+| --- | --------------------------------------------------------- | --------------------------------------------------- |
+| S-1 | Next 16 builds on Node 26                                 | ✅ 16.3.4, Turbopack, TS checked, clean             |
+| S-2 | A keelblock stack starts without disturbing the live ones | ✅ 546xx, 22 live containers unaffected             |
+| S-3 | **`@supabase/ssr` works with Cache Components**           | ❌ **broke the build — see below**                  |
+| S-4 | rlsautotest behaves the same on a real stack              | ✅ plus one new CRITICAL                            |
+| S-5 | `supabase test db` runs pgTAP                             | ✅ 2/2, incl. cross-tenant INSERT rejection (42501) |
 
 ---
 
@@ -44,14 +44,14 @@ Accessing Dynamic data sources inside a cache scope is not supported.
 So the naive leak is a build error, not a review responsibility. **But the error message hands you the
 exact recipe for the real one:** _"use `cookies()` outside of the cached function and pass the required
 dynamic data in as an argument."_ That is legitimate and necessary — it is how you cache a per-org
-aggregate — and it is also precisely how a tenant leak gets written, if the organisation id is captured
+aggregate — and it is also precisely how a tenant leak gets written, if the organization id is captured
 from an outer scope or defaulted rather than passed as an argument that Next keys on.
 
 **Two consequences for the specs:**
 
 1. ADR-004's gate is now **narrower and sharper**. It does not need to police "is the tenant in the
    cache key" across all caching — the framework blocks the naive case. It must check the surviving
-   one: a `use cache` function reaching tenant data derives its organisation from an **argument**,
+   one: a `use cache` function reaching tenant data derives its organization from an **argument**,
    never from closure or a default.
 2. **A standard authenticated page shell becomes an architectural default**, not a style preference:
    every authenticated route ships a `<Suspense>` boundary with a real fallback. This dovetails with

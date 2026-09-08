@@ -15,24 +15,24 @@ specced and not yet built — see [`spec/README.md`](spec/README.md).
 ### Added
 
 - **Tenancy foundation** — `organization`, `organization_member`, a hardened membership predicate,
-  and RLS on every tenant-scoped table with a `WITH CHECK` that constrains the organisation.
+  and RLS on every tenant-scoped table with a `WITH CHECK` that constrains the organization.
 - **Access matrix** ([`docs/ACCESS-MATRIX.md`](docs/ACCESS-MATRIX.md)) — generated from the live
   policy catalog by probing as each identity, committed, diffable, and stale copies fail the build.
 - **Four-layer test strategy** — unit, generated policy (`rlsautotest`), hand-written intent, and
   journey (pending auth). 21 intent assertions; 54 generated.
 - **`npm run check`** — six gates, all failures reported rather than the first, ~14s.
-- Organisation creation as a `SECURITY DEFINER` RPC, so there is no unconstrained INSERT policy.
-- CI with a weekly clean-clone build and gitleaks over full history; MIT licence; security policy;
+- Organization creation as a `SECURITY DEFINER` RPC, so there is no unconstrained INSERT policy.
+- CI with a weekly clean-clone build and gitleaks over full history; MIT license; security policy;
   contributor guide; honest `error` and `not-found` states; the three Supabase clients, with the
   service-role client behind a `server-only` import boundary.
 
 ### Security
 
 - **Privilege escalation (F-9).** An admin could demote the owner (`UPDATE 1`) and seize any
-  organisation they administered. Fixed by a trigger: an owner row may only be created, changed or
+  organization they administered. Fixed by a trigger: an owner row may only be created, changed or
   removed by an owner.
-- **Orphaned organisations (F-10).** The last owner could delete their own membership, leaving an
-  organisation nobody could administer or delete, holding its slug forever. Fixed by a per-statement
+- **Orphaned organizations (F-10).** The last owner could delete their own membership, leaving an
+  organization nobody could administer or delete, holding its slug forever. Fixed by a per-statement
   invariant that still permits succession.
 - **`anon` could `TRUNCATE` every tenant table (F-1).** Supabase's default privileges grant
   `TRUNCATE` to `anon` and `authenticated`, and RLS does not apply to `TRUNCATE`, so no policy or

@@ -8,7 +8,7 @@ const intl = createMiddleware(routing);
 export default function middleware(request: NextRequest) {
   const response = intl(request);
 
-  const mode = (process.env.KEEL_SECURITY_HEADERS ?? 'report-only') as HeaderMode;
+  const mode = (process.env.KEELBLOCK_SECURITY_HEADERS ?? 'report-only') as HeaderMode;
   const csp = buildCsp({
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '',
     isDev: process.env.NODE_ENV === 'development',

@@ -1,10 +1,10 @@
-# keel spec set
+# keelblock spec set
 
 **Every spec is grounded in authoritative research before it is authored.** A spec written from
 recollection encodes whatever was true when the author last looked, and in fast-moving areas that is
 worse than no spec — it reads as settled. Research memos live in [`research/`](../research/), cite
 primary sources where they exist, and separate **settled** from **contested** so the spec can ship
-the contested part honestly labelled rather than silently. SPEC-028 is the worked example: it exists
+the contested part honestly labeled rather than silently. SPEC-028 is the worked example: it exists
 because FAQ rich results were removed on a specific date, and both common beliefs about what that
 means are wrong.
 
@@ -24,11 +24,11 @@ template's own instruction is to keep it thin.
 | SPEC-003                               | Gates — freshness, service-role boundary, cache keys, supply chain                           | B-3, B-4, B-9 | 004, 007      | **done** (REQ-1..9, all mutation-proven)                                                             |
 | **Phase 2 — identity**                 |                                                                                              |               |               |
 | SPEC-004                               | Auth — magic link, OAuth, session, route protection                                          | —             | 002           | planned                                                                                              |
-| SPEC-005                               | Organisations & roles — create, switch, settings, RBAC                                       | B-2           | 001, 002      | planned                                                                                              |
+| SPEC-005                               | Organizations & roles — create, switch, settings, RBAC                                       | B-2           | 001, 002      | planned                                                                                              |
 | SPEC-006                               | Invitations — invite, accept, decline, join, revoke, role change                             | B-2           | 001, 002      | planned                                                                                              |
 | **Phase 3 — money**                    |                                                                                              |               |               |
 | SPEC-007                               | Billing — Stripe, entitlements, webhooks, portal, dunning                                    | —             | 006           | planned                                                                                              |
-| SPEC-008                               | Account & organisation settings surfaces                                                     | B-7           | 004           | planned                                                                                              |
+| SPEC-008                               | Account & organization settings surfaces                                                     | B-7           | 004           | planned                                                                                              |
 | **Phase 4 — surface**                  |                                                                                              |               |               |
 | SPEC-009                               | Marketing shell, ops & health endpoints                                                      | B-8           | 004           | planned                                                                                              |
 | SPEC-010                               | Custom domains                                                                               | —             | 004           | planned                                                                                              |
@@ -36,7 +36,7 @@ template's own instruction is to keep it thin.
 | SPEC-017                               | Transactional email — templates, provider seam, delivery                                     | —             | 004, 006      | planned                                                                                              |
 | SPEC-018                               | File storage — buckets, tenant-scoped policies, presigned uploads                            | B-2           | 001, 003      | planned                                                                                              |
 | SPEC-019                               | Background jobs & cron                                                                       | —             | 003           | planned                                                                                              |
-| SPEC-020                               | Notifications — in-app centre and email, with preferences                                    | —             | 017           | planned                                                                                              |
+| SPEC-020                               | Notifications — in-app center and email, with preferences                                    | —             | 017           | planned                                                                                              |
 | SPEC-021                               | Admin, user management & **audited impersonation**                                           | B-2           | 001, 002      | planned                                                                                              |
 | SPEC-022                               | Onboarding flow                                                                              | B-5           | 005           | planned                                                                                              |
 | SPEC-023                               | Legal pages & error monitoring                                                               | B-9           | —             | planned                                                                                              |
@@ -44,12 +44,12 @@ template's own instruction is to keep it thin.
 | SPEC-029                               | Product analytics — one provider behind a seam                                               | —             | 003           | planned                                                                                              |
 | SPEC-030                               | Local development — offline loop, mail catcher, object storage                               | B-1           | 003           | planned                                                                                              |
 | SPEC-025                               | Audit log — native, RLS-scoped, in the access matrix                                         | **B-2**       | 001, 002, 021 | planned                                                                                              |
-| SPEC-026                               | API keys — resolve to an organisation and role, subject to the same policies                 | **B-2**       | 001, 002      | planned                                                                                              |
-| SPEC-027                               | Outbound webhooks — payloads scoped to the subscribing organisation                          | **B-2**       | 001, 025      | planned                                                                                              |
+| SPEC-026                               | API keys — resolve to an organization and role, subject to the same policies                 | **B-2**       | 001, 002      | planned                                                                                              |
+| SPEC-027                               | Outbound webhooks — payloads scoped to the subscribing organization                          | **B-2**       | 001, 025      | planned                                                                                              |
 | **Phase 5 — adoption**                 |                                                                                              |               |               |
-| SPEC-011                               | `create-keel-app`                                                                            | B-1           | 007           | planned                                                                                              |
+| SPEC-011                               | `create-keelblock-app`                                                                       | B-1           | 007           | planned                                                                                              |
 | SPEC-012                               | Docs & the stranger walkthrough                                                              | B-5           | —             | planned                                                                                              |
-| SPEC-013                               | Upgrade path — `keel upgrade`, codemods, advisories                                          | B-10          | 008           | planned                                                                                              |
+| SPEC-013                               | Upgrade path — `keelblock upgrade`, codemods, advisories                                     | B-10          | 008           | planned                                                                                              |
 | SPEC-014                               | Removability — a deletion test per optional module                                           | B-6           | 008           | planned                                                                                              |
 | SPEC-015                               | Accessibility & performance budgets                                                          | B-7, B-8      | 004           | planned                                                                                              |
 | SPEC-024                               | Handover — `AGENTS.md`, task recipes, and the trial that proves it                           | **B-11**      | 011           | planned                                                                                              |
@@ -58,7 +58,7 @@ template's own instruction is to keep it thin.
 ## Why phase 1 is the proof apparatus and not a login screen
 
 The conventional order is auth first, because it feels like the foundation. It is the wrong order
-here. Keel's product **is** the claim in `PRODUCT.md`, and a proof apparatus retrofitted onto working
+here. Keelblock's product **is** the claim in `PRODUCT.md`, and a proof apparatus retrofitted onto working
 code only ever confirms what that code already does — which is how a wrong policy gets confirmed
 greenly (ADR-005).
 

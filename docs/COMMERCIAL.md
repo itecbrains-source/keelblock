@@ -31,14 +31,14 @@ and **done-for-you delivery**.
 
 **Developers do not pay for tests. Companies pay for what they hand an assessor.**
 
-Every free tier gets the thing that makes keel different — isolation enforced by the database and
+Every free tier gets the thing that makes keelblock different — isolation enforced by the database and
 proven on every commit. What is paid is the _second_ job that evidence can do: satisfying a third
 party. A startup with three customers needs the proof; a company in a SOC 2 window needs the proof
 **packaged, attributed, and exportable**, and that packaging is real work with real value.
 
 The anti-degradation rule from ADR-009 is unchanged and is what keeps this honest:
 
-> keel's full claim — isolation proven per table × command × identity, with a published access
+> keelblock's full claim — isolation proven per table × command × identity, with a published access
 > matrix — must hold with **zero paid components present**, and a gate asserts it.
 
 So the free tier is never quietly hollowed to make room for a paid one. If that gate ever needs
@@ -58,6 +58,6 @@ Recorded as **DEF-009**, so it cannot be quietly guessed later.
 - **The code.** See above. This is the decision everything else rests on.
 - **The enterprise surface** (SSO, SCIM). Registered as DEF-005 and it ships **free** when built — a
   security review asking for SSO is not the same customer as one buying audit evidence, and gating
-  it would make keel's B2B claim conditional on payment.
+  it would make keelblock's B2B claim conditional on payment.
 - **Anything that weakens the free tier to create a paid one.** The rule above, restated because it
   is the one that gets broken quietly.

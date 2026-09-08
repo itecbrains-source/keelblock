@@ -48,13 +48,13 @@ select lives_ok(
 -- ── as the OWNER ────────────────────────────────────────────────────────────
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
--- DEFECT 2, measured before the fix: orgs=1, members=0 -- an organisation nobody can administer,
+-- DEFECT 2, measured before the fix: orgs=1, members=0 -- an organization nobody can administer,
 -- nobody can delete (delete requires owner), holding its slug forever.
 select throws_ok(
   $$delete from public.organization_member
      where user_id = '11111111-1111-1111-1111-111111111111'$$,
   'P0001', null,
-  'LAST OWNER: cannot leave -- that would orphan the organisation');
+  'LAST OWNER: cannot leave -- that would orphan the organization');
 
 select throws_ok(
   $$update public.organization_member set role = 'member'

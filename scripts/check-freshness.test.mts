@@ -22,7 +22,7 @@ describe('freshness gate', () => {
   });
 
   it('the real stamp covers the real dependencies and is current', () => {
-    const s = JSON.parse(readFileSync('keel.freshness.json', 'utf8'));
+    const s = JSON.parse(readFileSync('keelblock.freshness.json', 'utf8'));
     const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
     const all = { ...pkg.dependencies, ...pkg.devDependencies };
     for (const name of Object.keys(s.pins)) {

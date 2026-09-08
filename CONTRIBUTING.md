@@ -11,7 +11,7 @@ author already believed.
 defect and asserts the gate goes red. A gate that has only ever printed a tick has not been shown to
 be looking at anything. See `scripts/access-matrix.test.mts` for the shape.
 
-**3 · Measure, then claim.** Nothing in the docs asserts behaviour that has not been reproduced. If
+**3 · Measure, then claim.** Nothing in the docs asserts behavior that has not been reproduced. If
 you cannot reproduce it, write down what you observed and what you could not confirm.
 
 ## Adding a tenant-scoped table
@@ -40,7 +40,7 @@ Three rules the gates enforce, each because of a measured defect:
 
 - **`organization_id` directly on the table**, never resolved through a join. It is what makes the
   scoped-table set derivable, which is what makes the gates possible at all.
-- **Every write policy needs a `WITH CHECK` that constrains the organisation.** `USING` alone lets a
+- **Every write policy needs a `WITH CHECK` that constrains the organization.** `USING` alone lets a
   member write into another tenant, and the smuggled row is invisible to them ([F-4](docs/FINDINGS.md)).
   A `WITH CHECK (true)` is not a `WITH CHECK`.
 - **`(select auth.uid())`, not `auth.uid()`** — the subquery form is evaluated once rather than per

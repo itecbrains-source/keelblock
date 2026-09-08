@@ -39,7 +39,7 @@ describe('access matrix', () => {
   it('names the identity that actually matters', () => {
     // If this row is ever renamed to something bland, the matrix stops being readable by a stranger,
     // which is the entire reason it is published.
-    expect(render(clean)).toContain('Authenticated · different organisation');
+    expect(render(clean)).toContain('Authenticated · different organization');
   });
 
   // ── mutation proofs (SPEC-002 REQ-5) ───────────────────────────────────────

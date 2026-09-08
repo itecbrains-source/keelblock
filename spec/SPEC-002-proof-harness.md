@@ -5,7 +5,7 @@
 
 ## Intent
 
-Build the apparatus that turns keel's claim from an assertion into evidence: four test layers, a
+Build the apparatus that turns keelblock's claim from an assertion into evidence: four test layers, a
 published access matrix, and the rule that every gate must be shown capable of failing. This is a
 separate spec from SPEC-001 on purpose — the thing being proven and the proof should not be authored
 as one unit, or the proof degrades into a restatement of the implementation.
@@ -35,16 +35,16 @@ Unit (is this pure logic correct?) · generated policy (does the database enforc
 _declare_?) · intent (are the policies _what we meant_?) · journey (does the real authed flow work?).
 No layer substitutes for another, and the spec names what each cannot do.
 
-### REQ-1b — adopt the toolkit's proof layer, modernised
+### REQ-1b — adopt the toolkit's proof layer, modernized
 
 `saas-testing-toolkit` v1.1.0 already implements much of this spec in this stack: org-isolation
 (SOC2 CC6.1), role boundaries, auth-required, query-perf (which covers SPEC-001 REQ-5 by _test_, not
 the _analysis_ this spec assumed), Stryker mutation testing, and axe/Lighthouse/ZAP wiring. Adoption
-is governed by [ADR-009](../docs/adr/ADR-009-open-core-boundary.md) and is a **modernisation, not a
+is governed by [ADR-009](../docs/adr/ADR-009-open-core-boundary.md) and is a **modernization, not a
 copy**: it targets React 18 / Node ≥20, and its generated `002-org-isolation.sql` ships its seed block
 commented out — eight planned assertions against data nobody creates. **Adopting that as-is would ship
 a suite that passes without testing anything**, which is precisely the defect REQ-5 exists to catch.
-In keel the schema is known, so the seed is concrete rather than a TODO.
+In keelblock the schema is known, so the seed is concrete rather than a TODO.
 
 ### REQ-2 — adopt the generated layer, do not rebuild it
 
@@ -63,11 +63,11 @@ generated suite reported the affected table as clean. The mechanism is the tool'
 > function's own logic is NOT verified here"_
 
 So the boundary is precise: **the generated layer verifies that a policy delegates to its helper; every
-line inside that helper is unverified by it.** Keel puts the membership predicate in exactly such a
+line inside that helper is unverified by it.** Keelblock puts the membership predicate in exactly such a
 helper, which makes the intent layer the only thing testing the predicate at all. The intent layer is where a human asserts what _should_ be true — a member must
-not read another organisation's invoices; an admin must not grant themselves owner; a removed member
+not read another organization's invoices; an admin must not grant themselves owner; a removed member
 loses access immediately, not at token expiry. It is small by design: exhaustiveness is the generated
-layer's job, judgement is this one's.
+layer's job, judgment is this one's.
 
 ### REQ-3b — the journey layer uses accessible locators only
 
@@ -98,7 +98,7 @@ rule is defined here and enforced by SPEC-003.
 
 ### REQ-6 — the suite runs in CI on every commit and nightly on a schedule
 
-Nightly matters independently: it catches the dependency that changed behaviour under a caret range,
+Nightly matters independently: it catches the dependency that changed behavior under a caret range,
 and the drift no commit triggered. A template with no users has no other mechanism for noticing.
 
 ### REQ-7 — one command locally, and it is fast enough to be run

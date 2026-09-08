@@ -1,4 +1,4 @@
-# Working in keel
+# Working in keelblock
 
 For a coding agent or a developer who has not seen this repository before. **Read this once; it is
 short on purpose.**
@@ -55,10 +55,10 @@ wrong, it has been wrong before: say so rather than working around it.
 ## Recipes
 
 **Add a tenant-scoped table** — see [CONTRIBUTING.md](CONTRIBUTING.md). Three rules: `organization_id`
-on the table, RLS enabled, and a `WITH CHECK` that constrains the organisation. `with check (true)`
+on the table, RLS enabled, and a `WITH CHECK` that constrains the organization. `with check (true)`
 is not a `WITH CHECK`.
 
-**Add a mutation** — a Server Action that does validate → authorise → act, with its parameter typed
+**Add a mutation** — a Server Action that does validate → authorize → act, with its parameter typed
 `unknown` and parsed. It is a network boundary wearing a function's clothes
 ([ADR-011](docs/adr/ADR-011-app-router-conventions.md)).
 
@@ -70,13 +70,13 @@ in the change that broke it.
 
 ## Where the answers are
 
-| Question                                           | File                                                           |
-| -------------------------------------------------- | -------------------------------------------------------------- |
-| What is keel for, and what is it deliberately not? | `docs/PRODUCT.md`                                              |
-| Why is it built this way?                          | `docs/adr/` — eleven decisions, each with the rejected options |
-| What is true that we measured?                     | `docs/FINDINGS.md` — including our own mistakes                |
-| What is built, and what is next?                   | `spec/README.md`                                               |
-| What did we decide not to do yet?                  | `spec/DEFERRAL_REGISTRY.md`                                    |
+| Question                                                | File                                                           |
+| ------------------------------------------------------- | -------------------------------------------------------------- |
+| What is keelblock for, and what is it deliberately not? | `docs/PRODUCT.md`                                              |
+| Why is it built this way?                               | `docs/adr/` — eleven decisions, each with the rejected options |
+| What is true that we measured?                          | `docs/FINDINGS.md` — including our own mistakes                |
+| What is built, and what is next?                        | `spec/README.md`                                               |
+| What did we decide not to do yet?                       | `spec/DEFERRAL_REGISTRY.md`                                    |
 
 ## Before you author a spec
 
@@ -85,7 +85,7 @@ recollection encodes whatever was true when its author last looked — and in a 
 is worse than no spec, because it reads as settled.
 
 Memos live in `research/`, cite primary sources where they exist, and **separate settled from
-contested**, so the spec can ship the contested part honestly labelled rather than silently.
+contested**, so the spec can ship the contested part honestly labeled rather than silently.
 
 `research/05-SEO-2026.md` is the worked example. Written from memory it would have said "add FAQ
 schema for rich results" — a recommendation that has been wrong since 7 May 2026, when those results
@@ -94,7 +94,7 @@ for a different reason than it used to.
 
 ## Two habits that matter here
 
-**Measure, then claim.** Nothing in this repository asserts behaviour nobody reproduced. Several
+**Measure, then claim.** Nothing in this repository asserts behavior nobody reproduced. Several
 findings exist because someone was about to ship a confident, wrong thing — a CSP that would have
 blocked every page, a gate that could not fail. If you cannot reproduce it, write down what you
 observed and what you could not confirm.

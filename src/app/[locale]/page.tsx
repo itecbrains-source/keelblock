@@ -8,7 +8,7 @@ import { getTranslations } from 'next-intl/server';
  */
 async function Status() {
   const t = await getTranslations('home');
-  // Placeholder for the session-dependent region. The auth and organisation surfaces land with
+  // Placeholder for the session-dependent region. The auth and organization surfaces land with
   // SPEC-004/005; this exists so the streaming boundary is real from the first commit rather than
   // retrofitted once it is inconvenient.
   return (

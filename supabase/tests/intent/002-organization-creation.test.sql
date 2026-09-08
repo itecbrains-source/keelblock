@@ -12,7 +12,7 @@ set local role authenticated;
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
 select isnt(public.create_organization('Acme Coffee','acme-coffee'), null,
-  'CREATE: an authenticated user can create an organisation');
+  'CREATE: an authenticated user can create an organization');
 select is((select role::text from public.organization_member
            where user_id = '11111111-1111-1111-1111-111111111111'), 'owner',
   'CREATE: the creator becomes owner in the same transaction -- never an org with no members');
@@ -32,7 +32,7 @@ select throws_ok($$select public.create_organization('Duplicate','acme-coffee')$
 -- `org_role_of(id) = 'owner'` rather than delegating to a boolean, so mocking cannot isolate it, and
 -- the tool says so instead of guessing. These two tests are that instruction carried out -- they are
 -- the reason the intent layer exists.
-select is((select count(*)::int from public.organization), 1, 'DELETE: fixture has one organisation');
+select is((select count(*)::int from public.organization), 1, 'DELETE: fixture has one organization');
 
 set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 select lives_ok(
@@ -40,7 +40,7 @@ select lives_ok(
   'DELETE: a non-member''s delete raises nothing -- RLS matches no rows (the silent no-op)');
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 select is((select count(*)::int from public.organization where slug = 'acme-coffee'), 1,
-  'DELETE: ...and the organisation is still there -- asserted on the DATA, never on an exception');
+  'DELETE: ...and the organization is still there -- asserted on the DATA, never on an exception');
 
 -- The RPC runs as its owner and therefore bypasses RLS. If it were reachable unauthenticated it
 -- would be a way to write rows with no session at all.

@@ -74,7 +74,7 @@ alter table public.organization        enable row level security;
 alter table public.organization_member enable row level security;
 alter table public.project             enable row level security;
 
--- Defence in depth only. MEASURED (spike F-2): FORCE does NOT stop the current owner, because
+-- Defense in depth only. MEASURED (spike F-2): FORCE does NOT stop the current owner, because
 -- postgres bypasses via rolbypassrls rather than via ownership. It is set because it is free and
 -- becomes real if ownership ever moves to a non-bypassing role -- NOT because it mitigates today.
 alter table public.organization        force row level security;
@@ -82,7 +82,7 @@ alter table public.organization_member force row level security;
 alter table public.project             force row level security;
 
 -- ── policies ─────────────────────────────────────────────────────────────────
--- Every write policy carries a WITH CHECK that actually constrains the organisation (REQ-4).
+-- Every write policy carries a WITH CHECK that actually constrains the organization (REQ-4).
 -- MEASURED (spike F-3): a USING-only write policy lets a member insert into another org, and the
 -- smuggled row is invisible to them -- so a read-based test can never catch it.
 
@@ -115,7 +115,7 @@ create policy project_update on public.project
 create policy project_delete on public.project
   for delete to authenticated using (public.is_org_admin(organization_id));
 
--- The creator of an organisation becomes its owner, atomically. Without this, organization_insert
+-- The creator of an organization becomes its owner, atomically. Without this, organization_insert
 -- would let a user create an org they are then not a member of -- an orphan no policy can reach.
 create or replace function public.grant_creator_ownership()
 returns trigger language plpgsql security definer set search_path = public, pg_catalog as $$
@@ -127,7 +127,7 @@ end;
 $$;
 create trigger organization_grant_creator_ownership
   after insert on public.organization
-  -- note: `(select auth.uid())` is a policy optimisation and is ILLEGAL here --
+  -- note: `(select auth.uid())` is a policy optimization and is ILLEGAL here --
   -- Postgres rejects a subquery in a trigger WHEN condition. Per-row evaluation is fine.
   for each row when (auth.uid() is not null)
   execute function public.grant_creator_ownership();

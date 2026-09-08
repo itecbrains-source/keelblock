@@ -20,7 +20,7 @@ describe('derived status', () => {
   it('MUTATION: a document claiming the wrong number of findings is caught', () => {
     // The exact failure: prose says 22, reality says 23, and a reader believes the prose.
     const p = checkCountClaims(
-      { 'README.md': `keel has ${c.findings + 1} findings with repros.` },
+      { 'README.md': `keelblock has ${c.findings + 1} findings with repros.` },
       c,
     );
     expect(p).toHaveLength(1);

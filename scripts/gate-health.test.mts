@@ -106,7 +106,7 @@ describe('gate health (the suite is dependable)', () => {
     // to debug their code when the real problem is a missing dependency (F-19).
     const r = spawnSync('node', ['scripts/check-schema-guard.mjs'], {
       encoding: 'utf8',
-      env: { ...process.env, KEEL_DB_URL: 'postgresql://nobody@127.0.0.1:1/none' },
+      env: { ...process.env, KEELBLOCK_DB_URL: 'postgresql://nobody@127.0.0.1:1/none' },
     });
     expect(r.status).toBe(2);
     expect(r.stderr).not.toMatch(/at Object\.|at Module\./); // no raw stack trace

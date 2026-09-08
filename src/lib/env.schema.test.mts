@@ -16,7 +16,7 @@ describe('environment validation', () => {
     // Not timidity: a production build serves 13 inline scripts, and `script-src 'self'` blocks all
     // of them. The other six headers are enforced regardless. See src/lib/security-headers.ts.
     const r = validateEnv(valid);
-    expect(r.ok && r.env.KEEL_SECURITY_HEADERS).toBe('report-only');
+    expect(r.ok && r.env.KEELBLOCK_SECURITY_HEADERS).toBe('report-only');
   });
 
   // ── mutation proofs ────────────────────────────────────────────────────────
@@ -48,8 +48,8 @@ describe('environment validation', () => {
 
   it('MUTATION: "false" is not truthy here — the competing-kit bug this file exists to avoid', () => {
     // `enabled: process.env.FLAG ?? false` treats the string "false" as true. An enum cannot.
-    expect(validateEnv({ ...valid, KEEL_SECURITY_HEADERS: 'false' }).ok).toBe(false);
-    expect(validateEnv({ ...valid, KEEL_SECURITY_HEADERS: 'off' }).ok).toBe(true);
+    expect(validateEnv({ ...valid, KEELBLOCK_SECURITY_HEADERS: 'false' }).ok).toBe(false);
+    expect(validateEnv({ ...valid, KEELBLOCK_SECURITY_HEADERS: 'off' }).ok).toBe(true);
   });
 
   it('MUTATION: a malformed URL is caught at boot, not at first connection', () => {

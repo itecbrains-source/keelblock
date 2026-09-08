@@ -4,7 +4,7 @@
 
 ## Context
 
-keel is Next.js only, and that decision is load-bearing: the field maintains the same feature set
+keelblock is Next.js only, and that decision is load-bearing: the field maintains the same feature set
 across three frameworks, so a single target is what makes feature-completeness affordable rather
 than a slogan.
 
@@ -16,18 +16,18 @@ suggestion).
 
 ### 1 · One framework, and no second one for marketing
 
-Astro's advantage on content pages is zero client JavaScript. Next 16 already prerenders keel's
+Astro's advantage on content pages is zero client JavaScript. Next 16 already prerenders keelblock's
 landing fully static, so that ceiling is not what limits us. A second framework adds a second build
 system, a second dependency tree and **a second surface that goes stale** — in a project whose
 central differentiator is that it does not. It also doubles what every buyer maintains, permanently.
 
 The concern underneath is legitimate: marketing pages must not read as generated filler. That is a
-content problem and no framework solves it. keel's answer is `FINDINGS.md` — measured claims with
+content problem and no framework solves it. keelblock's answer is `FINDINGS.md` — measured claims with
 reproductions, which no competitor can publish because none of them did the measuring.
 
 ### 2 · The port seam already exists, and it is where the work is
 
-A port is affordable or not depending on what has to be rewritten. In keel, the expensive half is
+A port is affordable or not depending on what has to be rewritten. In keelblock, the expensive half is
 **already framework-agnostic**:
 
 | Portable as-is                                        | Rewritten per framework                      |

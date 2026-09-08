@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "keel"
+project_id = "keelblock"
 
 [api]
 enabled = true
@@ -19,8 +19,8 @@ max_rows = 1000
 # Controls whether new tables, views, sequences and functions created in the `public` schema by
 # `postgres` are reachable through the Data API roles (`anon`, `authenticated`, `service_role`)
 # without explicit GRANTs. When unset, new entities are NOT auto-exposed, matching the new cloud
-# default. Set to `true` to keep the legacy behaviour of auto-exposing new entities; this is
-# deprecated and the field is removed on 2026-10-30 once the always-revoked behaviour is permanent.
+# default. Set to `true` to keep the legacy behavior of auto-exposing new entities; this is
+# deprecated and the field is removed on 2026-10-30 once the always-revoked behavior is permanent.
 # auto_expose_new_tables = true
 
 [api.tls]

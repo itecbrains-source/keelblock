@@ -10,7 +10,7 @@ an isolation bug in a policy, and there is no path from their fix to your reposi
 Supastarter, ShipFast and Achromatic all share this, and none advertises a solution, because at the
 "clone it" level there isn't one.
 
-This matters more for keel than for any of them. Keel's entire claim is security-shaped, and a
+This matters more for keelblock than for any of them. Keelblock's entire claim is security-shaped, and a
 security fix that cannot reach the people who need it is not a fix — it is a changelog entry.
 
 ## Decision Drivers
@@ -23,7 +23,7 @@ security fix that cannot reach the people who need it is not a fix — it is a c
 
 ## Options Considered
 
-### Option A: keel core as an npm dependency
+### Option A: keelblock core as an npm dependency
 
 | Pros                              | Cons                                                                                         |
 | --------------------------------- | -------------------------------------------------------------------------------------------- |
@@ -45,7 +45,7 @@ security fix that cannot reach the people who need it is not a fix — it is a c
 
 **Chosen: Option C**, resting on an observation about _where_ security fixes actually land.
 
-Keel's security-critical surface is small, stable, and mostly **append-only by nature**:
+Keelblock's security-critical surface is small, stable, and mostly **append-only by nature**:
 
 - **Policies are migrations.** A fixed policy ships as a _new_ migration file. New files never
   conflict — a project pulls it in and applies it, however much it has diverged. The single most
@@ -55,9 +55,9 @@ Keel's security-critical surface is small, stable, and mostly **append-only by n
 - **Product surfaces** — pages, components, business logic — are where users work and where conflicts
   would happen, and they are almost never where a security fix lands.
 
-So keel is structured to keep those two sets apart, and ships:
+So keelblock is structured to keep those two sets apart, and ships:
 
-1. **`keel upgrade`** — fetches the release, applies new migrations, runs codemods for mechanical
+1. **`keelblock upgrade`** — fetches the release, applies new migrations, runs codemods for mechanical
    changes, and reports anything needing hands rather than pretending it merged.
 2. **Codemods for every breaking change**, in the release, the way Next.js does it.
 3. **GitHub Security Advisories** for the isolation-affecting class, so it arrives as a notification
@@ -75,5 +75,5 @@ comprehensibility anyway.
 logic breaks the model quietly. Mitigated by a gate over the boundary (the same one ADR-003 needs for
 the service-role client), and by accepting that the path is **best-effort for product code and
 guaranteed only for the security surface**. That limit is stated plainly in the docs rather than
-discovered: promising a clean upgrade for code the user rewrote would be the kind of claim keel exists
+discovered: promising a clean upgrade for code the user rewrote would be the kind of claim keelblock exists
 to not make.

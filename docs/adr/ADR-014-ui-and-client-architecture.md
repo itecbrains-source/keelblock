@@ -4,7 +4,7 @@
 
 ## Context
 
-keel has Tailwind and no components. Every choice below is load-bearing because a starter's UI
+keelblock has Tailwind and no components. Every choice below is load-bearing because a starter's UI
 decisions are inherited wholesale and are expensive to reverse — and one of them, universal UI, is
 _pervasive_ in the same sense i18n was, so it has to be decided now rather than discovered later.
 
@@ -26,7 +26,7 @@ That last row is what decides it. Most B2B SaaS never ships a native app, and of
 do not want shared components anyway — **good mobile UX is not good web UX**, and teams that try to
 share the view layer usually end up with an app that feels like a website.
 
-**What a buyer needing mobile does instead:** write a React Native app against the same API. keel's
+**What a buyer needing mobile does instead:** write a React Native app against the same API. keelblock's
 tenancy, policies, auth and billing serve it unchanged, because the guarantee lives in Postgres, not
 in a component. That is a better answer than a shared button.
 
@@ -65,7 +65,7 @@ adoption, and it is a decision made against a real form rather than in advance.
 Charts are _additive_ — bolt one on the day you need it, nothing existing changes — and the right
 library depends entirely on the product. Apache ECharts is excellent and roughly a megabyte;
 committing every buyer to that for a dashboard they may never build is precisely the bloat the field
-is criticised for.
+is criticized for.
 
 The documentation carries the choice criteria instead: **Recharts** for standard dashboards on this
 stack, **ECharts** when you need heatmaps, correlation views, or a hundred thousand points. Twenty
@@ -78,7 +78,7 @@ Three of those exist. **Rate limiting exists nowhere** — the third instance in
 promise written down with nothing behind it, after B-3 (freshness) and ADR-007 (Renovate).
 
 It ships with SPEC-004, because auth endpoints are what need protecting and rate limiting an app with
-no login protects nothing. **Postgres-backed** — keel already has a database and adding Redis to a
+no login protects nothing. **Postgres-backed** — keelblock already has a database and adding Redis to a
 starter for a counter is infrastructure a buyer must then run forever — with a documented seam for
 Upstash or Arcjet at a scale where a table stops being appropriate. Per-account lockout is separately
 tracked as DEF-006.

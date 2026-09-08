@@ -1,6 +1,6 @@
 {
   "home": {
-    "title": "keel",
+    "title": "keelblock",
     "tagline": "Multi-tenant SaaS starter — tenant isolation enforced by the database and proven on every commit.",
     "foundation": "Foundation only. See the access matrix for what the database currently permits."
   },

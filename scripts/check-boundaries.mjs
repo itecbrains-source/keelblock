@@ -14,7 +14,7 @@
  *           database, so RLS is bypassed by construction. Next refuses `cookies()` inside
  *           `use cache` (F-6), which kills the naive case — the surviving risk is the escape hatch
  *           its own error message recommends: read the session outside, pass a value in. That is
- *           legitimate, and it is only safe if the organisation arrives as an ARGUMENT, which Next
+ *           legitimate, and it is only safe if the organization arrives as an ARGUMENT, which Next
  *           keys on. Captured from an outer scope or defaulted, it is one tenant's data served to
  *           the next.
  */
@@ -89,7 +89,7 @@ export function findAdminReachableFrom(entries, read, resolveFn) {
   return problems;
 }
 
-/** A `use cache` function reaching tenant data must take its organisation as a parameter. */
+/** A `use cache` function reaching tenant data must take its organization as a parameter. */
 /**
  * @param {string[]} files
  * @param {(f: string) => string} read
@@ -108,7 +108,7 @@ export function findUnkeyedCaches(files, read) {
     for (const [, name, params] of fns) {
       if (!/organi[sz]ation|orgId|org_id|\borg\b/i.test(params)) {
         problems.push(
-          `${file}: "${name}" is cached but takes no organisation parameter. ` +
+          `${file}: "${name}" is cached but takes no organization parameter. ` +
             `Next keys the cache on arguments — a tenant captured from scope is not in the key, ` +
             `so one tenant's data is served to the next.`,
         );
@@ -119,7 +119,7 @@ export function findUnkeyedCaches(files, read) {
 }
 
 /**
- * Import cycles. A cycle breaks tree-shaking, makes module initialisation order undefined, and makes
+ * Import cycles. A cycle breaks tree-shaking, makes module initialization order undefined, and makes
  * the code impossible to reason about one file at a time — and it is invisible until something
  * mysteriously imports as `undefined`.
  *
@@ -137,7 +137,7 @@ export function findCycles(files, read, resolveFn) {
     const at = stack.indexOf(file);
     if (at !== -1) {
       const loop = [...stack.slice(at), file];
-      // Normalise by MEMBERS, not by the walked sequence: a→b→a and b→a→b are the same cycle, and
+      // Normalize by MEMBERS, not by the walked sequence: a→b→a and b→a→b are the same cycle, and
       // sorting the sequence gives them different keys because the entry point appears twice.
       const key = [...new Set(loop)].sort().join('|');
       if (!seen.has(key)) {

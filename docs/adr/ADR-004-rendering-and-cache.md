@@ -10,7 +10,7 @@ to establish a central cache-tag registry early.
 
 For a multi-tenant product this is not a performance topic, it is a **security** one. _A cached value
 whose key omits the tenant is a cross-tenant data leak that RLS cannot prevent_ — the response is
-served from cache and never reaches the database, so every policy keel is proud of is bypassed. This
+served from cache and never reaches the database, so every policy keelblock is proud of is bypassed. This
 is the one way to leak data that the entire B-2 apparatus would confirm as green.
 
 ## Decision Drivers
@@ -39,7 +39,7 @@ Cache Components is not free: it forces a decision on **every authenticated rout
 **This narrows the gate rather than widening it.** The surviving risk is the escape hatch Next's own
 error message recommends — read cookies outside, pass the value in as an argument. That is legitimate
 and needed for per-org aggregates. So the gate checks the one thing that remains checkable: a
-`use cache` function reaching tenant data takes its organisation as an **argument** (which Next keys
+`use cache` function reaching tenant data takes its organization as an **argument** (which Next keys
 on), never from closure or a default.
 
 A central cache-tag registry still lands from the first commit.
@@ -51,4 +51,4 @@ class that RLS cannot cover has a named owner.
 
 **Negative:** a gate over `use cache` will have false positives on genuinely global cached values
 (marketing copy, pricing tables). Mitigated by an explicit, reason-carrying, shrink-only allowlist —
-the same pattern as every other keel gate, so there is one thing to learn rather than five.
+the same pattern as every other keelblock gate, so there is one thing to learn rather than five.

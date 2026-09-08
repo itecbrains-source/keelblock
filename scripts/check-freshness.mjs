@@ -100,7 +100,7 @@ async function fetchLatestMajors(names) {
 }
 
 async function main() {
-  const stamp = JSON.parse(readFileSync('keel.freshness.json', 'utf8'));
+  const stamp = JSON.parse(readFileSync('keelblock.freshness.json', 'utf8'));
   const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
   const all = { ...pkg.dependencies, ...pkg.devDependencies };
 
@@ -132,7 +132,7 @@ async function main() {
   console.error('freshness: FAILED\n');
   for (const f of failures) console.error(`  [${f.rule}] ${f.name}: ${f.msg}`);
   console.error(
-    '\nThis is the gate that keeps keel from becoming another three-majors-behind starter.',
+    '\nThis is the gate that keeps keelblock from becoming another three-majors-behind starter.',
   );
   console.error('Moving a date is a claim that you looked. Do not move one without looking.');
   process.exit(1);

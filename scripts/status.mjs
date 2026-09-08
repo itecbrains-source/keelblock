@@ -126,7 +126,7 @@ function main() {
   }
 
   console.log(`
-  keel — computed ${new Date().toISOString().slice(0, 10)}, not written down
+  keelblock — computed ${new Date().toISOString().slice(0, 10)}, not written down
   ${head ? `at ${head}` : ''}
 
   SPECS      ${c.specs.length} authored · ${shipped.length} done · ${c.specs.filter((s) => s.status === 'partial').length} partial · ${c.specs.filter((s) => s.status === 'draft').length} draft`);

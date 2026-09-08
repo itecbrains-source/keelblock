@@ -1,6 +1,6 @@
 # Security policy
 
-keel's central claim is that tenant isolation is enforced by the database and proven on every commit.
+keelblock's central claim is that tenant isolation is enforced by the database and proven on every commit.
 A hole in that claim is the most serious kind of bug this project can have, and it will be treated
 that way.
 
@@ -17,11 +17,11 @@ how the findings in [`docs/FINDINGS.md`](docs/FINDINGS.md) were established.
 
 In rough order of severity:
 
-1. **Cross-tenant access** — any path by which one organisation reaches another's data. This is the
+1. **Cross-tenant access** — any path by which one organization reaches another's data. This is the
    claim; a hole in it is critical even if it needs unusual conditions.
 2. **Privilege escalation** — a member gaining rights they were not granted.
 3. **A gate that cannot fail** — a check that reports green while the defect it exists to catch is
-   present. This is a vulnerability in the _evidence_, and evidence is what keel sells.
+   present. This is a vulnerability in the _evidence_, and evidence is what keelblock sells.
 4. Anything reaching a secret, or a service-role client reachable from a rendered page.
 
 ## What we will do
@@ -31,10 +31,10 @@ deliberate: a new migration file cannot conflict with your project however far i
 security fix can actually reach you (see [ADR-008](docs/adr/ADR-008-upgradability.md)).
 
 Fixed issues are published in [`docs/FINDINGS.md`](docs/FINDINGS.md) with the reproduction — including
-ones we caused ourselves. A project claiming rigour that publishes only its wins is doing marketing.
+ones we caused ourselves. A project claiming rigor that publishes only its wins is doing marketing.
 
 ## Scope
 
 This repository. Supabase, Next.js and Postgres themselves have their own disclosure processes — but
-if a _default_ in one of them makes keel-shaped projects unsafe, tell us: F-1 in our findings is
+if a _default_ in one of them makes keelblock-shaped projects unsafe, tell us: F-1 in our findings is
 exactly that, and it affects every project inheriting the same default.

@@ -12,7 +12,7 @@ asks _will CI pass_, and a wrong answer costs a round trip. Preflight asks _is i
 in front of paying customers_, and a wrong answer costs an outage or a tenant leak in production.
 The gap between the second and third question is where the expensive failures live.
 
-It is aimed squarely at the team that bought keel and is deploying a commercial product: they have a
+It is aimed squarely at the team that bought keelblock and is deploying a commercial product: they have a
 private repo, real customers, and a production database that no test suite has ever seen.
 
 ## Scope / non-scope
@@ -26,7 +26,7 @@ private repo, real customers, and a production database that no test suite has e
     place that refusal is recorded.
   - **Correctness.** That is `check`, and preflight assumes it passed.
   - **Deploying.** Preflight never triggers a release; it reports.
-  - **Prescribing a topology.** keel has no environments of its own yet and will not invent a
+  - **Prescribing a topology.** keelblock has no environments of its own yet and will not invent a
     deployment story for its users. Every check takes a named target.
 
 ## Sources of truth
@@ -59,7 +59,7 @@ described two. The middle phase is where the work is: backfill, dual-write, and 
 **under real traffic**. Splitting a destructive change across two deploys without it still breaks.
 
 Preflight therefore demands evidence rather than a marker: the new structure exists, is populated,
-and every running instance reports the migration head that contains it. keel can answer this because
+and every running instance reports the migration head that contains it. keelblock can answer this because
 `/api/health/deep` already reports the applied head — _"wait a full rollout cycle"_ is the part the
 literature leaves vague and this makes checkable.
 
@@ -76,17 +76,17 @@ Comparing applied migrations catches a missing one. It **cannot** catch the case
 the same migrations applied, and the resulting schema then altered by hand in a console — which is
 how production policies actually drift.
 
-So drift is a **fingerprint of the realised schema** compared against an approved value, halting on
+So drift is a **fingerprint of the realized schema** compared against an approved value, halting on
 any difference until a human reviews it. Migration-set comparison remains as a second signal, because
 a hole in the middle is drift even when the heads match. Repository-ahead is expected before a
 deploy; target-ahead is always a finding.
 
 ### REQ-3 — the access matrix is verified against the target, not the local stack
 
-keel's central claim concerns production, and policies can drift there without any commit — a
+keelblock's central claim concerns production, and policies can drift there without any commit — a
 console edit, a hotfix, a half-applied migration. Preflight regenerates the matrix against the target
 and diffs it against the committed copy. **A new permission in production that is not in the
-repository is the exact failure keel exists to prevent**, and no local run can see it.
+repository is the exact failure keelblock exists to prevent**, and no local run can see it.
 
 ### REQ-4 — required secrets are present, by name
 
@@ -154,9 +154,9 @@ shown to be looking at anything.
 
 ## Deferrals
 
-- **`DEF-001` — a deploy topology for keel itself.** Registered in
+- **`DEF-001` — a deploy topology for keelblock itself.** Registered in
   [`spec/DEFERRAL_REGISTRY.md`](DEFERRAL_REGISTRY.md) with the trigger
-  `file-exists:.github/workflows/deploy.yml`, so the moment keel gains a real deployment the build
+  `file-exists:.github/workflows/deploy.yml`, so the moment keelblock gains a real deployment the build
   fails until that ADR is written. It is not a note in this section — a note in a section is what
   rots.
 

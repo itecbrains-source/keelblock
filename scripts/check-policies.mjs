@@ -10,7 +10,8 @@
 import { spawnSync, execFileSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 
-const DB = process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
+const DB =
+  process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
 const RLSA = './.venv/bin/rlsautotest';
 
 /**

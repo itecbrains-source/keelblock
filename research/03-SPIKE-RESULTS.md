@@ -11,7 +11,7 @@ Supabase stacks were left untouched). Schema: SPEC-001's shape — `organization
 ## F-1 — The generated suite confirms a total cross-tenant leak as green ✅ _(validates SPEC-002)_
 
 Planted a **semantic** defect: `is_org_member(org)` drops its `user_id` check, so every authenticated
-user is a "member" of every organisation. Syntactically unremarkable — a plausible typo or a bad merge.
+user is a "member" of every organization. Syntactically unremarkable — a plausible typo or a bad merge.
 
 ```
 user A (member of Org A only): 2 projects visible   ← should be 1. Total cross-tenant read leak.
@@ -27,7 +27,7 @@ The mechanism is stated by the tool itself:
 > function's own logic is NOT verified here"_
 
 So the boundary is sharper than ADR-005 stated it: **the generated layer verifies the policy's
-delegation; every line of logic inside a helper is unverified by it.** Since keel's whole model puts
+delegation; every line of logic inside a helper is unverified by it.** Since keelblock's whole model puts
 the membership predicate in exactly such a helper, the intent layer is not a nice-to-have — it is the
 _only_ thing testing the predicate at all.
 
@@ -41,7 +41,7 @@ rolname   | rolsuper | rolbypassrls
 postgres  | f        | t
 ```
 
-Measured with FORCE enabled on `project`: **postgres read all 2 rows across both organisations.**
+Measured with FORCE enabled on `project`: **postgres read all 2 rows across both organizations.**
 
 Two consequences, neither of which is in any spec:
 
@@ -106,5 +106,5 @@ not a finding.
 
 **Both spike questions answered, and the plan survives with four corrections.** `rlsautotest` is
 adopted as specced. The catalog derivation is sound. The two-layer thesis is now demonstrated rather
-than asserted — which is the difference between a claim and evidence, and it is the claim keel exists
+than asserted — which is the difference between a claim and evidence, and it is the claim keelblock exists
 to make.

@@ -8,7 +8,7 @@
 -- No policy in this repo can prevent it, so it is invisible to every policy test.
 --
 -- Exploitability, stated honestly: PostgREST exposes no TRUNCATE verb (verified: 404), so this is
--- not a remote zero-click. It is a defence-in-depth failure -- it turns any SQL injection in a
+-- not a remote zero-click. It is a defense-in-depth failure -- it turns any SQL injection in a
 -- SECURITY INVOKER function, or a leaked anon/authenticated database credential, into total data
 -- loss rather than a scoped read. Removing it costs nothing and removes that escalation.
 --

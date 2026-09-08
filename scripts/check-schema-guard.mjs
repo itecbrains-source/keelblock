@@ -18,10 +18,11 @@
  */
 import { execFileSync } from 'node:child_process';
 
-const DB = process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
+const DB =
+  process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
 
 const QUERY = `
--- Tenant-scoped means: carries organization_id, OR IS the organisation table, whose own id column
+-- Tenant-scoped means: carries organization_id, OR IS the organization table, whose own id column
 -- is the tenant key. The root was invisible to the first version of this query -- the single most
 -- important table in the schema, missed because it does not reference itself.
 with scoped as (
@@ -115,7 +116,7 @@ function main() {
   console.error(
     '\nA table carrying organization_id is tenant data. Every one needs RLS enabled and a',
   );
-  console.error('WITH CHECK that constrains the organisation — see CONTRIBUTING.md.');
+  console.error('WITH CHECK that constrains the organization — see CONTRIBUTING.md.');
   process.exit(1);
 }
 

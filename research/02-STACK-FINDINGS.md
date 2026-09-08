@@ -10,14 +10,14 @@ that _"the strongest reason to pick Better Auth for B2B SaaS"_, and note that Su
 _"leave tenancy to your app (or a kit)."_
 
 The counterweight, from the same sources: **Supabase Auth is the pick when you want
-database-enforced authorization through RLS** — which is keel's entire differentiator. Supabase RLS
+database-enforced authorization through RLS** — which is keelblock's entire differentiator. Supabase RLS
 policies key off `auth.uid()` from a Supabase-issued JWT; Better Auth owns users in your own
 Postgres and issues its own session, so RLS integration is something you build rather than inherit.
 
 **The real trade:** Better Auth hands you the tenancy _feature set_ and leaves you to wire the
 _enforcement_. Supabase Auth hands you the enforcement substrate and leaves you to build the feature
-set. Keel's claim is enforcement, so this leans Supabase — but the org/invite/RBAC work Better Auth
-would have given free is then keel's to write, and that is a large share of v1.
+set. Keelblock's claim is enforcement, so this leans Supabase — but the org/invite/RBAC work Better Auth
+would have given free is then keelblock's to write, and that is a large share of v1.
 
 → **ADR-002. Do not treat as settled.** The lazy answer ("we said Supabase") skips the trade.
 
@@ -91,8 +91,8 @@ reaches the database. **This deserves its own gate.**
 - **gitleaks** pre-commit _and over full history_ — a hit is a live compromise: revoke and rotate first.
 - **Renovate/Dependabot** to propose bumps — necessary but not sufficient: nextacular had CI and
   rotted anyway. Automation proposes; a gate must force.
-- **Trusted Publishing (OIDC) + provenance attestations** via Sigstore if keel is ever published to
-  npm — which `npx create-keel-app` would require.
+- **Trusted Publishing (OIDC) + provenance attestations** via Sigstore if keelblock is ever published to
+  npm — which `npx create-keelblock-app` would require.
 - SLSA L2 is a realistic target; only ~30% of orgs reach L3.
 
 → **ADR-007 (supply chain & release).**

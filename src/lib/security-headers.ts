@@ -4,7 +4,7 @@
  * Two deliberate departures from how the field usually ships this:
  *
  *   1. **On by default.** A header you must opt into is a header most projects never get. Turning
- *      them off is possible (`KEEL_SECURITY_HEADERS=off`) and deliberate.
+ *      them off is possible (`KEELBLOCK_SECURITY_HEADERS=off`) and deliberate.
  *   2. **No `'unsafe-eval'`, and `'unsafe-inline'` only where the framework genuinely requires it.**
  *      A CSP containing `'unsafe-eval'` has given away most of what a CSP is for.
  */
@@ -27,7 +27,7 @@
  *   · **report-only** — nothing breaks, violations are visible, and enforcement is a decision the
  *     operator makes with data from their own app.
  *
- * keel defaults to `report-only` for the CSP and **enforces the other six headers unconditionally**.
+ * keelblock defaults to `report-only` for the CSP and **enforces the other six headers unconditionally**.
  * That is the honest reading of "secure by default": enforce everything that can be enforced without
  * breaking the app, and report the one that cannot, rather than shipping `'unsafe-inline'` and
  * calling it protection.

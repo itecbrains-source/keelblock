@@ -1,4 +1,4 @@
-# ADR-010: Internationalisation — ship the route structure now, with one locale
+# ADR-010: Internationalization — ship the route structure now, with one locale
 
 **Status:** Accepted · **Date:** 2026-09-07 · **Deciders:** owner, architect · **Supersedes** a non-goal in `PRODUCT.md`
 
@@ -13,7 +13,7 @@ An admin panel is **additive**: bolt it on in month nine and nothing existing ch
 > _"You'll move all existing layouts and pages into the `[locale]` segment."_
 
 Every route moves. Every internal `<Link>` becomes locale-aware. Every rendered string goes through a
-lookup. **The retrofit cost scales with the number of screens** — and keel has one page today. This
+lookup. **The retrofit cost scales with the number of screens** — and keelblock has one page today. This
 is the cheapest this decision will ever be, and it gets more expensive every week we build.
 
 Two of the three serious kits in the field (Supastarter, BoxyHQ) treat i18n as table stakes.
@@ -22,9 +22,9 @@ Two of the three serious kits in the field (Supastarter, BoxyHQ) treat i18n as t
 
 - The expensive-to-reverse part is the **route structure**, not the strings; strings can be extracted
   mechanically, moving every route and link cannot.
-- keel's thesis is doing the expensive things right up front. i18n is expensive _precisely because_
+- keelblock's thesis is doing the expensive things right up front. i18n is expensive _precisely because_
   it is normally retrofitted.
-- The stated non-goal about bloat still stands: keel should not ship five locales nobody asked for.
+- The stated non-goal about bloat still stands: keelblock should not ship five locales nobody asked for.
 
 ## Options Considered
 

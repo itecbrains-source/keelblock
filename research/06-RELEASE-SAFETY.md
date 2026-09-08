@@ -26,7 +26,7 @@ which would have produced a preflight that waves through a two-step deploy that 
 ### 2 · "Wait a full rollout cycle" is the part nobody specifies
 
 The literature is explicit that contract must not run until every instance is on the new code, and
-vague about how you _know_. For keel this is answerable rather than hand-waved: the deep health
+vague about how you _know_. For keelblock this is answerable rather than hand-waved: the deep health
 endpoint already reports the applied migration head, so the contract phase can require evidence
 rather than a guess.
 
@@ -56,14 +56,14 @@ cleaned up. A preflight should know all four.
 
 **Drift is best expressed as a fingerprint comparison.** The 2026 practice is a registry holding an
 approved schema fingerprint; CI computes the current one and **halts on difference until a human
-reviews it**. That is cleaner than keel's "compare migration sets" and catches the case a set
+reviews it**. That is cleaner than keelblock's "compare migration sets" and catches the case a set
 comparison misses — the same migrations applied, but the resulting schema altered by hand.
 
 **`pgroll` exists** — zero-downtime, reversible, expand-contract-native Postgres migrations. Worth
 evaluating before building anything in this area. The instinct to build a migration framework here
 would be the delegate-not-implement lesson broken in a place where it applies.
 
-## What keel should do
+## What keelblock should do
 
 1. Preflight classifies pending migrations into **additive · lock-taking · destructive**, not a binary.
 2. A destructive change requires evidence that the **migrate** phase completed — not merely that it
@@ -77,7 +77,7 @@ would be the delegate-not-implement lesson broken in a place where it applies.
 **Primary** — the originating description of the pattern, and the database's own documentation:
 
 - [Danilo Sato — Parallel Change](https://martinfowler.com/bliki/ParallelChange.html) (martinfowler.com, 2014) · where expand/migrate/contract is named and defined
-- [PostgreSQL — `CREATE INDEX`](https://www.postgresql.org/docs/current/sql-createindex.html) · locking behaviour, `CONCURRENTLY`, and its four caveats, quoted above
+- [PostgreSQL — `CREATE INDEX`](https://www.postgresql.org/docs/current/sql-createindex.html) · locking behavior, `CONCURRENTLY`, and its four caveats, quoted above
 - [PostgreSQL — `ALTER TABLE`](https://www.postgresql.org/docs/current/sql-altertable.html) · which forms rewrite the table
 - [pgroll](https://github.com/xataio/pgroll) · the tool's own repository, for what it does and does not do
 

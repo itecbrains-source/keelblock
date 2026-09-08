@@ -17,7 +17,7 @@ field moves and a stale competitive read is worse than none._
 
 **Correction to this memo (2026-09-07):** the original scan missed
 [BoxyHQ](https://github.com/boxyhq/saas-starter-kit) — 4,928 stars, 1,228 forks, 30 contributors,
-Apache-2.0. It is the most-starred free option in the category and by far keel's closest competitor,
+Apache-2.0. It is the most-starred free option in the category and by far keelblock's closest competitor,
 and omitting it made the "no free option exists" claim look easier than it is. Recorded here rather
 than quietly fixed.
 
@@ -51,14 +51,14 @@ So: **there is no free, open, tested, Supabase-native, RLS-proven multi-tenant s
 the hole, and it is a real one — not a story told to justify building. Four thousand nine hundred
 stars have accumulated on a kit whose isolation is a function call each route must remember.
 
-**What BoxyHQ is better at, and keel should not pretend otherwise:** enterprise surface (SSO, SCIM,
+**What BoxyHQ is better at, and keelblock should not pretend otherwise:** enterprise surface (SSO, SCIM,
 audit logs, webhooks, API keys — all _delegated to services_ rather than built, which is the right
 instinct), i18n done properly, dead-code detection via `knip`, page-object fixtures in its e2e
 suite, and — the hardest thing to copy — distribution: 30 contributors and a thousand forks.
 
-## What the field is criticised for
+## What the field is criticized for
 
-Consistent across every independent comparison, and these are keel's design constraints, not
+Consistent across every independent comparison, and these are keelblock's design constraints, not
 marketing copy:
 
 1. **Bloat** — features you did not want, that you now maintain.
@@ -70,7 +70,7 @@ marketing copy:
    what these tools produce out of the box — they produce a starting point, not a production
    enterprise system."_
 
-Point 4 is the thesis. Points 1–3 are the constraints that stop keel becoming what it replaces.
+Point 4 is the thesis. Points 1–3 are the constraints that stop keelblock becoming what it replaces.
 
 ## What this implies
 
@@ -95,7 +95,7 @@ Naming these so the choice is a decision rather than an oversight:
   and SQL. Theirs is a good confirmation of the shape, not a new idea to import.
 
 **Taken:** the accessible-locator rule (SPEC-002 REQ-3b) and the fetch-then-check contrast
-([F-15](../docs/FINDINGS.md)), which is the clearest illustration of keel's thesis anyone has written,
+([F-15](../docs/FINDINGS.md)), which is the clearest illustration of keelblock's thesis anyone has written,
 including us.
 
 ## Sources

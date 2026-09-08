@@ -6,7 +6,7 @@ import { env } from '@/lib/env';
 /**
  * ⚠ SERVICE-ROLE CLIENT — BYPASSES ROW-LEVEL SECURITY ENTIRELY.
  *
- * Every isolation guarantee keel makes is void for anything using this. It exists for the narrow set
+ * Every isolation guarantee keelblock makes is void for anything using this. It exists for the narrow set
  * of operations that legitimately act outside a user session: Stripe webhooks, scheduled jobs, and
  * administrative tooling.
  *

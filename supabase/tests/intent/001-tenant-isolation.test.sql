@@ -7,7 +7,7 @@
 begin;
 select plan(13);
 
--- ── fixture: two organisations, three users ──────────────────────────────────
+-- ── fixture: two organizations, three users ──────────────────────────────────
 insert into auth.users (id, instance_id, aud, role, email) values
   ('11111111-1111-1111-1111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','owner-a@test'),
   ('22222222-2222-2222-2222-222222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','owner-b@test'),
@@ -31,11 +31,11 @@ set local role authenticated;
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
 select is((select count(*)::int from public.project), 1,
-  'READ: a member sees only their own organisation''s projects');
+  'READ: a member sees only their own organization''s projects');
 select is((select count(*)::int from public.organization), 1,
-  'READ: a member sees only their own organisation');
+  'READ: a member sees only their own organization');
 select is((select count(*)::int from public.organization_member), 2,
-  'READ: a member sees co-members of their own organisation, and no others');
+  'READ: a member sees co-members of their own organization, and no others');
 
 -- The defect that a read-based suite structurally cannot catch (spike F-3): the smuggled row is
 -- invisible to its own writer, so this must be asserted as a rejection, not as an absent read.
@@ -48,7 +48,7 @@ select throws_ok(
 select throws_ok(
   $$update public.project set organization_id = 'bbbbbbbb-0000-0000-0000-00000000000b'$$,
   '42501', null,
-  'WRITE: a member cannot move a row into another organisation');
+  'WRITE: a member cannot move a row into another organization');
 
 select is((select count(*)::int from public.organization_member
            where organization_id = 'bbbbbbbb-0000-0000-0000-00000000000b'), 0,

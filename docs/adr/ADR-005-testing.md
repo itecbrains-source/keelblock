@@ -5,7 +5,7 @@
 ## Context
 
 nextacular ships zero tests. Supastarter ships Playwright. Nobody in the field ships proof of tenant
-isolation, which is B-2 and the reason keel exists.
+isolation, which is B-2 and the reason keelblock exists.
 
 [`rlsautotest`](https://github.com/unitautogen/rlsautotest) (Apache-2.0) generates a pgTAP suite from
 the policy catalog — per table, per command, per identity — plus an access matrix and a CI gate. It is

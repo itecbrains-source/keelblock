@@ -141,7 +141,7 @@ export function missingBinaries(required, has) {
  * A connection either opens or it does not, and that is the only thing these gates need.
  */
 function databaseReachable(
-  url = process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres',
+  url = process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres',
 ) {
   return spawnSync('psql', [url, '-tAc', 'select 1'], { encoding: 'utf8' }).status === 0;
 }

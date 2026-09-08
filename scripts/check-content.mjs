@@ -2,7 +2,7 @@
 /**
  * The content gate — material is routed as it is produced, not mined later.
  *
- * keel generates unusually good raw material: measured findings with reproductions, decisions with
+ * keelblock generates unusually good raw material: measured findings with reproductions, decisions with
  * their rejected options, a pinned source corpus. **None of it is useful if nobody can find it when
  * the website needs writing**, and mining it six months later means reconstructing reasoning that
  * was obvious the day it was discovered.
@@ -13,7 +13,7 @@
  *   1. every finding in FINDINGS.md appears in the manifest, and vice versa
  *   2. every destination is one of the declared kinds
  *   3. every FAQ answer cites something that exists — an answer resting on an assertion is the
- *      defect this whole project is organised against, and it is easiest to commit in a FAQ
+ *      defect this whole project is organized against, and it is easiest to commit in a FAQ
  */
 import { readFileSync, existsSync } from 'node:fs';
 

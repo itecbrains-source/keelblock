@@ -8,4 +8,4 @@
 --   2. Seed data drifts from the schema and then fails a reset at the worst moment.
 --
 -- The tests seed their own fixtures inside a transaction and roll them back, which is where fixtures
--- belong. Create an organisation through the app instead — that exercises the real path.
+-- belong. Create an organization through the app instead — that exercises the real path.

@@ -4,11 +4,11 @@
 
 ## Context
 
-keel has a proven database layer and almost no application layer. The next spec writes the first real
+keelblock has a proven database layer and almost no application layer. The next spec writes the first real
 UI, and **conventions get set by whatever the first screen happens to do** — so they are decided here
 instead, once, while there is nothing to migrate.
 
-This matters more than usual because of what keel claims. Isolation is enforced in Postgres, but the
+This matters more than usual because of what keelblock claims. Isolation is enforced in Postgres, but the
 application can still route around it: one Server Action reaching for the service-role client
 bypasses every policy, and no test in this repository would notice. The conventions below exist to
 make the safe path the obvious one.
@@ -26,11 +26,11 @@ The failure this prevents is mixing them: **a Server Action invoked from outside
 the assumptions that make it safe**, so if something needs a URL it is a Route Handler with explicit
 auth, not an action that happens to be reachable.
 
-### 2 · Every mutation is validate → authorise → act, in that order
+### 2 · Every mutation is validate → authorize → act, in that order
 
 ```ts
 'use server';
-export async function renameOrganisation(input: unknown) {
+export async function renameOrganization(input: unknown) {
   const { id, name } = renameSchema.parse(input);      // 1 · never trust the client
   const supabase = await createClient();               // 2 · the user's session, so RLS applies
   const { error } = await supabase                     // 3 · the policy is the authority
@@ -43,16 +43,16 @@ export async function renameOrganisation(input: unknown) {
 clothes, and the type annotation on it is a comment — the runtime receives whatever was posted. So
 the parameter is typed `unknown` and parsed, never typed as the shape you hope for.
 
-**Authorisation is the policy, not an `if`.** The action uses the session-carrying client and lets
+**Authorization is the policy, not an `if`.** The action uses the session-carrying client and lets
 RLS refuse. An application-level check may be added for a better error message, never as the
-boundary — that is F-15, the pattern keel exists to replace.
+boundary — that is F-15, the pattern keelblock exists to replace.
 
 ### 3 · The service-role client is never reachable from a component tree
 
 It bypasses RLS entirely. It belongs to webhooks, scheduled jobs and administrative tooling, lives
 under `server-only/`, and every call site carries a one-line justification. A gate enforces the
 import boundary (SPEC-003 REQ-3), because this is the one mistake that silently voids every guarantee
-keel makes.
+keelblock makes.
 
 ### 4 · Actions return typed results; they do not throw for expected failures
 
@@ -94,7 +94,7 @@ validation live" should find one answer, not one per feature.
 ## Consequences
 
 **Positive:** the safe path is the shortest path. Reaching for the service-role client, or hand-rolling
-an authorisation check, becomes visibly unusual rather than a reasonable-looking alternative.
+an authorization check, becomes visibly unusual rather than a reasonable-looking alternative.
 
 **Negative:** `Result<T>` is more ceremony than throwing, and typing action parameters `unknown` costs
 a parse at every entry point. Both are accepted deliberately — they are the price of a boundary that

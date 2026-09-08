@@ -33,7 +33,7 @@
     },
     {
       "file": "03-SPIKE-RESULTS.md",
-      "area": "RLS behaviour, measured",
+      "area": "RLS behavior, measured",
       "volatility": "stable",
       "verifiedOn": "2026-09-07",
       "specs": ["SPEC-001", "SPEC-002"],

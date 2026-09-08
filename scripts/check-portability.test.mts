@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 
 /**
- * ADR-012: the gates must stay framework-agnostic, or a future port loses the half of keel that
+ * ADR-012: the gates must stay framework-agnostic, or a future port loses the half of keelblock that
  * took longest to build. This is cheap to keep true and impossible to notice going wrong.
  */
 const gates = readdirSync('scripts').filter((f) => f.endsWith('.mjs'));

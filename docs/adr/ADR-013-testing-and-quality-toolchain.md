@@ -14,18 +14,18 @@ else here catches, and is that worth a permanent dependency?**
 
 ## Ships now
 
-| Tool                              | The failure it catches                                                  | Why now                                                                                                                           |
-| --------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Vitest**                        | incorrect pure logic                                                    | already the unit layer                                                                                                            |
-| **pgTAP** (`supabase test db`)    | a policy that does not do what we meant                                 | the intent layer; the only thing testing what is _inside_ a helper                                                                |
-| **rlsautotest**                   | a policy that does not enforce what it declares                         | exhaustive where hand-writing cannot be                                                                                           |
-| **knip**                          | dead code and unused dependencies                                       | found three orphans and an undeclared system binary on its first run                                                              |
-| **ESLint** + `eslint-config-next` | framework-specific correctness, not just style                          | Next's own rules catch real bugs                                                                                                  |
-| **Prettier**                      | **formatting arguments in review**                                      | keel had _none_. A starter whose contributions arrive in five styles taxes every reader forever, and the fix costs one dependency |
-| **Renovate**                      | dependencies drifting unnoticed                                         | **ADR-007 names it and no config existed** — the same unbacked-claim defect as B-3, in our own decision record                    |
-| **CodeQL**                        | injection and data-flow classes no gate here looks for                  | free on public repositories, GitHub-native,zero maintenance                                                                       |
-| **`npm audit`** in CI             | known vulnerabilities in the tree                                       | built in, no dependency, fails on high severity                                                                                   |
-| **cycle detection**               | an import cycle, which breaks tree-shaking and makes reasoning circular | the boundaries gate already walks the import graph; this is ten lines, not a dependency                                           |
+| Tool                              | The failure it catches                                                  | Why now                                                                                                                                |
+| --------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vitest**                        | incorrect pure logic                                                    | already the unit layer                                                                                                                 |
+| **pgTAP** (`supabase test db`)    | a policy that does not do what we meant                                 | the intent layer; the only thing testing what is _inside_ a helper                                                                     |
+| **rlsautotest**                   | a policy that does not enforce what it declares                         | exhaustive where hand-writing cannot be                                                                                                |
+| **knip**                          | dead code and unused dependencies                                       | found three orphans and an undeclared system binary on its first run                                                                   |
+| **ESLint** + `eslint-config-next` | framework-specific correctness, not just style                          | Next's own rules catch real bugs                                                                                                       |
+| **Prettier**                      | **formatting arguments in review**                                      | keelblock had _none_. A starter whose contributions arrive in five styles taxes every reader forever, and the fix costs one dependency |
+| **Renovate**                      | dependencies drifting unnoticed                                         | **ADR-007 names it and no config existed** — the same unbacked-claim defect as B-3, in our own decision record                         |
+| **CodeQL**                        | injection and data-flow classes no gate here looks for                  | free on public repositories, GitHub-native,zero maintenance                                                                            |
+| **`npm audit`** in CI             | known vulnerabilities in the tree                                       | built in, no dependency, fails on high severity                                                                                        |
+| **cycle detection**               | an import cycle, which breaks tree-shaking and makes reasoning circular | the boundaries gate already walks the import graph; this is ten lines, not a dependency                                                |
 
 ## Ships with the spec that needs it
 
@@ -48,8 +48,8 @@ tell us what we already know. It becomes valuable the moment money math exists.
 
 **Property-based testing (fast-check)** — `DEF-012`. Excellent where a function has an invariant to
 state: _splitting a payment conserves every cent_, _a permission check is never more permissive than
-its policy_. keel has no such function yet. Adding it now would produce property tests over string
-formatting, which is theatre.
+its policy_. keelblock has no such function yet. Adding it now would produce property tests over string
+formatting, which is theater.
 
 ## Refused, with reasons
 
@@ -57,7 +57,7 @@ formatting, which is theatre.
   carries Next-specific correctness rules — not style, _bugs_ — and running two linters to keep them
   is worse than one slower one.
 - **`dependency-cruiser` / `madge`.** They do what the boundaries gate already does, and it does it
-  with the specific message keel needs (`page → helper → admin`, naming the chain). A dependency to
+  with the specific message keelblock needs (`page → helper → admin`, naming the chain). A dependency to
   replace ten working lines is the wrong direction.
 - **Testcontainers.** The Supabase CLI already gives a real Postgres with the real auth schema. A
   second way to get a database is a second thing to keep working.

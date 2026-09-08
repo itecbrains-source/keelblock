@@ -1,10 +1,10 @@
 # Findings
 
-Things keel discovered by **measuring**, not by reasoning. Each was reproduced before it was believed,
+Things keelblock discovered by **measuring**, not by reasoning. Each was reproduced before it was believed,
 and each changed the code or a decision. Dated, with the repro, so a reader can check rather than
 trust.
 
-This file is the evidence behind keel's claim. It is also, deliberately, the most useful thing we can
+This file is the evidence behind keelblock's claim. It is also, deliberately, the most useful thing we can
 publish: none of it could be written by someone who had not done the measurement.
 
 ---
@@ -40,7 +40,7 @@ bad merge produces:
 -- after:  where m.organization_id = org
 ```
 
-Result: a user who belonged to one organisation could read both. The generated suite reported the
+Result: a user who belonged to one organization could read both. The generated suite reported the
 affected table **clean**. Its own output explains why:
 
 > _"opaque policy function(s) were MOCKED to prove the policy delegates correctly (wiring) — the
@@ -51,7 +51,7 @@ that helper is unverified by it. Since the membership predicate is exactly such 
 hand-written intent layer is not a nice-to-have — it is the only thing testing the predicate at all.
 
 **A syntactic defect (`with check (true)`) _is_ caught.** Only the semantic one slips through, which
-is why keel's proof of this uses a wrong helper rather than a suspicious-looking policy.
+is why keelblock's proof of this uses a wrong helper rather than a suspicious-looking policy.
 
 ## F-3 · `FORCE ROW LEVEL SECURITY` does not stop the table owner on Supabase
 
@@ -62,11 +62,11 @@ rolname  | rolsuper | rolbypassrls
 postgres | f        | t
 ```
 
-Measured with FORCE enabled: `postgres` read every row across every organisation. It bypasses via
+Measured with FORCE enabled: `postgres` read every row across every organization. It bypasses via
 `BYPASSRLS`, not via ownership, so FORCE changes nothing — **including the remediation the tooling
 itself recommends.**
 
-Consequence: any `SECURITY DEFINER` function owned by `postgres` runs RLS-bypassed. keel's membership
+Consequence: any `SECURITY DEFINER` function owned by `postgres` runs RLS-bypassed. keelblock's membership
 helper works _because of_ this. One returning **rows** rather than a scalar would be a total isolation
 bypass with no policy involved, invisible to every test layer.
 
@@ -74,7 +74,7 @@ bypass with no policy involved, invisible to every test layer.
 
 **2026-09-07 · SPEC-001 REQ-4**
 
-With a `WITH CHECK (true)` write policy, a member inserted a row into another organisation — and then
+With a `WITH CHECK (true)` write policy, a member inserted a row into another organization — and then
 still saw only their own row. The smuggled row is invisible to the person who wrote it.
 
 **A suite that proves isolation by reading can never detect this.** Only one that attempts a
@@ -116,12 +116,12 @@ _Method note: a spike environment that is nearly the target returns nearly the t
 
 **2026-09-07 · fixed in `20260907140000_organization_creation_rpc.sql`**
 
-The generated matrix flagged `organization` as REACHABLE by a different-organisation user. It was a
-**false positive** — the prober created an organisation (permitted by `with check (true)`), became its
+The generated matrix flagged `organization` as REACHABLE by a different-organization user. It was a
+**false positive** — the prober created an organization (permitted by `with check (true)`), became its
 owner, and legitimately read its own row.
 
 The diagnosis indicted the schema rather than the tool: `with check (true)` was the only unconstrained
-write policy in keel, a spam vector, and the exact shape keel's own gate forbids. Creation moved to a
+write policy in keelblock, a spam vector, and the exact shape keelblock's own gate forbids. Creation moved to a
 `SECURITY DEFINER` RPC, so there is no INSERT policy at all and the matrix reads clean.
 
 **A matrix with a false positive in it teaches people to ignore the true ones.**
@@ -131,28 +131,28 @@ write policy in keel, a spam vector, and the exact shape keel's own gate forbids
 # Found by auditing our own work
 
 The findings above came from building. These came from **deliberately attacking what we had already
-shipped and called green.** Two were live security defects. Three were keel breaking its own rules.
+shipped and called green.** Two were live security defects. Three were keelblock breaking its own rules.
 
 That distinction is the point: a green suite means the tests you wrote pass. It says nothing about
 the tests you did not think to write.
 
-## F-9 · An admin could demote the owner and seize the organisation
+## F-9 · An admin could demote the owner and seize the organization
 
 **2026-09-07 · fixed in `20260907150000_membership_invariants.sql`**
 
 ```sql
--- as an ADMIN of the organisation
+-- as an ADMIN of the organization
 update public.organization_member set role = 'member'
  where user_id = '<the owner>';         -- UPDATE 1
 ```
 
-The owner became a member. An admin could take over any organisation they administered. The `owner`
+The owner became a member. An admin could take over any organization they administered. The `owner`
 role is meaningless if an admin can remove it.
 
 Fixed with a trigger: any row that _is_ an owner, or is _becoming_ one, may only be touched by an
 owner.
 
-## F-10 · The last owner could orphan an organisation
+## F-10 · The last owner could orphan an organization
 
 **2026-09-07 · same fix**
 
@@ -162,7 +162,7 @@ delete from public.organization_member where user_id = '<me>';
 -- orgs = 1, members = 0
 ```
 
-An organisation nobody can administer, nobody can delete (delete requires an owner), holding its slug
+An organization nobody can administer, nobody can delete (delete requires an owner), holding its slug
 forever. Fixed with a per-statement invariant that still permits succession — promote a new owner,
 then step down — because that is two statements and each intermediate state is legal.
 
@@ -181,7 +181,7 @@ select auth.uid();                                   -- still returns <uid>
 ```
 
 `auth.uid()` is `coalesce(request.jwt.claim.sub, (request.jwt.claims)::jsonb->>'sub')`. The policy
-prober resets identity by clearing only the plural form, so a stale identity survives — and keel's
+prober resets identity by clearing only the plural form, so a stale identity survives — and keelblock's
 membership triggers then correctly fire on the prober's own fixture reset, aborting its file.
 
 Consequence: **a table carrying domain-invariant triggers cannot be probed by a policy prober**,
@@ -201,7 +201,7 @@ users: the error arrived far from the statement that caused it.
 `initially immediate` fixes both and still permits succession. **A correct protection that no test
 can observe is indistinguishable from an absent one.**
 
-## F-13 · keel's own `unit` gate could not fail
+## F-13 · keelblock's own `unit` gate could not fail
 
 **2026-09-07 · the most embarrassing finding here, and the reason it is published**
 
@@ -209,7 +209,7 @@ can observe is indistinguishable from an absent one.**
 tick. Meanwhile `render()` — the pure function producing the access matrix, the artifact the whole
 claim rests on — had no test at all.
 
-keel's own rule is _every gate ships a proof it can fail_. The gate enforcing that rule did not
+keelblock's own rule is _every gate ships a proof it can fail_. The gate enforcing that rule did not
 have one. Fixed: `--passWithNoTests` removed, and nine tests added of which six are mutation proofs
 that restore a real defect and assert the matrix goes loud.
 
@@ -221,7 +221,7 @@ only reliable check on that is an audit that assumes the author was wrong.
 **2026-09-07 · corrected in the same migration**
 
 The last-owner invariant was originally documented as holding "on every path — including the service
-role." That was theatre: a service-role holder bypasses RLS and can drop the trigger outright.
+role." That was theater: a service-role holder bypasses RLS and can drop the trigger outright.
 Enforcing it unconditionally also broke the policy prober's legitimate fixture reset.
 
 Both triggers now constrain **user-initiated** changes and say so. **An overclaimed guarantee is a
@@ -233,7 +233,7 @@ worse defect than an absent one**, because people build on it.
 
 ## F-15 · In an app-layer model, the other tenant's row is in memory _before_ the check runs
 
-**2026-09-07 · from `boxyhq/saas-starter-kit`, and the clearest illustration of why keel exists**
+**2026-09-07 · from `boxyhq/saas-starter-kit`, and the clearest illustration of why keelblock exists**
 
 BoxyHQ is the most-starred free kit in the category — 4,928 stars, Apache-2.0, genuinely well built.
 Its tenant isolation works like this:
@@ -265,11 +265,11 @@ This is not a criticism of their engineering. It is the ceiling of the architect
 obligation individually. Five thousand stars have accumulated on that arrangement, which is the
 market telling you the gap is not obvious to buyers.
 
-**Two smaller observations from the same repository**, both of which keel had already decided
+**Two smaller observations from the same repository**, both of which keelblock had already decided
 differently, and which are worth recording because they were arrived at independently:
 
 - They ship `knip` as `check-unused` — and **their CI does not run it.** The tool exists; nothing
-  enforces it. That is the advisory-not-blocking pattern keel rejects by design.
+  enforces it. That is the advisory-not-blocking pattern keelblock rejects by design.
 - Their CI has **no secret scanning** at all.
 
 ## F-16 · A strict CSP, static prerendering, and working hydration — pick two
@@ -299,10 +299,10 @@ The nonce row is the one worth proving rather than assuming: a nonce in the _res
 does nothing, because prerendered HTML was fixed at build time and carries no matching attribute. To
 use a nonce the HTML must be generated per request — so static prerendering is gone. Verified.
 
-**keel's default: the six non-CSP headers enforced unconditionally, and the CSP report-only.** That
+**keelblock's default: the six non-CSP headers enforced unconditionally, and the CSP report-only.** That
 is the honest reading of "secure by default" — enforce everything enforceable without breaking the
 app, and report the one thing that cannot be, rather than shipping `'unsafe-inline'` and calling it
-protection. `KEEL_SECURITY_HEADERS=on` enforces the CSP for teams who have tuned it.
+protection. `KEELBLOCK_SECURITY_HEADERS=on` enforces the CSP for teams who have tuned it.
 
 ## F-17 · `NEXT_PUBLIC_` on a credential publishes it, and nothing warns you
 
@@ -312,7 +312,7 @@ protection. `KEEL_SECURITY_HEADERS=on` enforces the CSP for teams who have tuned
 `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` is not a latent risk — it is a service-role key served to
 every visitor, and one typo away at all times. No kit examined checks for it.
 
-keel refuses at boot any `NEXT_PUBLIC_` variable matching a credential shape (`SERVICE_ROLE`,
+keelblock refuses at boot any `NEXT_PUBLIC_` variable matching a credential shape (`SERVICE_ROLE`,
 `SECRET`, `PRIVATE_KEY`, `_TOKEN`, `PASSWORD`, `_DSN`).
 
 The same file exists because of a bug worth recording, found in a competing kit:
@@ -322,28 +322,28 @@ securityHeadersEnabled: process.env.SECURITY_HEADERS_ENABLED ?? false;
 ```
 
 Setting that to `"false"` **enables** it — `??` only catches `undefined`, and a non-empty string is
-truthy. keel parses an enum, so `"false"` is a boot error rather than a silent inversion.
+truthy. keelblock parses an enum, so `"false"` is a boot error rather than a silent inversion.
 
-## F-18 · keel inherited two-majors-behind rot from `create-next-app`, on day two
+## F-18 · keelblock inherited two-majors-behind rot from `create-next-app`, on day two
 
 **2026-09-07 · found by the freshness gate on its first run**
 
-The gate that exists to stop keel becoming a stale starter found keel already stale:
+The gate that exists to stop keelblock becoming a stale starter found keelblock already stale:
 
 ```
 [drift] typescript: pinned at 5, current is 7 — 2 majors behind (limit 1)
 [stamp] knip: package.json has major 6, stamp claims 5
 ```
 
-`create-next-app` pins `typescript: ^5`. TypeScript 7 is current. **keel shipped two majors behind
+`create-next-app` pins `typescript: ^5`. TypeScript 7 is current. **keelblock shipped two majors behind
 on its second day, from the scaffold itself**, and without this gate nothing anywhere would have
 said so — it builds, it typechecks, the tests pass.
 
 The second line is the gate catching its author: I wrote a stamp claiming knip 5 while installing 6.
 
-**Upgrading found a genuine external blocker.** TypeScript 7 typechecks keel cleanly — and about
+**Upgrading found a genuine external blocker.** TypeScript 7 typechecks keelblock cleanly — and about
 three times faster, 1.7s → 0.5s, being the Go-based compiler — but `typescript-eslint` refuses to
-load against it and ESLint aborts outright. keel sits on TypeScript 6: one major behind current,
+load against it and ESLint aborts outright. keelblock sits on TypeScript 6: one major behind current,
 inside the gate's one-major grace, which is the situation that grace exists for. Registered as
 **DEF-008** with the upstream tracking issue.
 

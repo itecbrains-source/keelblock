@@ -1,5 +1,5 @@
 {
-  "$comment": "The pinned source corpus. Every authoritative source keel relies on, with the date it was read and a fingerprint of what it said. Memos cite these ids rather than bare URLs, so a claim can always be traced to a specific reading of a specific document. Checked by scripts/check-corpus.mjs.",
+  "$comment": "The pinned source corpus. Every authoritative source keelblock relies on, with the date it was read and a fingerprint of what it said. Memos cite these ids rather than bare URLs, so a claim can always be traced to a specific reading of a specific document. Checked by scripts/check-corpus.mjs.",
   "$why": "A URL is not a citation. Documentation changes silently, and a memo citing a page that has since been rewritten looks rigorous while resting on something that no longer exists. Pinning the fingerprint turns 'the source moved' from an invisible event into a detectable one.",
   "tiers": {
     "primary": "The vendor's own documentation, a standards body, the originating description of a pattern, or the tool's own repository. A claim may rest on this.",
@@ -20,7 +20,7 @@
       "retrievedOn": "2026-09-07",
       "url": "https://developers.google.com/search/docs/appearance/structured-data/faqpage",
       "title": "FAQPage structured data",
-      "claim": "Current documented behaviour for FAQPage."
+      "claim": "Current documented behavior for FAQPage."
     },
     {
       "id": "google-search-io-2026",

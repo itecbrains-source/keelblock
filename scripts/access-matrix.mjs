@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Generates docs/ACCESS-MATRIX.md — the artifact that makes keel's central claim checkable by a
+ * Generates docs/ACCESS-MATRIX.md — the artifact that makes keelblock's central claim checkable by a
  * stranger in thirty seconds, without trusting anyone (SPEC-002 REQ-4, bar B-2).
  *
  * `--check` re-renders and fails if the committed copy is stale, so a policy change that alters who
  * can reach what cannot merge without the matrix diff appearing in review. That diff is the point:
- * a reviewer who sees a new ✓ in the "different organisation" column has caught a tenant leak in a
+ * a reviewer who sees a new ✓ in the "different organization" column has caught a tenant leak in a
  * document, before it reaches a user.
  */
 import { execFileSync } from 'node:child_process';
@@ -20,10 +20,10 @@ const IDENTITIES = [
   ['anon', 'Unauthenticated', 'a visitor with only the publishable key'],
   [
     'other',
-    'Authenticated · different organisation',
+    'Authenticated · different organization',
     '**the row that matters** — a real user of another tenant',
   ],
-  ['authorized', 'Authenticated · member', 'a member of the organisation that owns the row'],
+  ['authorized', 'Authenticated · member', 'a member of the organization that owns the row'],
   ['service_role', 'Service role', 'bypasses RLS by design; server-only, never in a browser'],
 ];
 
@@ -37,7 +37,7 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   L.push('> Derived from the live policy catalog by probing each table as each identity, so it');
   L.push('> describes what the database *does*, not what anyone believes it does.');
   L.push('');
-  L.push("Legend: `✓` permitted · `·` denied · `⚠` **behaviour differs from the policy's intent**");
+  L.push("Legend: `✓` permitted · `·` denied · `⚠` **behavior differs from the policy's intent**");
   L.push('');
   for (const [, label, note] of IDENTITIES) L.push(`- **${label}** — ${note}`);
   L.push('');
@@ -98,7 +98,7 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   L.push(
     anomalies === 0
       ? '**No anomalies.** Every identity reached exactly what its policies intend, on every table and command.'
-      : `**⚠ ${anomalies} anomal${anomalies === 1 ? 'y' : 'ies'}** — behaviour differs from intent. Each is a defect until explained.`,
+      : `**⚠ ${anomalies} anomal${anomalies === 1 ? 'y' : 'ies'}** — behavior differs from intent. Each is a defect until explained.`,
   );
   L.push('');
   return L.join('\n');
@@ -107,7 +107,7 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
 function main() {
   const check = process.argv.includes('--check');
   const dbUrl =
-    process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
+    process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
   const tmp = join(process.cwd(), '.rls-report.json');
 
   try {
@@ -148,7 +148,7 @@ function main() {
   console.error(
     'The policies no longer match the committed matrix. Regenerate it and read the diff —',
   );
-  console.error('a new ✓ in the "different organisation" column is a tenant leak.\n');
+  console.error('a new ✓ in the "different organization" column is a tenant leak.\n');
   console.error('  npm run access-matrix');
   process.exit(1);
 }

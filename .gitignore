@@ -10,3 +10,4 @@ supabase/.temp/
 supabase/tests/rls/
 .rls-report.json
 rls-report.json
+tsconfig.tsbuildinfo

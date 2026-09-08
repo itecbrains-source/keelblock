@@ -10,7 +10,7 @@ import { parse } from 'yaml';
  * SPEC-003 rule 5: a `toContain` over raw YAML is satisfied by a mention in a comment, so a
  * text-matching gate can pass on a workflow that does the opposite of what it claims.
  *
- * This exists because the workflow has never executed — there is no remote yet. Under keel's own R3
+ * This exists because the workflow has never executed — there is no remote yet. Under keelblock's own R3
  * rule an unrun workflow is not a working gate, so until it runs, this is the strongest available
  * evidence, and it is deliberately structural rather than textual.
  */

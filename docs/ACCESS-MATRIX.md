@@ -4,11 +4,11 @@
 > Derived from the live policy catalog by probing each table as each identity, so it
 > describes what the database *does*, not what anyone believes it does.
 
-Legend: `✓` permitted · `·` denied · `⚠` **behaviour differs from the policy's intent**
+Legend: `✓` permitted · `·` denied · `⚠` **behavior differs from the policy's intent**
 
 - **Unauthenticated** — a visitor with only the publishable key
-- **Authenticated · different organisation** — **the row that matters** — a real user of another tenant
-- **Authenticated · member** — a member of the organisation that owns the row
+- **Authenticated · different organization** — **the row that matters** — a real user of another tenant
+- **Authenticated · member** — a member of the organization that owns the row
 - **Service role** — bypasses RLS by design; server-only, never in a browser
 
 ## `organization`
@@ -18,7 +18,7 @@ Row-level security: **enabled** · policies for DELETE, SELECT, UPDATE
 | Identity | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | Unauthenticated | · | – | · | · |
-| Authenticated · different organisation | · | – | · | · |
+| Authenticated · different organization | · | – | · | · |
 | Authenticated · member | ✓ | – | ✓ | – |
 | Service role | · | – | · | · |
 
@@ -29,7 +29,7 @@ Row-level security: **enabled** · policies for DELETE, INSERT, SELECT, UPDATE
 | Identity | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | Unauthenticated | · | · | ⚠ **REACHABLE** | – |
-| Authenticated · different organisation | · | · | · | · |
+| Authenticated · different organization | · | · | · | · |
 | Authenticated · member | ✓ | ✓ | – | – |
 | Service role | ⚠ **REACHABLE** | – | · | · |
 
@@ -40,7 +40,7 @@ Row-level security: **enabled** · policies for DELETE, INSERT, SELECT, UPDATE
 | Identity | SELECT | INSERT | UPDATE | DELETE |
 |---|---|---|---|---|
 | Unauthenticated | · | · | · | · |
-| Authenticated · different organisation | · | · | · | · |
+| Authenticated · different organization | · | · | · | · |
 | Authenticated · member | ✓ | ✓ | ✓ | ✓ |
 | Service role | · | – | · | · |
 
@@ -62,4 +62,4 @@ for review, not as failures — each is either sanctioned or a finding.
 
 ---
 
-**⚠ 2 anomalies** — behaviour differs from intent. Each is a defect until explained.
+**⚠ 2 anomalies** — behavior differs from intent. Each is a defect until explained.

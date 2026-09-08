@@ -1,4 +1,4 @@
-# keel
+# keelblock
 
 **A multi-tenant SaaS starter where tenant isolation is enforced by the database and proven on every
 commit.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe. MIT.
@@ -21,7 +21,7 @@ The field is priced $199–$1,499 and closed. The free options are a deliberatel
 kit that uses neither Supabase nor RLS, and one that is three Next majors behind. **None of them —
 paid or free — ships proof that its tenant isolation works.**
 
-keel is the one that does, and it is free.
+keelblock is the one that does, and it is free.
 
 ## The claim, and how to check it
 
@@ -31,7 +31,7 @@ probing the database as each identity, so it describes what the database _does_,
 believes it does. It is regenerated on every run and a stale copy fails the build, so a policy change
 that alters who can reach what shows up as a diff in review.
 
-**A new tick in the "different organisation" column is a tenant leak, caught in a document before it
+**A new tick in the "different organization" column is a tenant leak, caught in a document before it
 reaches a user.**
 
 Four test layers, each answering a different question:
@@ -59,16 +59,16 @@ opaque policy functions. See [F-2](docs/FINDINGS.md).
   cannot catch it.
 - **Cache Components break every authenticated page** in Next 16 unless the read streams.
 
-Two of the eight were keel's own mistakes. They are published for the same reason as the rest.
+Two of the eight were keelblock's own mistakes. They are published for the same reason as the rest.
 
 ## What's in it
 
 Sixteen areas, **Next.js only** — no Nuxt, no SvelteKit, no TanStack Start, no React Native. That is
 what makes feature-completeness affordable rather than a slogan: the field maintains the same feature
-set across three frameworks, so keel has roughly three times the budget per feature.
+set across three frameworks, so keelblock has roughly three times the budget per feature.
 
 Marketing shell · auth (password, magic link, OAuth, passkeys, 2FA, verification, reset, unlock) ·
-account · organisations · team & invitations · billing · custom domains · ops & health ·
+account · organizations · team & invitations · billing · custom domains · ops & health ·
 transactional email · file storage · background jobs · notifications · admin & audited impersonation
 · **audit log** · **API keys** · **outbound webhooks**.
 
@@ -78,7 +78,7 @@ with permanent maintenance.
 
 The last three in that list are the interesting ones. The field delegates audit logs, webhooks and
 SSO to third-party services — a buyer gets integration code and three vendor bills, and the audit
-trail lives _outside_ the isolation boundary the product claims. keel builds the three that are
+trail lives _outside_ the isolation boundary the product claims. keelblock builds the three that are
 **tenant-isolation surfaces** natively and proves them; delivery infrastructure stays a seam.
 
 ## Starting a session
@@ -105,7 +105,7 @@ directly) · Python 3.10+ (the policy prober). `npm run check` names any missing
 failing with a stack trace.
 
 ```bash
-git clone <this repo> && cd keel
+git clone <this repo> && cd keelblock
 npm install
 python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt   # the policy prober
 cp .env.example .env.local                                            # fill from `supabase status`
@@ -163,12 +163,12 @@ screen sets them by accident. The load-bearing ones:
 - **Server Actions for the app, Route Handlers for the outside world.** An action invoked from
   outside the browser breaks the assumptions that make it safe, so anything needing a URL gets
   explicit auth.
-- **Every mutation is validate → authorise → act.** A Server Action's argument is untrusted input —
+- **Every mutation is validate → authorize → act.** A Server Action's argument is untrusted input —
   a network boundary wearing a function's clothes — so it is typed `unknown` and parsed. The type
   annotation you would rather write is a comment.
-- **Authorisation is the policy, not an `if`.** Actions use the session-carrying client and let RLS
+- **Authorization is the policy, not an `if`.** Actions use the session-carrying client and let RLS
   refuse. An application check may improve the error message; it is never the boundary. That is
-  [F-15](docs/FINDINGS.md), the pattern keel exists to replace.
+  [F-15](docs/FINDINGS.md), the pattern keelblock exists to replace.
 - **Database types are generated and gated.** A stale row type does not fail to compile — it compiles
   and is `undefined` in production. `npm run generate` regenerates; the `generated` gate fails when
   it drifts.
@@ -180,7 +180,7 @@ and both `Cross-Origin-*` — are **enforced unconditionally**. The CSP ships **
 default**, and that is a measured decision, not caution: a production Next build serves 13 inline
 scripts, so an enforcing `script-src 'self'` blocks hydration entirely. You can have any two of
 {strict CSP, static prerendering, working hydration} — the trilemma and its proof are in
-[F-16](docs/FINDINGS.md). `KEEL_SECURITY_HEADERS=on` enforces the CSP once you have tuned it.
+[F-16](docs/FINDINGS.md). `KEELBLOCK_SECURITY_HEADERS=on` enforces the CSP once you have tuned it.
 
 The production CSP contains **no `'unsafe-eval'` and no `'unsafe-inline'` in `script-src`**, both
 pinned by mutation proofs.
@@ -192,16 +192,16 @@ of becoming the string `"undefined"` three layers away — and any `NEXT_PUBLIC_
 like a credential is **refused**, because the bundler inlines those into client JavaScript and serves
 them to every visitor ([F-17](docs/FINDINGS.md)).
 
-### Internationalisation
+### Internationalization
 
-The `[locale]` route segment ships from the first commit, with **one locale**. Not because keel needs
+The `[locale]` route segment ships from the first commit, with **one locale**. Not because keelblock needs
 five languages, but because i18n is the one concern that cannot be added later without touching
 everything: next-intl's own instructions are _"move all existing layouts and pages into the `[locale]`
 segment."_ That cost scales with your screen count, so it is paid here at one page.
 
 Adding a language is a message file and one array entry. A gate fails the build on a missing key, a
 misspelled `t('key')`, or a key nobody uses — all three of which otherwise fail silently, in a
-language nobody on your team reads. See [ADR-010](docs/adr/ADR-010-internationalisation.md).
+language nobody on your team reads. See [ADR-010](docs/adr/ADR-010-internationalization.md).
 
 ### Three commands, three questions
 

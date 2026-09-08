@@ -12,13 +12,13 @@
       "id": "F-1",
       "what": "anon could TRUNCATE every tenant table on a default Supabase project",
       "to": ["blog", "landing", "faq"],
-      "angle": "The strongest single artifact keel has. It affects every project inheriting Supabase's defaults, RLS does not cover TRUNCATE, and the reproduction is four lines."
+      "angle": "The strongest single artifact keelblock has. It affects every project inheriting Supabase's defaults, RLS does not cover TRUNCATE, and the reproduction is four lines."
     },
     {
       "id": "F-2",
       "what": "the leading generated RLS suite confirms a total cross-tenant leak as green",
       "to": ["blog", "landing", "docs"],
-      "angle": "Why keel has two policy layers. The tool is excellent and states its own limit; the demonstration is what makes the argument."
+      "angle": "Why keelblock has two policy layers. The tool is excellent and states its own limit; the demonstration is what makes the argument."
     },
     {
       "id": "F-3",
@@ -58,13 +58,13 @@
     },
     {
       "id": "F-9",
-      "what": "an admin could demote the owner and seize the organisation",
+      "what": "an admin could demote the owner and seize the organization",
       "to": ["blog", "docs"],
       "angle": "Ours. Pairs with F-10 as the argument for auditing a suite you wrote yourself."
     },
     {
       "id": "F-10",
-      "what": "the last owner could orphan an organisation",
+      "what": "the last owner could orphan an organization",
       "to": ["docs"],
       "angle": "Pairs with F-9."
     },
@@ -72,7 +72,7 @@
       "id": "F-11",
       "what": "auth.uid() reads two settings and tools clear only one",
       "to": ["internal"],
-      "angle": "Too specific to one tool's fixture behaviour to be broadly useful; it is documented where it matters, in the gate."
+      "angle": "Too specific to one tool's fixture behavior to be broadly useful; it is documented where it matters, in the gate."
     },
     {
       "id": "F-12",
@@ -82,7 +82,7 @@
     },
     {
       "id": "F-13",
-      "what": "keel's own unit gate could not fail",
+      "what": "keelblock's own unit gate could not fail",
       "to": ["blog", "landing", "faq"],
       "angle": "The most credible thing we can publish, because it is against us. Publishing it is what makes the other twenty-one believable."
     },
@@ -96,13 +96,13 @@
       "id": "F-15",
       "what": "in an app-layer model the other tenant's row is in memory before the check",
       "to": ["landing", "blog", "faq"],
-      "angle": "THE explanation of why keel exists, and a competitor wrote the code that demonstrates it."
+      "angle": "THE explanation of why keelblock exists, and a competitor wrote the code that demonstrates it."
     },
     {
       "id": "F-16",
       "what": "strict CSP, static prerendering, working hydration \u2014 pick two",
       "to": ["blog", "docs", "faq"],
-      "angle": "Explains keel's report-only default, and is genuinely useful to anyone shipping a CSP on Next."
+      "angle": "Explains keelblock's report-only default, and is genuinely useful to anyone shipping a CSP on Next."
     },
     {
       "id": "F-17",
@@ -112,7 +112,7 @@
     },
     {
       "id": "F-18",
-      "what": "keel inherited two-majors-behind rot from create-next-app on day two",
+      "what": "keelblock inherited two-majors-behind rot from create-next-app on day two",
       "to": ["blog", "landing"],
       "angle": "The anti-rot argument, demonstrated on ourselves rather than asserted."
     },

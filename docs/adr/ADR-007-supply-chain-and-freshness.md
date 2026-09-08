@@ -38,7 +38,7 @@ permanent excuse.
 Supporting measures: `npm ci --ignore-scripts` · **gitleaks** pre-commit _and over full history_ ·
 Renovate for proposals · a **weekly scheduled clean-clone build** that installs from scratch and runs
 the full check, because a template has no users to exercise it and that job is the substitute · npm
-**Trusted Publishing (OIDC) with provenance attestations** when `create-keel-app` is published.
+**Trusted Publishing (OIDC) with provenance attestations** when `create-keelblock-app` is published.
 
 ## Consequences
 

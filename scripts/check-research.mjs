@@ -2,7 +2,7 @@
 /**
  * The research freshness gate.
  *
- * keel has a gate for stale dependencies and, until now, nothing for stale **knowledge** — which
+ * keelblock has a gate for stale dependencies and, until now, nothing for stale **knowledge** — which
  * rots faster. `research/05-SEO-2026.md` opens with "a stale SEO memo is worse than none" and
  * shipped with nothing enforcing it.
  *
@@ -21,7 +21,7 @@
  *      taken from an agency blog, and the primary source said something materially different
  *      (F-21). Nothing caught it, because nothing asked where the claim came from.
  *   5. **every authored spec is covered by a memo.** This is the rule that makes the requirement
- *      apply to every feature keel ships rather than the ones someone remembered. A spec authored
+ *      apply to every feature keelblock ships rather than the ones someone remembered. A spec authored
  *      from recollection encodes whatever its author last believed, and nothing downstream can tell
  *      the difference between that and a researched one.
  *

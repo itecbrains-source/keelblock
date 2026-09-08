@@ -65,7 +65,7 @@ describe('boundaries gate', () => {
     );
   });
 
-  it('MUTATION: a cached function with no organisation parameter is caught', () => {
+  it('MUTATION: a cached function with no organization parameter is caught', () => {
     // Next keys the cache on arguments. A tenant captured from scope is not in the key, so one
     // tenant's rows are served to the next — and RLS never runs, because the DB is never reached.
     const src = `export async function projects() {\n  'use cache';\n  return db.select();\n}`;
@@ -74,13 +74,13 @@ describe('boundaries gate', () => {
     expect(p[0]).toMatch(/served to the next/);
   });
 
-  it('a cached function that takes the organisation as an argument is allowed', () => {
+  it('a cached function that takes the organization as an argument is allowed', () => {
     const src = `export async function projects(organizationId: string) {\n  'use cache';\n  return db.select();\n}`;
     expect(findUnkeyedCaches(['a.ts'], () => src)).toEqual([]);
   });
 
   it('MUTATION: an import cycle is caught, and the loop is shown', () => {
-    // A cycle breaks tree-shaking and leaves module initialisation order undefined. It is invisible
+    // A cycle breaks tree-shaking and leaves module initialization order undefined. It is invisible
     // until something mysteriously imports as `undefined`, which is a bad afternoon.
     const files: Record<string, string> = {
       'src/a.ts': `import '@/b';`,

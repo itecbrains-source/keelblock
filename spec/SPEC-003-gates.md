@@ -5,7 +5,7 @@
 
 ## Intent
 
-Every promise keel makes gets a mechanism that fails the build when the promise is broken. A promise
+Every promise keelblock makes gets a mechanism that fails the build when the promise is broken. A promise
 held by discipline is held until the day someone is in a hurry; a promise held by a gate is held on
 that day too. This spec defines the gate set, the rules every gate obeys, and the one command that
 runs them.
@@ -40,7 +40,7 @@ runs them.
    not pipe. A CI gate whose failure cannot reach CI is a check that cannot fail.
 7. **Its remediation advice is tested, not repeated.** `rlsautotest` prints "add `FORCE ROW LEVEL
 SECURITY`" for owner-bypass; the spike measured that this does _not_ work on Supabase, where the
-   owner bypasses via `BYPASSRLS` (F-2). Advice keel passes on is advice keel has run.
+   owner bypasses via `BYPASSRLS` (F-2). Advice keelblock passes on is advice keelblock has run.
 
 ## Requirements
 
@@ -65,7 +65,7 @@ convention — a rule that can be defeated by moving a file is not a boundary.
 
 ### REQ-4 — tenant-scoped cache gate
 
-A `use cache` in a tenant-scoped module whose cache key or tag omits the organisation fails
+A `use cache` in a tenant-scoped module whose cache key or tag omits the organization fails
 (ADR-004). This is the one cross-tenant leak RLS cannot prevent — the response is served from cache
 and never reaches the database — so the whole SPEC-002 apparatus would confirm it green.
 
@@ -97,14 +97,14 @@ failures rather than stopping at the first. A developer who must run six command
 
 The registry accepts work deliberately not built, with a reason and a trigger. **It does not accept a
 defect.** If you broke it, you fix it in the change that broke it — filing your own breakage as debt
-and merging as done is the single behaviour this rule exists to stop. The gate refuses a new entry
+and merging as done is the single behavior this rule exists to stop. The gate refuses a new entry
 whose title reports breakage or whose blocker is not genuinely external.
 
 ## Not reinvented
 
 Named so the set stays small and nobody rebuilds a solved thing: **secret scanning** → gitleaks ·
 **dependency proposals** → Renovate · **SAST** → CodeQL · **policy enumeration** → `rlsautotest`
-(SPEC-002). Keel writes a gate only where the promise is keel's own.
+(SPEC-002). Keelblock writes a gate only where the promise is keelblock's own.
 
 ## Acceptance criteria
 
@@ -113,7 +113,7 @@ Named so the set stays small and nobody rebuilds a solved thing: **secret scanni
 | AC-1 | REQ-1    | test          | `scripts/check-freshness.test.mts` — incl. proofs that an expired stamp, a two-major drift, and an offline run with a stale stamp all fail   | **done** |
 | AC-2 | REQ-2    | test          | `supabase/tests/intent/004-schema-guard.test.sql` — adding a scoped table with no policy, and a write policy without `WITH CHECK`, each fail | **done** |
 | AC-3 | REQ-3    | test          | `scripts/check-boundaries.test.mts` — an import chain from a page to the service-role client fails                                           | **done** |
-| AC-4 | REQ-4    | test          | `scripts/check-boundaries.test.mts` — a tenant-scoped `use cache` without the organisation in its key fails                                  | **done** |
+| AC-4 | REQ-4    | test          | `scripts/check-boundaries.test.mts` — a tenant-scoped `use cache` without the organization in its key fails                                  | **done** |
 | AC-5 | REQ-5    | inspection    | `.github/workflows/check.yml` — `--ignore-scripts`, gitleaks over full history, weekly clean-clone build                                     | **done** |
 | AC-6 | REQ-6    | test          | `scripts/check-promises.test.mts` — removing a spec's ownership of a bar fails                                                               | **done** |
 | AC-7 | REQ-7    | test          | Playbook gates wired, with a proof for each: an orphan `@defer`, a REQ with no AC, a dead source path                                        | **done** |

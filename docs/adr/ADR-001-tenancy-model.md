@@ -8,17 +8,17 @@ The root tenant entity's name and shape propagate into every table, policy, rout
 nextacular chose `Workspace` and it appears in all 37 of its routes; changing it later is not a
 rename, it is a rewrite. This decision is made once and is expensive to revisit, so it is made first.
 
-Keel's claim is that isolation is enforced by the database. That means the tenancy model must be
+Keelblock's claim is that isolation is enforced by the database. That means the tenancy model must be
 expressible as an RLS predicate that is _cheap_ (it runs on every row of every query) and _total_
 (no table escapes it).
 
 ## Decision Drivers
 
 - The predicate must be indexable and evaluate without a recursive or unbounded join.
-- B2B language: buyers say "organisation" or "team", not "workspace" — and a workspace usually implies
-  _many per organisation_, a second level keel v1 does not want.
+- B2B language: buyers say "organization" or "team", not "workspace" — and a workspace usually implies
+  _many per organisation_, a second level keelblock v1 does not want.
 - Every tenant-scoped table must carry the tenant key directly, so no policy needs a join chain.
-- A user belongs to many organisations, with a different role in each.
+- A user belongs to many organizations, with a different role in each.
 
 ## Options Considered
 
@@ -26,7 +26,7 @@ expressible as an RLS predicate that is _cheap_ (it runs on every row of every q
 
 | Pros                                                              | Cons                                                         |
 | ----------------------------------------------------------------- | ------------------------------------------------------------ |
-| Predicate is a single indexed membership lookup                   | Denormalised `organization_id` must be kept correct on write |
+| Predicate is a single indexed membership lookup                   | Denormalized `organization_id` must be kept correct on write |
 | Every table self-describes its tenant; no join chains in policies |                                                              |
 | Matches B2B vocabulary and Stripe's customer-per-org shape        |                                                              |
 
@@ -48,11 +48,11 @@ expressible as an RLS predicate that is _cheap_ (it runs on every row of every q
 **Chosen: Option A.** A single `organization` root with explicit membership, and a literal
 `organization_id` column on every tenant-scoped table.
 
-The denormalised column is deliberate. It is what lets every policy be one indexed predicate rather
+The denormalized column is deliberate. It is what lets every policy be one indexed predicate rather
 than a join chain, and it makes "is this table scoped?" answerable by looking at the table — which is
 what allows a gate to enumerate every scoped table and refuse a new one that lacks a policy.
 
-A second level (workspaces/projects within an organisation) is a **documented extension point**, not
+A second level (workspaces/projects within an organization) is a **documented extension point**, not
 a v1 feature.
 
 ## Consequences

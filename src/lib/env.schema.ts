@@ -21,12 +21,12 @@ const url = z.string().url('must be a full URL including scheme');
 const serverSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
-  KEEL_DB_URL: z.string().min(1).optional(),
+  KEELBLOCK_DB_URL: z.string().min(1).optional(),
   // Security headers ship ON. This exists to turn them OFF deliberately, and it is parsed as a
   // boolean rather than coerced from a string — `"false"` must mean false.
   // Default is report-only for the CSP; the other six headers are enforced regardless (unless
   // 'off'). See src/lib/security-headers.ts for the measurement behind that default.
-  KEEL_SECURITY_HEADERS: z.enum(['on', 'off', 'report-only']).default('report-only'),
+  KEELBLOCK_SECURITY_HEADERS: z.enum(['on', 'off', 'report-only']).default('report-only'),
 });
 
 const clientSchema = z.object({

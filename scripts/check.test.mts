@@ -21,7 +21,7 @@ describe('check runner', () => {
   });
 
   it('MUTATION: every failure is reported, not just the first', () => {
-    // The behaviour the runner exists for: a developer fixes all three in one pass.
+    // The behavior the runner exists for: a developer fixes all three in one pass.
     const s = summarize([
       r('typecheck', false),
       r('lint', false),
@@ -63,7 +63,7 @@ describe('check runner', () => {
   });
 
   it('MUTATION: a missing system prerequisite is named, with how to install it', () => {
-    // The README promises this. Without the test it is a promise, not a behaviour.
+    // The README promises this. Without the test it is a promise, not a behavior.
     const missing = missingBinaries(REQUIRED_BINARIES, (b: string) => b !== 'psql');
     expect(missing).toHaveLength(1);
     expect(missing[0].bin).toBe('psql');

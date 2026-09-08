@@ -49,7 +49,7 @@ describe('content gate', () => {
   it('internal WITH a reason is a legitimate decision', () => {
     const m = {
       ...tiny,
-      material: [{ id: 'F-1', to: ['internal'], angle: 'too tool-specific to generalise' }],
+      material: [{ id: 'F-1', to: ['internal'], angle: 'too tool-specific to generalize' }],
     };
     expect(checkContent(m, ['F-1'], [], yes)).toEqual([]);
   });
@@ -65,7 +65,7 @@ describe('content gate', () => {
   });
 
   it('an outbound URL is not a citation here — only something in this repository is', () => {
-    // Linking to someone else's page proves nothing about keel.
+    // Linking to someone else's page proves nothing about keelblock.
     expect(
       parseFaq('### Q\n\nSee [docs](https://example.com/x) and [real](FINDINGS.md).')[0].cites,
     ).toEqual(['FINDINGS.md']);
