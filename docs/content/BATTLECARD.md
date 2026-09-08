@@ -318,7 +318,7 @@ anything. What is proven is that the path works, not that it has been walked.
 
 **Evidence:** [`research/10-UPGRADE-PATH.md`](../../research/10-UPGRADE-PATH.md) · [`docs/adr/ADR-008-upgradability.md`](../../docs/adr/ADR-008-upgradability.md) · [`spec/SPEC-013-upgrade-path.md`](../../spec/SPEC-013-upgrade-path.md) · [`scripts/upgrade.test.mts`](../../scripts/upgrade.test.mts)
 
-**State.** SPEC-013 is `done` · 7 requirements · 8 of 8 criteria met. Verify: `npm run check`.
+**State.** SPEC-013 is `done` · 8 requirements · 9 of 9 criteria met. Verify: `npm run check`.
 
 **The one-line version.** *Ask what happens when they fix a security bug and you cloned in March — then ask to see the test.*
 
