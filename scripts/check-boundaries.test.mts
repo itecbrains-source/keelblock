@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  importsOf,
-  resolveImport,
+  SERVICE_ROLE_ALLOWED,
   findAdminReachableFrom,
-  findUnkeyedCaches,
   findCycles,
+  findUnkeyedCaches,
+  importsOf,
+  isEntryPoint,
+  resolveImport,
 } from './check-boundaries.mjs';
 
 const ADMIN = 'src/lib/supabase/server-only/admin.ts';
@@ -143,5 +145,54 @@ describe('boundaries gate', () => {
 
   it('a file with no use cache is not inspected', () => {
     expect(findUnkeyedCaches(['a.ts'], () => `export function x() { return 1; }`)).toEqual([]);
+  });
+});
+
+// ── R-8: the file type the outside world arrives through was not an entry point ────────────────
+
+describe('entry points', () => {
+  it('walks route handlers — the outside world arrives there', () => {
+    // ADR-011: "Server Actions for the app, Route Handlers for the outside world." The boundary
+    // walked pages and layouts and not `route.ts`, so the one file type designated to receive
+    // unauthenticated external traffic was the one it did not follow.
+    expect(isEntryPoint('src/app/api/webhooks/stripe/route.ts')).toBe(true);
+    expect(isEntryPoint('src/app/api/health/route.tsx')).toBe(true);
+  });
+
+  it('walks a standalone actions.ts — a Server Action is a network boundary', () => {
+    expect(isEntryPoint('src/app/[locale]/settings/actions.ts')).toBe(true);
+  });
+
+  it('still walks everything React renders', () => {
+    for (const f of ['page', 'layout', 'template', 'default', 'error', 'loading', 'not-found']) {
+      expect(isEntryPoint(`src/app/${f}.tsx`), `${f} is not treated as an entry point`).toBe(true);
+    }
+  });
+
+  it('does not treat an ordinary module as an entry point', () => {
+    expect(isEntryPoint('src/lib/db/queries.ts')).toBe(false);
+    expect(isEntryPoint('src/components/route-badge.tsx')).toBe(false);
+  });
+
+  it('MUTATION: a route handler reaching the admin client is caught', () => {
+    const files = {
+      'src/app/api/x/route.ts': "import { admin } from '@/lib/supabase/server-only/admin';",
+    };
+    const problems = findAdminReachableFrom(
+      Object.keys(files).filter(isEntryPoint),
+      (f: string) => files[f as keyof typeof files],
+      () => 'src/lib/supabase/server-only/admin.ts',
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('route.ts');
+  });
+
+  it('the service-role allowance list is empty, and every future entry carries a reason', () => {
+    // The Stripe webhook (SPEC-007) is the canonical legitimate consumer and does not exist yet.
+    // Granting the bypass should be a one-line diff in a reviewed list, not a comment in a file.
+    for (const a of SERVICE_ROLE_ALLOWED) {
+      expect(a.reason.length, `${a.file} is allowed with no reason`).toBeGreaterThan(24);
+    }
+    expect(SERVICE_ROLE_ALLOWED).toEqual([]);
   });
 });

@@ -162,13 +162,39 @@ export function findCycles(files, read, resolveFn) {
   return cycles.map((c) => `import cycle: ${c}`);
 }
 
+/**
+ * Every file the outside world can reach.
+ *
+ * `route.ts` was missing, and it is the one that matters most: ADR-011 draws the architecture down
+ * the middle of this gap — "Server Actions for the app, **Route Handlers for the outside world**" —
+ * so the file type designated to receive unauthenticated external traffic was the single file type
+ * the isolation boundary did not walk. There are none in the tree today, which is why this was a
+ * hole rather than a defect, and why it is being closed now: it stops being theoretical at three
+ * named points on the roadmap (SPEC-007's Stripe webhook, SPEC-026's API keys, SPEC-027's outbound
+ * webhooks), and every one of them lands in a `route.ts`.
+ *
+ * A standalone `actions.ts` is included for the same reason — a Server Action is a network boundary
+ * wearing a function's clothes (ADR-011), and it is only walked today when a page imports it.
+ * @param {string} file
+ */
+export const isEntryPoint = (file) =>
+  /\/(page|layout|template|default|error|loading|not-found|route|actions)\.tsx?$/.test(file);
+
+/**
+ * Route handlers that may legitimately hold the service role, each with a reason.
+ *
+ * Empty, deliberately: the Stripe webhook (SPEC-007) is the canonical legitimate consumer and does
+ * not exist yet. It lives here rather than as a per-file comment so that granting the bypass is a
+ * one-line diff in a reviewed list — a review artifact rather than an exception nobody sees.
+ * @type {Array<{file: string, reason: string}>}
+ */
+export const SERVICE_ROLE_ALLOWED = [];
+
 function main() {
   const files = walk(SRC);
   const read = (f) => readFileSync(f, 'utf8');
-  // Anything React renders. A Server Action colocated with a page is reachable from it too.
-  const entries = files.filter((f) =>
-    /\/(page|layout|template|default|error|loading|not-found)\.tsx?$/.test(f),
-  );
+  const allowed = new Set(SERVICE_ROLE_ALLOWED.map((a) => a.file));
+  const entries = files.filter((f) => isEntryPoint(f) && !allowed.has(f));
 
   const problems = [
     ...(existsSync(ADMIN)
