@@ -1,7 +1,7 @@
 # SPEC-004: Authentication
 
-> Status: `partial` · Research: [`research/07-AUTH-2026.md`](../research/07-AUTH-2026.md) · ADRs: [002](../docs/adr/ADR-002-auth.md), [011](../docs/adr/ADR-011-app-router-conventions.md)
-> Contracts: SPEC-001, SPEC-002, SPEC-003 ·
+> Status: `done` · Research: [`research/07-AUTH-2026.md`](../research/07-AUTH-2026.md) · ADRs: [002](../docs/adr/ADR-002-auth.md), [011](../docs/adr/ADR-011-app-router-conventions.md)
+> Contracts: SPEC-001, SPEC-002, SPEC-003, SPEC-005 ·
 
 ## Intent
 
@@ -215,23 +215,23 @@ second method is part of the answer.
 
 ## Acceptance criteria
 
-| AC    | Verifies     | Method | Evidence                                                                                                                                                            | Status           |
-| ----- | ------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| AC-1  | REQ-1        | test   | a forged `x-middleware-subrequest` header reaches a protected route and is still refused — needs a protected route (SPEC-005)                                       | planned          |
-| AC-2  | REQ-1        | test   | `scripts/check-boundaries.test.mts` — authorization is reached per action; the proxy performs none                                                                  | **done**         |
-| AC-3  | REQ-2        | test   | `src/lib/auth/config.test.mts` — no source file calls `getSession()`, and the DAL verifies with `getClaims()` (non-vacuous)                                         | **done**         |
-| AC-4  | REQ-3        | test   | `scripts/check-boundaries.test.mts` — an unauthorized action fails the gate, and one authorizing action does not launder its neighbours                             | **done**         |
-| AC-5  | REQ-4        | test   | `src/lib/supabase/proxy.test.mts` — a refreshed response carries `private, no-store`; `scripts/check-boundaries.test.mts` — a one-parameter `setAll` fails the gate | **done**         |
-| AC-6  | REQ-4        | test   | `src/lib/supabase/proxy.test.mts` — two calls construct two clients, so a hoisted one cannot satisfy it                                                             | **done**         |
-| AC-7  | REQ-5        | test   | every authenticated route matches the proxy matcher via `unstable_doesProxyMatch` — needs an authenticated route (SPEC-005)                                         | planned          |
-| AC-8  | REQ-5        | test   | an authenticated route excluded from the matcher still refuses an unauthenticated caller — needs one to exist (SPEC-005)                                            | planned          |
-| AC-9  | REQ-6        | test   | `src/lib/auth/config.test.mts` — sessions, rotation, password length, OTP expiry and the email cap pinned, including values kept as they were                       | **done**         |
-| AC-10 | REQ-6        | test   | a `[remotes]` block per deployed project — keelblock has no environments of its own, so there is no project id to key one to                                        | deferred DEF-001 |
-| AC-11 | REQ-7        | test   | `src/lib/auth/redirect.test.mts` — absolute, protocol-relative, backslash, control-character and encoded payloads all refused, as one invariant                     | **done**         |
-| AC-12 | REQ-7        | test   | `src/lib/auth/config.test.mts` — `additional_redirect_urls` carries no globstar                                                                                     | **done**         |
-| AC-13 | REQ-8        | test   | `src/app/[locale]/login/actions.test.mts` — sign-out is server-side, scoped `local`, and redirects; no client state involved                                        | **done**         |
-| AC-14 | REQ-9        | test   | SMTP validated at boot — needs a sending domain and provider account. The 2/hour cap is pinned by `config.test.mts` and documented in `.env.example`                | deferred DEF-019 |
-| AC-15 | REQ-1, REQ-3 | test   | the journey layer drives a real sign-in in a browser. The flow itself IS verified end to end — see the verification record below                                    | deferred DEF-002 |
+| AC    | Verifies     | Method | Evidence                                                                                                                                                                                                              | Status           |
+| ----- | ------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| AC-1  | REQ-1        | test   | `src/app/[locale]/orgs/route-protection.test.mts` — the refusal is in the route's data path, so a forged `x-middleware-subrequest` walking past the proxy reaches a page that still refuses                           | **done**         |
+| AC-2  | REQ-1        | test   | `scripts/check-boundaries.test.mts` — authorization is reached per action; the proxy performs none                                                                                                                    | **done**         |
+| AC-3  | REQ-2        | test   | `src/lib/auth/config.test.mts` — no source file calls `getSession()`, and the DAL verifies with `getClaims()` (non-vacuous)                                                                                           | **done**         |
+| AC-4  | REQ-3        | test   | `scripts/check-boundaries.test.mts` — an unauthorized action fails the gate, and one authorizing action does not launder its neighbours                                                                               | **done**         |
+| AC-5  | REQ-4        | test   | `src/lib/supabase/proxy.test.mts` — a refreshed response carries `private, no-store`; `scripts/check-boundaries.test.mts` — a one-parameter `setAll` fails the gate                                                   | **done**         |
+| AC-6  | REQ-4        | test   | `src/lib/supabase/proxy.test.mts` — two calls construct two clients, so a hoisted one cannot satisfy it                                                                                                               | **done**         |
+| AC-7  | REQ-5        | test   | `src/app/[locale]/orgs/route-protection.test.mts` — both organization routes match the matcher, read from `src/proxy.ts` with the TypeScript parser rather than a regex, asserted with `unstable_doesMiddlewareMatch` | **done**         |
+| AC-8  | REQ-5        | test   | `src/app/[locale]/orgs/route-protection.test.mts` — the proxy contains no authorization call at all; the page calls `getCurrentUser` before rendering                                                                 | **done**         |
+| AC-9  | REQ-6        | test   | `src/lib/auth/config.test.mts` — sessions, rotation, password length, OTP expiry and the email cap pinned, including values kept as they were                                                                         | **done**         |
+| AC-10 | REQ-6        | test   | a `[remotes]` block per deployed project — keelblock has no environments of its own, so there is no project id to key one to                                                                                          | deferred DEF-001 |
+| AC-11 | REQ-7        | test   | `src/lib/auth/redirect.test.mts` — absolute, protocol-relative, backslash, control-character and encoded payloads all refused, as one invariant                                                                       | **done**         |
+| AC-12 | REQ-7        | test   | `src/lib/auth/config.test.mts` — `additional_redirect_urls` carries no globstar                                                                                                                                       | **done**         |
+| AC-13 | REQ-8        | test   | `src/app/[locale]/login/actions.test.mts` — sign-out is server-side, scoped `local`, and redirects; no client state involved                                                                                          | **done**         |
+| AC-14 | REQ-9        | test   | SMTP validated at boot — needs a sending domain and provider account. The 2/hour cap is pinned by `config.test.mts` and documented in `.env.example`                                                                  | deferred DEF-019 |
+| AC-15 | REQ-1, REQ-3 | test   | the journey layer drives a real sign-in in a browser. The flow itself IS verified end to end — see the verification record below                                                                                      | deferred DEF-002 |
 
 ## Definition of Done
 

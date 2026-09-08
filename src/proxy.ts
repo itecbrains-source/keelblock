@@ -48,8 +48,11 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // `auth` is excluded: `next-intl` would redirect /auth/callback to a locale prefix and the
-  // code would never be exchanged. That route owns its own session write, with a response it
-  // holds, which is the only way to set an auth cookie on a GET safely.
+  // A STATIC literal, and it has to be: Next analyses this at build time and "dynamic values such as
+  // variables will be ignored" — an imported constant fails the build outright, which is how this
+  // was found. The test reads it back with the TypeScript parser rather than a regex.
+  //
+  // `auth` is excluded: next-intl would redirect /auth/callback to a locale prefix and the code
+  // would never be exchanged. That route writes its own session cookies onto a response it owns.
   matcher: ['/((?!api|auth|_next|_vercel|.*\\..*).*)'],
 };

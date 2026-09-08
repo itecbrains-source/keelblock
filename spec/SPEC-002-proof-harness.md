@@ -1,7 +1,7 @@
 # SPEC-002: Proof harness
 
 > Status: `partial` (spike-validated 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-2**, **B-4** · ADRs: [005](../docs/adr/ADR-005-testing.md)
-> Contracts: SPEC-001, SPEC-003, SPEC-004 ·
+> Contracts: SPEC-001, SPEC-003, SPEC-004, SPEC-005 ·
 
 ## Intent
 

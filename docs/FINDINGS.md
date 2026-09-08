@@ -998,3 +998,59 @@ Measured after the change, both directions:
 http (local)                      Secure present: false   sign-in still works: true
 x-forwarded-proto: https          Secure present: true
 ```
+
+## F-37 · The rename reached the documentation and not the build
+
+**2026-09-08 · `src/app/[locale]/orgs/route-protection.test.mts`**
+
+Next.js 16 renamed `middleware` to `proxy`, and its documentation — version 16.3.4, the exact version
+this repository pins — names the matcher-testing helper `unstable_doesProxyMatch`. The installed
+package exports `unstable_doesMiddlewareMatch`. There is no `unstable_doesProxyMatch` in the build.
+
+Small, and worth a finding for one reason: the documentation was read first and believed, and the
+test failed with `unstable_doesProxyMatch is not a function` — which is a clear error. The version of
+this that costs a day is the one where a docs-ahead-of-build discrepancy produces something subtler
+than a missing function.
+
+The rule it earns is the one this repository already applies to research memos: **the installed
+package is the primary source about itself.** Documentation describes an intent; `node_modules`
+describes what will run.
+
+## F-38 · Under Cache Components a route cannot refuse with a redirect
+
+**2026-09-08 · measured while building SPEC-005**
+
+`/orgs` requires a session. The obvious implementation — call the Data Access Layer, `redirect()` if
+there is nobody — does not produce an HTTP redirect. It produces `200` and the page chrome.
+
+With `cacheComponents: true` (ADR-004) the route's static shell is prerendered at build time, with no
+session, and flushed before any session-dependent code runs. A `redirect()` in the streamed region
+becomes a client-side navigation, and the status is already sent. Four approaches, measured:
+
+| Attempt                                      | Result                                                               |
+| -------------------------------------------- | -------------------------------------------------------------------- |
+| Auth check at the top of the page            | `200`, full chrome                                                   |
+| Auth check inside `<Suspense>` with the data | `200`, full chrome                                                   |
+| `export const dynamic = 'force-dynamic'`     | **Build error** — "not compatible with `nextConfig.cacheComponents`" |
+| `await connection()`                         | `200`, full chrome                                                   |
+
+**What is true, stated as narrowly as the evidence allows.** No tenant data reaches an
+unauthenticated caller: zero organization names, zero member rows, zero identifiers — verified
+against the running application with two real accounts. What a stranger receives is labels, an
+untranslated `Members of {org}` placeholder, and a client-side redirect to sign in.
+
+That is a weaker property than "the route refuses", and the spec now says the weaker one. The
+original wording was written before it was measured, which is the whole reason SPEC-005's Definition
+of Done demanded a browser walk rather than a green suite.
+
+Two things follow.
+
+**A unit test cannot see this.** `route-protection.test.mts` asserts that the page calls
+`getCurrentUser` and redirects when there is no session, and it passes — correctly. The behaviour it
+describes is real; the HTTP consequence is not what anyone would assume from reading it. This is the
+class the journey layer (DEF-002) exists for, and the strongest argument yet for building it.
+
+**It is a property of the rendering model, not of this application.** Any Next.js project with Cache
+Components enabled and a `redirect()`-based auth check has it, and none of them will notice, because
+the page looks empty and the browser does navigate to the sign-in screen. The visible symptom is
+indistinguishable from working.

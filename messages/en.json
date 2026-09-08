@@ -30,5 +30,20 @@
     "linkFailed": "That link did not work. It may have expired, already been used, or been opened in a different browser than the one that requested it. Request a new one.",
     "continueWith": "Continue with {provider}",
     "providerFailed": "That provider could not be reached. Try the email link instead."
+  },
+  "orgs": {
+    "title": "Organizations",
+    "subtitle": "The ones you belong to. Which one you are viewing is a preference; what you may see is decided by the database.",
+    "none": "You do not belong to an organization yet. Create one below and you will own it.",
+    "switch": "Viewing",
+    "members": "Members of {org}",
+    "you": "you",
+    "remove": "Remove",
+    "makeAdmin": "Make admin",
+    "makeMember": "Make member",
+    "create": "Create an organization",
+    "name": "Name",
+    "slug": "URL slug",
+    "createSubmit": "Create"
   }
 }

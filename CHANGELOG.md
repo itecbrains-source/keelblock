@@ -9,9 +9,9 @@ entries are what make the rest worth believing. Full reproductions live in
 
 ## [Unreleased]
 
-The tenancy foundation, the proof harness, the gates, and sign-in (SPEC-001, SPEC-002, SPEC-003,
-SPEC-004). Organizations, invitations, billing and the remaining product surfaces are specced and
-not built — run `npm run status`, which reads the repository rather than this paragraph.
+The tenancy foundation, the proof harness, the gates, sign-in and organizations (SPEC-001, SPEC-002,
+SPEC-003, SPEC-004, SPEC-005). Invitations, billing and the remaining product surfaces are specced
+and not built — run `npm run status`, which reads the repository rather than this paragraph.
 
 ### Changed
 
@@ -22,6 +22,14 @@ not built — run `npm run status`, which reads the repository rather than this 
 
 ### Added
 
+- **Organizations and roles (SPEC-005).** Create an organization, switch between the ones you belong
+  to, and administer members — the first authenticated route, and the first point at which the
+  isolation claim is demonstrable rather than proven over a fixture. Verified with two real accounts
+  through the running application: neither can read the other's project, and putting somebody else's
+  organization id in your own cookie shows you nothing, because **the switcher is a view selection
+  and was never a boundary**. No organization or role is carried in a JWT claim, deliberately: an
+  access token lives up to an hour, so a claim-based check would keep a revoked admin an admin until
+  it turned over.
 - **Sign-in, by emailed link (SPEC-004).** Magic link and OAuth through PKCE, a callback that
   validates its own redirect target, sign-out, and a session refreshed at the network boundary.
   Verified end to end against the local stack rather than asserted: the flow is recorded in the

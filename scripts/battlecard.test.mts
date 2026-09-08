@@ -69,7 +69,9 @@ describe('battlecard generator', () => {
 
   it('specState reads a real spec, not a fixture', () => {
     const s = specState(readFileSync('spec/SPEC-004-auth.md', 'utf8'));
-    expect(s.status).toBe('partial');
+    // The SHAPE, not a value. Pinning `partial` here made this test fail the day SPEC-004 closed —
+    // a test that breaks when the thing it reads works correctly is testing the fixture.
+    expect(['draft', 'partial', 'done']).toContain(s.status);
     expect(s.reqs).toBeGreaterThan(5);
     expect(s.done + s.deferred).toBeLessThanOrEqual(s.acs);
   });

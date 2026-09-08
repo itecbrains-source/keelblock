@@ -223,6 +223,18 @@
       "what": "the session cookie shipped without Secure, and the fix everyone writes breaks sign-in locally with no error",
       "to": ["blog", "docs", "faq"],
       "angle": "Applies to every project on @supabase/ssr, whose DEFAULT_COOKIE_OPTIONS omits `secure` entirely. The NODE_ENV trap is the useful half — `next start` sets production, so the obvious one-liner silently drops every auth cookie over http."
+    },
+    {
+      "id": "F-37",
+      "what": "Next 16.3.4's docs name a testing helper the shipped package does not export",
+      "to": ["docs"],
+      "angle": "Minor on its own; the rule it earns is not. The installed package is the primary source about itself, and documentation describes intent."
+    },
+    {
+      "id": "F-38",
+      "what": "with Cache Components a route cannot refuse with an HTTP redirect — it returns 200 and page chrome",
+      "to": ["blog", "docs", "faq"],
+      "angle": "Applies to every Next.js app with cacheComponents and a redirect-based auth check, and none of them will notice: the page looks empty and the browser does navigate to sign-in. Four approaches measured, including one that fails the build. The honest half is that we corrected our own spec's wording rather than the measurement."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",
@@ -274,6 +286,19 @@
         "docs/content/blog/server-actions-are-public-endpoints.md"
       ],
       "oneLine": "_Your Server Actions are public POST endpoints. Ask what happens when"
+    },
+    {
+      "spec": "SPEC-005",
+      "claim": "The organization switcher is a view selection, not a security boundary — policies ask the database per request whether the caller is a member, so a forged or stale active organization returns nothing rather than someone else's rows.",
+      "rivals": "The common design puts the active organization in the session or a JWT claim and has policies read it back, which makes the switcher part of the boundary and inherits a token's staleness: an access token lives up to an hour, so a revoked admin stays an admin until it turns over. Supabase's own RBAC guide recommends that pattern and never mentions the window.",
+      "evidence": [
+        "research/08-ORG-CONTEXT.md",
+        "supabase/tests/intent/005-organizations.test.sql",
+        "spec/SPEC-005-organizations-and-roles.md"
+      ],
+      "battlecard": "A switcher that is allowed to be wrong",
+      "oneLine": "*Ask what their organization switcher does when it is wrong — and how long a revoked admin keeps their access.*",
+      "artifacts": ["src/lib/orgs/active-org.ts"]
     }
   ]
 }

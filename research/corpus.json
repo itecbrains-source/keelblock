@@ -181,6 +181,30 @@
       "url": "https://securitylabs.datadoghq.com/articles/nextjs-middleware-auth-bypass/",
       "title": "Understanding CVE-2025-29927",
       "claim": "Practitioner analysis of how the header was exploited. Used to orient only; every asserted fact is cited to the advisory."
+    },
+    {
+      "id": "supabase-rls-performance",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices-Z5Jjwv",
+      "title": "RLS performance and best practices",
+      "claim": "Index columns used in RLS (>100x, 171ms to under 0.1ms); wrap functions in a select so the optimizer caches the result (179ms to 9ms, and 178,000ms to 12ms); ADD EXPLICIT FILTERS IN APPLICATION QUERIES ALONGSIDE RLS rather than relying on policies to filter (171ms to 9ms); use security-definer functions to avoid cascading policy evaluation on joins (9,000ms to 20ms); always specify `to authenticated`."
+    },
+    {
+      "id": "supabase-custom-claims-rbac",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/database/postgres/custom-claims-and-role-based-access-control-rbac",
+      "title": "Custom Claims & Role-based Access Control",
+      "claim": "The recommended RBAC pattern reads the role from the JWT in an authorize() function used by policies. The page does NOT state what a user must do after a role changes for the new claim to take effect — the staleness window is not mentioned."
+    },
+    {
+      "id": "supabase-sessions",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://supabase.com/docs/guides/auth/sessions",
+      "title": "User sessions",
+      "claim": "Access tokens are short lived, usually between 5 minutes and 1 hour; refresh tokens never expire but are single-use. A claim written into an access token is therefore stale for up to the token lifetime."
     }
   ]
 }

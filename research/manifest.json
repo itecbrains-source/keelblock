@@ -3,15 +3,15 @@
   "volatility": {
     "fast": {
       "maxAgeDays": 90,
-      "why": "AI, search, framework majors, competitor feature sets \u2014 these genuinely change quarterly, and a six-month-old memo will be confidently wrong"
+      "why": "AI, search, framework majors, competitor feature sets — these genuinely change quarterly, and a six-month-old memo will be confidently wrong"
     },
     "moderate": {
       "maxAgeDays": 180,
-      "why": "auth patterns, billing practice, vendor APIs \u2014 they move, but not quarterly"
+      "why": "auth patterns, billing practice, vendor APIs — they move, but not quarterly"
     },
     "stable": {
       "maxAgeDays": 365,
-      "why": "Postgres and RLS semantics, HTTP, SQL \u2014 a year-old memo here is still broadly true"
+      "why": "Postgres and RLS semantics, HTTP, SQL — a year-old memo here is still broadly true"
     }
   },
   "memos": [
@@ -70,10 +70,18 @@
       "verifiedOn": "2026-09-08",
       "specs": ["SPEC-004"],
       "kind": "sourced"
+    },
+    {
+      "file": "08-ORG-CONTEXT.md",
+      "area": "organization context in RLS — claims vs session vars vs per-request lookup",
+      "volatility": "moderate",
+      "verifiedOn": "2026-09-08",
+      "specs": ["SPEC-005"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {
     "sourced": "Cites external work. Must separate **Primary** (the vendor's own documentation, a standards body, the originating description of a pattern, or the tool's own repository) from **Secondary**, and must have at least one primary.",
-    "measured": "IS the primary evidence \u2014 we ran it and recorded what happened. Must contain a reproduction someone else can execute. A measurement with no reproduction is an anecdote."
+    "measured": "IS the primary evidence — we ran it and recorded what happened. Must contain a reproduction someone else can execute. A measurement with no reproduction is an anecdote."
   }
 }

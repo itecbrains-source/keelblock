@@ -53,10 +53,15 @@ describe('deferral registry', () => {
   });
 
   it('MUTATION: a spec reaching done fires its dependants', () => {
-    const def002 = entries.find((e) => e.id === 'DEF-002')!;
-    expect(
-      evaluateTrigger(def002.trigger, { ...deps, specDone: (id: string) => id === 'SPEC-004' }),
-    ).toBe(true);
+    // Reads a real `spec-done:` row rather than naming SPEC-004, whose dependants were restated
+    // when it closed. Hardcoding an id made this proof fail because the mechanism WORKED.
+    // `includes`, not `startsWith`: the parsed trigger keeps its backticks, which is exactly the
+    // kind of near-miss a fixture hides and a real row does not.
+    const row = entries.find((e) => e.trigger.includes('spec-done:'))!;
+    const target = /spec-done:(SPEC-\d+)/.exec(row.trigger)![1];
+    expect(evaluateTrigger(row.trigger, { ...deps, specDone: (id: string) => id === target })).toBe(
+      true,
+    );
   });
 
   it('MUTATION: a vague reason is refused — "not yet" is not a reason', () => {

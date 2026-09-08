@@ -1,7 +1,7 @@
 # SPEC-001: Tenancy foundation
 
 > Status: `done` (spike-corrected 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) ·
-> Contracts: SPEC-002, SPEC-003, SPEC-004 · Bars: **B-2** · ADRs: [001](../docs/adr/ADR-001-tenancy-model.md), [003](../docs/adr/ADR-003-data-access.md)
+> Contracts: SPEC-002, SPEC-003, SPEC-004, SPEC-005 · Bars: **B-2** · ADRs: [001](../docs/adr/ADR-001-tenancy-model.md), [003](../docs/adr/ADR-003-data-access.md)
 
 ## Intent
 
