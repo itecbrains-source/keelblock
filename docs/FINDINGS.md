@@ -1207,3 +1207,40 @@ The two components written for SPEC-006 rendered theirs conditionally, `{refusal
 — so every refusal they produced was visible and, for a screen-reader user, silent. Both now hold a
 permanent region like their sibling. The page object was corrected to match what its own comment
 already claimed it returned: the alert that is **saying something**, not every element with the role.
+
+## F-43 · The meta-gate enumerated gates by filename, and the two it missed both refuse the build
+
+**2026-09-08 · found by asking F-41's question of every counting check · fixed in `scripts/gate-health.mjs`, `scripts/gate-health.test.mts`**
+
+F-41 was a gate that counted exit codes instead of files. The general question it leaves behind is
+worth asking everywhere: **does this check count what was produced, or what was attempted?**
+
+`gate-health` is the check that certifies every other check — five properties per gate, including
+"it has been shown to fail". Its gate list was:
+
+```js
+readdirSync('scripts').filter((f) => f.startsWith('check-') && f.endsWith('.mjs'));
+```
+
+which is a statement about **filenames**. Two scripts that `npm run check` runs are not named like
+gates, and both refuse the build: `access-matrix.mjs` fails on an access concern nobody explained,
+and `battlecard.mjs` refuses to render a citation that does not resolve. Neither had ever been
+required to prove it could fail. The list is now derived by following the scripts `check.mjs`
+actually spawns, parsed rather than matched, and it is 14 where it was 11.
+
+**The interesting part is what happened when the rule was pointed at the newly-covered scripts.** It
+reported `battlecard.mjs` as having three cases named MUTATION and none exercising the module — and
+that was **wrong**. The proofs go through a one-line local helper:
+
+```ts
+const build = (over = {}) => render({ manifest, specs, fragments, exists: yes, ...over });
+```
+
+Every mutation case calls `build`. The rule looked for a direct call to an imported name, saw none,
+and condemned three working proofs. Had it been believed, the repair would have been to rewrite
+correct tests to satisfy a rule that was itself too narrow — **a false positive in a strictness check
+is more expensive than a gap, because the fix it demands is damage.** The rule now resolves local
+bindings to a fixpoint: a helper that reaches the gate counts, a helper that reaches nothing does not.
+
+A completeness assertion closes the rest: every script under `scripts/` is either run by `check` or
+carries its own mutation proof, so nothing is exempt merely by being absent from a list.

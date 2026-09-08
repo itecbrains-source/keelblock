@@ -80,7 +80,7 @@ while inspecting nothing.
 
 **Evidence:** [F-2](../FINDINGS.md) · [F-30](../FINDINGS.md) · [`docs/ACCESS-MATRIX.md`](../../docs/ACCESS-MATRIX.md)
 
-**State.** SPEC-002 is `partial` · 10 requirements · 9 of 12 criteria met. Verify: `npm run check`.
+**State.** SPEC-002 is `done` · 10 requirements · 12 of 12 criteria met. Verify: `npm run check`.
 
 **The one-line version.** _A test suite that cannot fail is a screenshot. Ask to see the mutation
 

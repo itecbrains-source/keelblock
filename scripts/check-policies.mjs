@@ -8,11 +8,14 @@
  * teaches people to ignore the runner. The committed evidence is `docs/ACCESS-MATRIX.md`.
  */
 import { spawnSync, execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 
 const DB =
   process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
 const RLSA = './.venv/bin/rlsautotest';
+// The run's coverage matrix, read by AC-11 and then thrown away. Not committed: it is a measurement
+// of one run, and a stored copy is a claim about a run nobody is looking at.
+const REPORT = '.rlsautotest-report.json';
 
 /**
  * Tables the generated prober cannot probe, with the reason and where the coverage actually lives.
@@ -112,6 +115,73 @@ export function reconcileEmitted(files, probe, skip) {
   };
 }
 
+/**
+ * AC-11 · every generated suite must prove somebody CAN act, not only that others cannot.
+ *
+ * The defect this exists for, in REQ-1b's own words: the toolkit's generated `002-org-isolation.sql`
+ * "ships its seed block commented out — eight planned assertions against data nobody creates."
+ * Every one of those assertions expects to see nothing, and against an empty table every one of them
+ * passes. The suite is green and has tested nothing.
+ *
+ * Checking for seed STATEMENTS would be checking the attempt. This checks the produced result: for
+ * each command a table actually has a policy for, at least one identity in the run's own report must
+ * be EXPECTED to succeed. That cell is the positive control — it is the assertion an empty fixture
+ * cannot pass, so its presence is what makes every neighbouring refusal mean something.
+ *
+ * A command with no policy is deliberately not asked for one. `organization_invitation` has a SELECT
+ * policy and no write policy or grant at all; demanding a positive control for its UPDATE would be
+ * demanding proof that a door welded shut can be opened.
+ *
+ * Exceptions are the lists this gate already keeps, not a second one beside them: a table whose
+ * coverage was transferred (`NOT_PROBEABLE`) and a cell already reviewed as un-probeable
+ * (`UNRELIABLE`). An entry that excuses nothing is reported, for the same reason a skip that matches
+ * nothing is — it is a coverage hole waiting for the cell it named to be renamed.
+ *
+ * @param {{tables?: Array<{table: string, policied?: string[], idgrid?: Record<string, Record<string, {exp?: boolean}>>}>}} report
+ * @param {Record<string, unknown>} notProbeable
+ * @param {string[]} unreliable
+ * @returns {{ problems: string[], checked: number }}
+ */
+export function checkPositiveControls(report, notProbeable, unreliable) {
+  const problems = [];
+  const usedCells = new Set();
+  let checked = 0;
+
+  for (const t of report.tables ?? []) {
+    if (notProbeable[t.table]) continue;
+    for (const cmd of t.policied ?? []) {
+      const key = `${t.table}:${cmd}`;
+      const identities = t.idgrid?.[cmd] ?? {};
+      const positive = Object.entries(identities).filter(([, v]) => v?.exp);
+      if (positive.length) {
+        checked++;
+        continue;
+      }
+      if (unreliable.includes(key)) {
+        usedCells.add(key);
+        continue;
+      }
+      problems.push(
+        `${key}: a policy grants this command, and no identity is expected to succeed at it. ` +
+          `Every assertion for it expects a refusal, which an empty fixture also produces — so a ` +
+          `suite that seeded nothing would be just as green. Seed the row the policy admits, or ` +
+          `record the cell in UNRELIABLE with the reason it cannot be probed.`,
+      );
+    }
+  }
+
+  for (const key of unreliable) {
+    if (!usedCells.has(key)) {
+      problems.push(
+        `UNRELIABLE lists ${key}, which excused nothing in this run. Either the cell now has a ` +
+          `positive control and the entry should go, or it no longer exists and the entry is a ` +
+          `hole waiting to be reopened.`,
+      );
+    }
+  }
+  return { problems, checked };
+}
+
 function main() {
   if (!existsSync(RLSA)) {
     console.error('rlsautotest is not installed. Run:');
@@ -179,6 +249,13 @@ function main() {
       '.',
       ...UNRELIABLE.flatMap((u) => ['--allow-unreliable', u]),
       '--no-fail',
+      // AC-11 needs the run's own coverage matrix, and `--report-json` writes nothing without
+      // `--report` (measured: no file). `--report` runs the emitted suite, which costs about five
+      // seconds on top of generating it -- the price of asking what was produced rather than what
+      // was attempted.
+      '--report',
+      '--report-json',
+      REPORT,
     ],
     { stdio: ['ignore', 'ignore', 'inherit'] },
   );
@@ -210,6 +287,24 @@ function main() {
   console.log(
     `policy: generated suites for ${suites.length}/${tables.length} RLS tables (${suites.join(', ')})`,
   );
+
+  // AC-11 · a suite that only ever proves refusals is green against an empty fixture.
+  if (!existsSync(REPORT)) {
+    console.error('policy: the run produced no coverage report, so AC-11 could not be checked.');
+    process.exit(2);
+  }
+  const { problems, checked } = checkPositiveControls(
+    JSON.parse(readFileSync(REPORT, 'utf8')),
+    NOT_PROBEABLE,
+    UNRELIABLE,
+  );
+  if (problems.length) {
+    console.error('policy: FAILED — a generated suite proves nothing it could not prove empty.\n');
+    for (const p of problems) console.error(`  ${p}`);
+    console.error('');
+    process.exit(2);
+  }
+  console.log(`policy: ${checked} policied command(s) carry a positive control (AC-11)`);
 
   const run = spawnSync('supabase', ['test', 'db'], { stdio: 'inherit' });
 

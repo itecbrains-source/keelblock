@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { gateImports, mutationProof } from './gate-health.mjs';
+import { gateImports, mutationProof, producedGates, externalTools } from './gate-health.mjs';
 
 /**
  * The meta-gate: **every gate is well-behaved.**
@@ -17,7 +17,10 @@ import { gateImports, mutationProof } from './gate-health.mjs';
  *   4. it degrades rather than crashes when its input is missing
  *   5. its failure names a file or a fix, not just a verdict
  */
-const GATES = readdirSync('scripts').filter((f) => f.startsWith('check-') && f.endsWith('.mjs'));
+// Derived from what `npm run check` actually reaches, not from a filename prefix -- see
+// `producedGates`. The prefix version exempted `access-matrix.mjs` and `battlecard.mjs`, both of
+// which refuse the build, from ever having to prove they could (F-41's shape).
+const GATES = producedGates();
 
 describe('gate health (the suite is dependable)', () => {
   it('there are gates to check', () => expect(GATES.length).toBeGreaterThanOrEqual(8));
@@ -179,4 +182,145 @@ describe('gate health (the suite is dependable)', () => {
     expect(r.stderr).not.toMatch(/at Object\.|at Module\./); // no raw stack trace
     expect(r.stderr.toLowerCase()).toMatch(/could not reach|is not running/);
   }, 30_000);
+});
+
+describe('the rule sees through a local helper (and still refuses an empty one)', () => {
+  it('MUTATION: a proof that reaches the gate through a wrapper counts', () => {
+    // battlecard.test.mts's real shape: `const build = (over) => render({ …, ...over })`, and every
+    // mutation case calls `build`. Read literally, none of them calls `render`, so the rule reported
+    // three named proofs and no exercise — a FALSE POSITIVE that nearly had working tests rewritten.
+    const source = [
+      "import { render } from './battlecard.mjs';",
+      'const build = (over) => render({ ...base, ...over });',
+      "it('MUTATION: evidence that does not resolve refuses to render', () =>",
+      '  expect(() => build({ exists: () => false })).toThrow());',
+    ].join('\n');
+    expect(mutationProof(source, 'battlecard.mjs').ok).toBe(true);
+  });
+
+  it('MUTATION: a wrapper that reaches nothing is still not a proof', () => {
+    const source = [
+      "import { render } from './battlecard.mjs';",
+      'const build = (over) => ({ ...over });',
+      "it('MUTATION: something', () => expect(build({})).toBeTruthy());",
+    ].join('\n');
+    expect(mutationProof(source, 'battlecard.mjs').ok).toBe(false);
+  });
+
+  it('the real battlecard test file passes, and it did not before', () => {
+    const source = readFileSync('scripts/battlecard.test.mts', 'utf8');
+    expect(mutationProof(source, 'battlecard.mjs').ok).toBe(true);
+  });
+});
+
+describe('the gate list is what `check` RUNS, not what is named like a gate (F-41)', () => {
+  it('every script `npm run check` reaches is subject to the mutation-proof rule', () => {
+    // The list used to be `readdirSync('scripts').filter(f => f.startsWith('check-'))` — a claim
+    // about FILENAMES. `access-matrix.mjs` refuses the build on an unexplained concern and
+    // `battlecard.mjs` refuses to render an unresolvable citation; both enforce rules, neither is
+    // named like a gate, and so neither had to prove it could fail.
+    const reached = producedGates();
+    expect(reached).toContain('access-matrix.mjs');
+    expect(reached).toContain('battlecard.mjs');
+    expect(reached).toContain('check-policies.mjs');
+    expect(reached).not.toContain('check.mjs');
+  });
+
+  it('MUTATION: a gate nothing spawns is not in the produced set', () => {
+    const sources = {
+      'check.mjs': "spawnSync('node', ['scripts/check-a.mjs']);",
+      'check-a.mjs': 'export const a = 1;',
+      'check-orphan.mjs': 'export const orphan = 1;',
+    };
+    const reached = producedGates(sources);
+    expect(reached).toContain('check-a.mjs');
+    expect(reached, 'named like a gate, run by nothing').not.toContain('check-orphan.mjs');
+  });
+
+  it('MUTATION: it follows a spawn through an intermediate gate, not just check.mjs', () => {
+    const sources = {
+      'check.mjs': "spawnSync('node', ['scripts/check-a.mjs']);",
+      'check-a.mjs': "spawnSync('node', ['scripts/check-b.mjs']);",
+      'check-b.mjs': 'export const b = 1;',
+    };
+    expect(producedGates(sources)).toContain('check-b.mjs');
+  });
+});
+
+describe('nothing is exempt by being absent from the list', () => {
+  it('every script under scripts/ is either RUN by check, or carries its own proof', () => {
+    // The completeness half. `producedGates` follows spawns, so a module a gate IMPORTS rather than
+    // spawns is not in it — `review-records.mjs` and `review-register.mjs` are libraries behind
+    // `check-promises`, and the five run-properties (deterministic when run, degrades on missing
+    // input, legible failure) do not apply to something nothing runs. That is a real boundary and
+    // this asserts it is the only one: a module outside the list must still have been shown to fail.
+    const run = new Set(producedGates());
+    const exempt = new Set(['check.mjs', 'gate-health.mjs', 'verify.mjs']);
+    const unproven: string[] = [];
+    for (const file of readdirSync('scripts').filter((f) => f.endsWith('.mjs'))) {
+      if (run.has(file) || exempt.has(file)) continue;
+      const test = `scripts/${file.replace('.mjs', '.test.mts')}`;
+      if (!existsSync(test)) {
+        unproven.push(`${file} — no test file, and nothing runs it either`);
+        continue;
+      }
+      const { ok, reason } = mutationProof(readFileSync(test, 'utf8'), file);
+      if (!ok) unproven.push(`${file} — ${reason}`);
+    }
+    expect(unproven, 'a rule that is neither run nor proven is a rule nobody checks').toEqual([]);
+  });
+});
+
+describe('AC-10 · the claim runs on nothing paid (ADR-009, mechanized)', () => {
+  /**
+   * ADR-009's anti-degradation rule: keelblock's full claim "must hold with **zero paid components
+   * present**", and it says the rule is "mechanized, not promised".
+   *
+   * Asserting that no paid component is INSTALLED would be a check that cannot fail — this
+   * repository has never contained one, so it would pass on the day someone wired the paid CLI into
+   * a gate and every day after. The failable question is what the claim REACHES FOR: every external
+   * executable the gates invoke, declared with its licence. Wire in `stt` — the paid toolkit's own
+   * CLI, named in ADR-009 — and the build stops.
+   *
+   * Each entry says why it is free. The list may only shrink, or grow by a tool somebody argued for.
+   */
+  const DECLARED: Record<string, string> = {
+    node: 'the runtime this repository already requires; MIT',
+    git: 'GPL-2.0, and used read-only for repository facts (remote, shallow-ness, log)',
+    psql: 'PostgreSQL licence, ships with Postgres, which the database gate needs anyway',
+    supabase: 'Apache-2.0 CLI, the local stack itself',
+    './.venv/bin/rlsautotest': 'rlsautotest 0.7.0, pinned in requirements.txt and free to install',
+  };
+
+  it('every tool the gates invoke is declared, and every declaration is used', () => {
+    const found = externalTools();
+    const undeclared = found.filter((t) => !(t in DECLARED));
+    expect(undeclared, 'an undeclared external tool is a dependency nobody chose').toEqual([]);
+    const unused = Object.keys(DECLARED).filter((t) => !found.includes(t));
+    expect(unused, 'a declaration for a tool nothing invokes is a stale permission').toEqual([]);
+  });
+
+  it('MUTATION: a gate reaching for the PAID toolkit is caught', () => {
+    // The exact regression ADR-009 exists to prevent: the free tier quietly starting to need the
+    // thing it is meant to be complete without.
+    const sources = {
+      'check.mjs': "spawnSync('node', ['scripts/check-a.mjs']);",
+      'check-a.mjs': "spawnSync('stt', ['evidence', 'export']);",
+    };
+    expect(externalTools(sources)).toContain('stt');
+  });
+
+  it('MUTATION: it resolves a tool held in a constant, not only a literal', () => {
+    // `check-policies.mjs` spawns `RLSA`, not a string. A rule that read only literals would have
+    // reported four tools and missed the one that is not on any developer's machine by default.
+    const sources = {
+      'check.mjs': "spawnSync('node', ['scripts/check-a.mjs']);",
+      'check-a.mjs': "const TOOL = './vendor/paid-cli';\nspawnSync(TOOL, ['--run']);",
+    };
+    expect(externalTools(sources)).toContain('./vendor/paid-cli');
+  });
+
+  it('is not vacuous: the real gates do invoke tools', () => {
+    expect(externalTools().length).toBeGreaterThanOrEqual(4);
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planProbes, reconcileEmitted } from './check-policies.mjs';
+import { planProbes, reconcileEmitted, checkPositiveControls } from './check-policies.mjs';
 
 const valid = {
   organization_member: {
@@ -113,5 +113,80 @@ describe('reconcileEmitted — the check whose absence hid a one-table proof', (
 
   it('is not vacuous: given nothing, every planned table is missing', () => {
     expect(reconcileEmitted([], probe, []).missing).toEqual(probe);
+  });
+});
+
+describe('checkPositiveControls — AC-11, the general form of an empty fixture', () => {
+  // The shape rlsautotest --report-json produces, reduced to what the rule reads.
+  const table = (name: string, policied: string[], grid: Record<string, string[]>) => ({
+    table: name,
+    policied,
+    idgrid: Object.fromEntries(
+      policied.map((cmd) => [
+        cmd,
+        Object.fromEntries(
+          ['authorized', 'other', 'anon', 'service_role'].map((id) => [
+            id,
+            { exp: (grid[cmd] ?? []).includes(id), pass: true },
+          ]),
+        ),
+      ]),
+    ),
+  });
+
+  const healthy = table('project', ['SELECT', 'INSERT', 'UPDATE', 'DELETE'], {
+    SELECT: ['authorized'],
+    INSERT: ['authorized'],
+    UPDATE: ['authorized'],
+    DELETE: ['authorized'],
+  });
+
+  it('a table whose every policied command proves someone CAN act is fine', () => {
+    expect(checkPositiveControls({ tables: [healthy] }, {}, []).problems).toEqual([]);
+  });
+
+  it('THE REPLAY: assertions against a fixture nobody seeded', () => {
+    // REQ-1b's own example, in the shape the report gives it: the toolkit's generated
+    // `002-org-isolation.sql` ships its seed block commented out, so eight assertions run against
+    // data that does not exist. Every one of them expects to see nothing, and every one passes.
+    const empty = table('org_isolation', ['SELECT', 'INSERT', 'UPDATE', 'DELETE'], {});
+    const { problems } = checkPositiveControls({ tables: [empty] }, {}, []);
+    expect(problems).toHaveLength(4);
+    expect(problems[0]).toContain('org_isolation:SELECT');
+    expect(problems[0]).toMatch(/empty fixture|nothing was seeded|no identity is expected/i);
+  });
+
+  it('a command with NO policy is not a hole — nothing should succeed, so nothing is missing', () => {
+    // organization_invitation deliberately has one SELECT policy and no write policy or grant.
+    // UPDATE and DELETE are refused to everyone by design; demanding a positive control there
+    // would be demanding proof that a door we welded shut can be opened.
+    const invitation = table('organization_invitation', ['SELECT'], { SELECT: ['authorized'] });
+    invitation.idgrid.UPDATE = { authorized: { exp: false, pass: true } };
+    expect(checkPositiveControls({ tables: [invitation] }, {}, []).problems).toEqual([]);
+  });
+
+  it('honours the coverage transfers the gate already keeps, rather than a second list', () => {
+    const member = table('organization_member', ['SELECT', 'UPDATE'], { SELECT: ['authorized'] });
+    const notProbeable = { organization_member: { why: 'triggers', coveredBy: 'intent/003' } };
+    expect(checkPositiveControls({ tables: [member] }, notProbeable, []).problems).toEqual([]);
+
+    const org = table('organization', ['SELECT', 'DELETE'], { SELECT: ['authorized'] });
+    expect(checkPositiveControls({ tables: [org] }, {}, ['organization:DELETE']).problems).toEqual(
+      [],
+    );
+  });
+
+  it('an exception that excuses nothing is reported — F-41, in a second costume', () => {
+    // A stale entry silently widens into a coverage hole the moment the cell it named goes away.
+    const { problems } = checkPositiveControls({ tables: [healthy] }, {}, ['project:TRUNCATE']);
+    expect(problems.join(' ')).toContain('project:TRUNCATE');
+  });
+
+  it('is not vacuous: with the exceptions emptied, the real known cells are reported', () => {
+    const org = table('organization', ['SELECT', 'DELETE'], { SELECT: ['authorized'] });
+    const member = table('organization_member', ['SELECT', 'UPDATE'], { SELECT: ['authorized'] });
+    const { problems } = checkPositiveControls({ tables: [org, member] }, {}, []);
+    expect(problems.join(' ')).toContain('organization:DELETE');
+    expect(problems.join(' ')).toContain('organization_member:UPDATE');
   });
 });

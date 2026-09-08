@@ -1,6 +1,6 @@
 # SPEC-002: Proof harness
 
-> Status: `partial` (spike-validated 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-2**, **B-4** · ADRs: [005](../docs/adr/ADR-005-testing.md)
+> Status: `done` (spike-validated 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-2**, **B-4** · ADRs: [005](../docs/adr/ADR-005-testing.md)
 > Contracts: SPEC-001, SPEC-003, SPEC-004, SPEC-005, SPEC-006 ·
 
 ## Intent
@@ -119,20 +119,40 @@ reached. "Expected 0, got 1" is a true statement and a useless one at 2am.
 
 ## Acceptance criteria
 
-| AC    | Verifies | Method        | Evidence                                                                                                                                                                                                                                                                 | Status   |
-| ----- | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| AC-1  | REQ-1    | inspection    | `docs/TESTING.md` — the four layers, what each proves, and what each cannot; the generated/intent boundary quoted from the tool's own words                                                                                                                              | **done** |
-| AC-2  | REQ-2    | test          | `supabase/tests/intent/004-schema-guard.test.sql` present and green; the version is pinned and stamped                                                                                                                                                                   | **done** |
-| AC-3  | REQ-3    | test          | `supabase/tests/intent/001-tenant-isolation.test.sql` — at least one adversarial case per role transition                                                                                                                                                                | **done** |
-| AC-4  | REQ-3    | test          | `supabase/tests/intent/wrong-helper.mutation.test.sql` — a **semantic** defect (the membership helper drops its `user_id` check) is caught by the intent layer _and confirmed green by the generated layer_, proving the two are not redundant. Reproduced in the spike. | **done** |
-| AC-5  | REQ-4    | test          | `scripts/access-matrix.test.mts` is regenerated in CI and a stale committed copy fails the build                                                                                                                                                                         | **done** |
-| AC-6  | REQ-5    | test          | `scripts/gate-health.test.mts` — a gate without a paired mutation proof fails                                                                                                                                                                                            | **done** |
-| AC-7  | REQ-6    | inspection    | `.github/workflows/check.yml` (per commit) and `.github/workflows/nightly.yml` (scheduled)                                                                                                                                                                               | **done** |
-| AC-8  | REQ-7    | demonstration | `docs/TESTING.md` — a timed local run of both suites, recorded with the machine and the conditions                                                                                                                                                                       | **done** |
-| AC-9  | REQ-8    | test          | `supabase/tests/intent/failure-message.test.sql` — an induced leak's message names table, command, identity and row                                                                                                                                                      | planned  |
-| AC-10 | REQ-1b   | test          | `scripts/check-free-tier-complete.test.ts` — the full proof suite runs green and the access matrix generates from a checkout containing **no paid components** (ADR-009's anti-degradation rule)                                                                         | planned  |
-| AC-3c | REQ-3b   | test          | `scripts/accessible-locators.test.mts` — a parsed rule over the journey suite: a test id or a CSS/XPath selector fails, proven by appending one to the real page objects. Parsed rather than searched, because the forbidden names appear in the prose explaining them   | **done** |
-| AC-11 | REQ-1b   | test          | `supabase/tests/generated/seed-is-real.test.sql` — every generated suite seeds the rows it asserts on; a suite planning N assertions against an empty fixture fails                                                                                                      | planned  |
+| AC    | Verifies | Method        | Evidence                                                                                                                                                                                                                                                                                                                                                                                                    | Status   |
+| ----- | -------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| AC-1  | REQ-1    | inspection    | `docs/TESTING.md` — the four layers, what each proves, and what each cannot; the generated/intent boundary quoted from the tool's own words                                                                                                                                                                                                                                                                 | **done** |
+| AC-2  | REQ-2    | test          | `supabase/tests/intent/004-schema-guard.test.sql` present and green; the version is pinned and stamped                                                                                                                                                                                                                                                                                                      | **done** |
+| AC-3  | REQ-3    | test          | `supabase/tests/intent/001-tenant-isolation.test.sql` — at least one adversarial case per role transition                                                                                                                                                                                                                                                                                                   | **done** |
+| AC-4  | REQ-3    | test          | `supabase/tests/intent/wrong-helper.mutation.test.sql` — a **semantic** defect (the membership helper drops its `user_id` check) is caught by the intent layer _and confirmed green by the generated layer_, proving the two are not redundant. Reproduced in the spike.                                                                                                                                    | **done** |
+| AC-5  | REQ-4    | test          | `scripts/access-matrix.test.mts` is regenerated in CI and a stale committed copy fails the build                                                                                                                                                                                                                                                                                                            | **done** |
+| AC-6  | REQ-5    | test          | `scripts/gate-health.test.mts` — a gate without a paired mutation proof fails                                                                                                                                                                                                                                                                                                                               | **done** |
+| AC-7  | REQ-6    | inspection    | `.github/workflows/check.yml` (per commit) and `.github/workflows/nightly.yml` (scheduled)                                                                                                                                                                                                                                                                                                                  | **done** |
+| AC-8  | REQ-7    | demonstration | `docs/TESTING.md` — a timed local run of both suites, recorded with the machine and the conditions                                                                                                                                                                                                                                                                                                          | **done** |
+| AC-9  | REQ-8    | test          | `supabase/tests/intent/failure-message.test.sql` — a table with a genuinely leaking policy is read by somebody who should not see it, and the message names all four. Adopted in `supabase/tests/intent/001-tenant-isolation.test.sql`, and demonstrated by breaking `project_select` on the live stack: `LEAK public.project SELECT — identity 1111… reached row 5c66d4f0 belonging to organization bbbb…` | **done** |
+| AC-10 | REQ-1b   | test          | `scripts/gate-health.test.mts` — every external executable the claim reaches for is declared and free, resolved through constants; wiring in `stt`, the paid toolkit's own CLI, fails. Asserting no paid component is _installed_ was rejected: this repository has never held one, so that rule could not fail                                                                                             | **done** |
+| AC-3c | REQ-3b   | test          | `scripts/accessible-locators.test.mts` — a parsed rule over the journey suite: a test id or a CSS/XPath selector fails, proven by appending one to the real page objects. Parsed rather than searched, because the forbidden names appear in the prose explaining them                                                                                                                                      | **done** |
+| AC-11 | REQ-1b   | test          | `scripts/check-policies.mjs` `checkPositiveControls`, proven in `scripts/check-policies.test.mts` — every command a table has a policy for must have one identity EXPECTED to succeed, read from the run's own coverage report. Removing the `organization:DELETE` exception makes the real gate fail                                                                                                       | **done** |
+
+**Three evidence paths moved, and the reason is the same in each case: the rule went inside a gate
+that already existed rather than becoming a new one.**
+
+AC-11 was written as `supabase/tests/generated/seed-is-real.test.sql`. The generated directory is
+regenerated and gitignored every run, so a committed test inside it would be deleted before it ran;
+and the property is about the suite the run PRODUCED, which is a thing the policy gate holds and a
+SQL file cannot see. It is now a pure function over the run's own coverage report, which is also what
+makes it checkable at all: it asks whether each policied command has an identity expected to
+_succeed_, because a suite that only ever proves refusals is exactly as green against a fixture
+nobody seeded. That is REQ-1b's own example — the toolkit's `002-org-isolation.sql` and its
+commented-out seed — stated generally.
+
+AC-10 was written as `scripts/check-free-tier-complete.test.ts`, asserting the suite runs with no
+paid component present. That rule cannot fail: this repository has never contained one, so it would
+pass on the day a gate started shelling out to the paid CLI and every day after. What can fail is the
+reach, so the assertion is over the executables the gates actually invoke.
+
+AC-9 kept its path and gained a second half: the diagnostic is used by the real isolation suite, not
+only demonstrated in a file of its own.
 
 **AC-4 is the load-bearing one**, and the spike corrected it. The defect must be **semantic** — a
 helper whose logic is wrong — not **syntactic**: `with check (true)` _is_ caught by the generated
@@ -144,13 +164,16 @@ than kept out of habit.
 
 ## Definition of Done
 
-- [ ] Every REQ `done` with its AC passing, or a valid `DEF-*`.
-- [ ] `docs/ACCESS-MATRIX.md` committed, current, and readable by someone who has not seen the schema.
-- [ ] AC-4 demonstrated end to end, with the generated layer's green run recorded alongside the intent
+- [x] Every REQ `done` with its AC passing, or a valid `DEF-*`.
+- [x] `docs/ACCESS-MATRIX.md` committed, current, and readable by someone who has not seen the schema.
+- [x] AC-4 demonstrated end to end, with the generated layer's green run recorded alongside the intent
       layer's red one.
 - [ ] **Validation note:** someone other than the author planted a policy defect and confirmed the
       harness caught it. A harness verified only by its own author is a harness verified against the
-      same assumptions that would produce the bug.
+      same assumptions that would produce the bug. **Still open, and now tracked as DEF-020 rather
+      than as an unticked box** — it needs a second person, which is not something more tests can
+      supply. `docs/review/05-VERIFICATION.md` planted defects in the gates; nobody but the author has
+      planted one in the policies.
 
 ## Deferrals
 

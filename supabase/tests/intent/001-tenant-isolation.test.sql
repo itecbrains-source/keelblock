@@ -30,12 +30,28 @@ insert into public.project (organization_id, name) values
 set local role authenticated;
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 
-select is((select count(*)::int from public.project), 1,
-  'READ: a member sees only their own organization''s projects');
-select is((select count(*)::int from public.organization), 1,
-  'READ: a member sees only their own organization');
-select is((select count(*)::int from public.organization_member), 2,
-  'READ: a member sees co-members of their own organization, and no others');
+-- REQ-8 · the description is COMPUTED, so a failure says what got out.
+--
+-- `is(count, 1, 'sees only their own projects')` fails with "have 2, want 1" -- true, and the first
+-- thing anyone then does is re-derive the fixture by hand to find out which row. Evaluating the
+-- description before the assertion costs one subquery and answers that question in the failure
+-- itself. When nothing leaked the subquery is NULL and the plain sentence stands, so a green run
+-- reads exactly as it did before. Proven on an induced leak in `failure-message.test.sql`.
+select is((select count(*)::int from public.project), 1, coalesce(
+  (select format('LEAK public.project SELECT — identity %s reached row %s belonging to organization %s',
+     coalesce(current_setting('request.jwt.claim.sub', true), '(none)'), p.id, p.organization_id)
+   from public.project p where p.organization_id <> 'aaaaaaaa-0000-0000-0000-00000000000a' limit 1),
+  'READ: a member sees only their own organization''s projects'));
+select is((select count(*)::int from public.organization), 1, coalesce(
+  (select format('LEAK public.organization SELECT — identity %s reached organization %s (%s)',
+     coalesce(current_setting('request.jwt.claim.sub', true), '(none)'), o.id, o.slug)
+   from public.organization o where o.id <> 'aaaaaaaa-0000-0000-0000-00000000000a' limit 1),
+  'READ: a member sees only their own organization'));
+select is((select count(*)::int from public.organization_member), 2, coalesce(
+  (select format('LEAK public.organization_member SELECT — identity %s reached the membership of %s in organization %s',
+     coalesce(current_setting('request.jwt.claim.sub', true), '(none)'), m.user_id, m.organization_id)
+   from public.organization_member m where m.organization_id <> 'aaaaaaaa-0000-0000-0000-00000000000a' limit 1),
+  'READ: a member sees co-members of their own organization, and no others'));
 
 -- The defect that a read-based suite structurally cannot catch (spike F-3): the smuggled row is
 -- invisible to its own writer, so this must be asserted as a rejection, not as an absent read.
