@@ -37,6 +37,7 @@ reason to exist.
 | # | Decision | Date | Rationale |
 |---|---|---|---|
 | D-1 | **MIT, free, open source** | 2026-09-07 | The field is paid and closed; free+open is the structural advantage. A paid tier can be added on top of a known-good free core later; adoption cannot be retrofitted onto a paid one. |
+| D-5 | **Next.js only, with the port seam kept honest** ([ADR-012](adr/ADR-012-framework-portability.md)) | 2026-09-07 | One framework is what makes feature-completeness affordable. But the parts that took longest — schema, policies, the proof harness, the gates, the access matrix — are **framework-agnostic already**, so a future Nuxt or TanStack port reuses them and rewrites only `src/`. Recorded as a structure to preserve rather than a promise to keep. |
 | D-4 | **i18n route structure shipped with one locale** ([ADR-010](adr/ADR-010-internationalisation.md)) | 2026-09-07 | Reverses a non-goal. i18n is pervasive rather than additive, so its cost is proportional to the surface it must be applied to — and that surface was one page. Locale resolves from `next/root-params`, which is what makes it compatible with Cache Components at all. |
 | D-3 | **Open core: proof free, evidence paid** ([ADR-009](adr/ADR-009-open-core-boundary.md)) | 2026-09-07 | `saas-testing-toolkit` already implements much of SPEC-002/003 in this stack. Its proof layer becomes keel's, MIT; its compliance layer (SOC2 evidence, auditor pack, traceability) stays paid. Refines D-1 rather than reversing it — D-1 anticipated a paid tier *on top of* a known-good free core. **keel's full claim must hold with nothing paid installed, and a gate asserts it.** |
 | D-2 | **Supabase Auth**, not Better Auth | 2026-09-07 | RLS policies key off `auth.uid()` from a Supabase-issued JWT. Keel's claim needs no bridge and no asterisk. Accepted cost: organisations, members, invitations and RBAC are keel's to build and test — a large share of v1 that Better Auth's organization plugin would have given free. |
@@ -172,10 +173,22 @@ advantage is real but not threefold. It is enough.
 4. Organisations · 5. Team & invitations · 6. Billing (Stripe: subscriptions, seats, usage) ·
 7. Custom domains · 8. Ops & health · 9. **Transactional email** · 10. **File storage** ·
 11. **Background jobs & cron** · 12. **Notifications** · 13. **Admin, user management &
-impersonation** · 14. **Audit log** · 15. **API keys** · 16. **Outbound webhooks**
+impersonation** · 14. **Audit log** · 15. **API keys** · 16. **Outbound webhooks** ·
+17. **SEO & structured data** · 18. **Product analytics** · 19. **Local development**
 
 Auth covers what the field's routes reveal as table stakes and specs often forget: email
 verification, password reset, resend, account unlock, and an organisation switcher.
+
+**SEO is a first-class area, not a `<meta>` tag** — canonical URLs, Open Graph, `JSON-LD`
+structured data, a generated sitemap and robots policy, per-locale `hreflang` (i18n makes this
+non-optional), and a **performance budget that fails the build** rather than a Lighthouse
+screenshot. A marketing page that is fast and correctly described is worth more than a framework
+change.
+
+**Local development** means the loop actually works offline: the database, object storage, and a
+mail catcher, so a developer sees the invitation email they just sent instead of a provider error.
+
+**Product analytics** ships as one provider behind a seam, not a menu.
 
 Plus the adoption layer: `create-keel-app` · docs · demo deployment · upgrade guides · onboarding
 flow · legal pages · error monitoring · deployment guides.
@@ -191,6 +204,21 @@ Not "features we lack" — features whose cost is permanent and whose value is a
 | **AI chatbot examples** | A demo dressed as a feature. |
 | **Multiple analytics providers** | One, behind a seam. |
 | **Blog / CMS** | Most teams use a real CMS. The seam stays clean; the machinery does not ship. |
+
+### Why not Astro for the marketing pages
+
+A reasonable question, and the answer is no — for the same reason keel is Next-only.
+
+Astro's advantage is zero client JavaScript on content pages. Next 16 already prerenders keel's
+landing fully static, so the ceiling is not the constraint. What a second framework *does* add is a
+second build system, a second dependency tree and **a second rot surface** — in a project whose
+differentiator is that it does not rot. It also doubles what a buyer maintains forever, to save
+milliseconds on a page whose job is to be found and read.
+
+The concern underneath it is real and worth naming: **marketing pages must not read as generated
+filler.** That is a content problem, and no framework fixes it. keel's answer is already built —
+`FINDINGS.md`. Measured claims with reproductions are the opposite of filler, and no competitor can
+publish them, because none of them did the measuring.
 
 ### Three borrowed features, and why keel's versions are different
 
