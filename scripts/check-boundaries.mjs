@@ -20,6 +20,7 @@
  */
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, extname } from 'node:path';
+import ts from 'typescript';
 
 const SRC = 'src';
 const ADMIN = 'src/lib/supabase/server-only/admin.ts';
@@ -50,9 +51,53 @@ export function resolveImport(spec, fromFile, exists = (p) => existsSync(p)) {
   return null;
 }
 
-/** @param {string} source @returns {string[]} */
-export const importsOf = (source) =>
-  [...source.matchAll(/(?:^|\n)\s*import\s[^'"]*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+/** @param {string} source @param {string} [file] */
+const parse = (source, file = 'f.tsx') =>
+  ts.createSourceFile(
+    file,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    file.endsWith('.ts') ? ts.ScriptKind.TS : ts.ScriptKind.TSX,
+  );
+
+/** @param {ts.Node} node @param {(n: ts.Node) => void} fn */
+function walkAst(node, fn) {
+  fn(node);
+  ts.forEachChild(node, (c) => walkAst(c, fn));
+}
+
+/**
+ * Every module this file pulls in, from the PARSED source.
+ *
+ * The previous version was one regex over `import ... from '...'`, which missed four legal forms —
+ * `export * from`, `export { x } from`, dynamic `await import()` and `require()`. It failed OPEN: an
+ * unparsed import is a path not walked, reported as clean. A `lib/queries/index.ts` barrel that
+ * re-exports the admin client is the ordinary way a directory is organized, and it was invisible to
+ * the gate whose entire purpose is to find exactly that, two hops deep.
+ *
+ * @param {string} source @param {string} [file] @returns {string[]}
+ */
+export function importsOf(source, file) {
+  /** @type {string[]} */ const out = [];
+  walkAst(parse(source, file), (n) => {
+    if (ts.isImportDeclaration(n) && ts.isStringLiteralLike(n.moduleSpecifier)) {
+      out.push(n.moduleSpecifier.text);
+    } else if (
+      ts.isExportDeclaration(n) &&
+      n.moduleSpecifier &&
+      ts.isStringLiteralLike(n.moduleSpecifier)
+    ) {
+      out.push(n.moduleSpecifier.text);
+    } else if (ts.isCallExpression(n)) {
+      const dynamic = n.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const required = ts.isIdentifier(n.expression) && n.expression.text === 'require';
+      const arg = n.arguments[0];
+      if ((dynamic || required) && arg && ts.isStringLiteralLike(arg)) out.push(arg.text);
+    }
+  });
+  return out;
+}
 
 /**
  * Walk the import graph from each rendered entry point and report any path reaching the
@@ -80,7 +125,7 @@ export function findAdminReachableFrom(entries, read, resolveFn) {
       } catch {
         continue;
       }
-      for (const spec of importsOf(source)) {
+      for (const spec of importsOf(source, file)) {
         const target = resolveFn(spec, file);
         if (target) stack.push([target, [...path, target]]);
       }
@@ -97,20 +142,72 @@ export function findAdminReachableFrom(entries, read, resolveFn) {
  */
 export function findUnkeyedCaches(files, read) {
   /** @type {string[]} */ const problems = [];
+  const KEYED = /organi[sz]ation|orgId|org_id|\borg\b/i;
+  const FN = (n) =>
+    ts.isFunctionDeclaration(n) ||
+    ts.isFunctionExpression(n) ||
+    ts.isArrowFunction(n) ||
+    ts.isMethodDeclaration(n);
+
+  /** The name a reader would recognize, whatever shape the function was written in. */
+  const nameOf = (fn) => {
+    if (fn.name && ts.isIdentifier(fn.name)) return fn.name.text;
+    const p = fn.parent;
+    if (p && ts.isVariableDeclaration(p) && ts.isIdentifier(p.name)) return p.name.text;
+    if (p && ts.isPropertyAssignment(p) && ts.isIdentifier(p.name)) return p.name.text;
+    return '(anonymous)';
+  };
+
+  const unkeyed = (fn) => !KEYED.test(fn.parameters.map((x) => x.getText()).join(','));
+
   for (const file of files) {
     const source = read(file);
     if (!/['"]use cache['"]/.test(source)) continue;
-    const fns = [
-      ...source.matchAll(
-        /(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)[^{]*\{([\s\S]{0,400}?)['"]use cache['"]/g,
-      ),
-    ];
-    for (const [, name, params] of fns) {
-      if (!/organi[sz]ation|orgId|org_id|\borg\b/i.test(params)) {
+    const sf = parse(source, file);
+
+    /** A directive is an expression statement whose whole expression is the string. */
+    const directives = [];
+    walkAst(sf, (n) => {
+      if (
+        ts.isExpressionStatement(n) &&
+        ts.isStringLiteralLike(n.expression) &&
+        n.expression.text === 'use cache'
+      ) {
+        directives.push(n);
+      }
+    });
+
+    for (const d of directives) {
+      // Nearest enclosing function, whatever its shape: declaration, arrow, method, expression.
+      let owner = d.parent;
+      while (owner && !FN(owner) && !ts.isSourceFile(owner)) owner = owner.parent;
+
+      if (owner && FN(owner)) {
+        if (unkeyed(owner)) {
+          problems.push(
+            `${file}: "${nameOf(owner)}" is cached but takes no organization parameter. ` +
+              `Next keys the cache on arguments — a tenant captured from scope is not in the key, ` +
+              `so one tenant's data is served to the next.`,
+          );
+        }
+        continue;
+      }
+
+      // A FILE-LEVEL directive caches every export in the module. The old rule pre-filtered on the
+      // string, then found no `function` declarations, then reported nothing — the widest possible
+      // version of the defect was the one it could not see.
+      const exported = [];
+      walkAst(sf, (n) => {
+        if (!FN(n)) return;
+        const decl = ts.isArrowFunction(n) || ts.isFunctionExpression(n) ? n.parent?.parent : n;
+        const mods = ts.canHaveModifiers(decl) ? (ts.getModifiers(decl) ?? []) : [];
+        if (mods.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) exported.push(n);
+      });
+      for (const fn of exported.filter(unkeyed)) {
         problems.push(
-          `${file}: "${name}" is cached but takes no organization parameter. ` +
-            `Next keys the cache on arguments — a tenant captured from scope is not in the key, ` +
-            `so one tenant's data is served to the next.`,
+          `${file}: "${nameOf(fn)}" is cached by the file-level 'use cache' directive and takes no ` +
+            `organization parameter. Next keys the cache on arguments — a tenant captured from ` +
+            `scope is not in the key, so one tenant's data is served to the next.`,
         );
       }
     }
@@ -153,7 +250,7 @@ export function findCycles(files, read, resolveFn) {
     } catch {
       return;
     }
-    for (const spec of importsOf(source)) {
+    for (const spec of importsOf(source, file)) {
       const target = resolveFn(spec, file);
       if (target) visit(target, [...stack, file]);
     }

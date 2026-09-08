@@ -5,7 +5,7 @@
 -- nothing behind. A unit test of the surrounding string-splitting would prove nothing about the
 -- thing that actually protects the data.
 begin;
-select plan(6);
+select plan(9);
 
 create or replace function pg_temp.guard_violations() returns setof text language sql as $$
   with scoped as (
@@ -25,6 +25,18 @@ create or replace function pg_temp.guard_violations() returns setof text languag
     union all select 'trivial-with-check' from pg_policy p
       where p.polrelid = s.oid and p.polcmd in ('a','w','*')
         and pg_get_expr(p.polwithcheck, p.polrelid) in ('true','(true)')
+    -- The strong form. "is this expression the literal true" is a string comparison that catches
+    -- one spelling; these two catch the shapes a developer actually writes when a policy will not
+    -- compile and they want to move on.
+    union all select 'untenanted-with-check' from pg_policy p
+      where p.polrelid = s.oid and p.polcmd in ('a','w','*') and p.polwithcheck is not null
+        and pg_get_expr(p.polwithcheck, p.polrelid) !~ (
+          case when s.relname = 'organization'
+               then '(^|[^a-z_])(organization_id|id)([^a-z_]|$)'
+               else '(^|[^a-z_])organization_id([^a-z_]|$)' end)
+    union all select 'null-test-with-check' from pg_policy p
+      where p.polrelid = s.oid and p.polcmd in ('a','w','*') and p.polwithcheck is not null
+        and pg_get_expr(p.polwithcheck, p.polrelid) ~* '^\(?\s*organization_id\s+is\s+not\s+null\s*\)?$'
   ) f;
 $$;
 
@@ -47,6 +59,25 @@ create policy planted_read on public.planted for select to authenticated
 create policy planted_write on public.planted for insert to authenticated with check (true);
 select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'planted: trivial-with-check'),
   'a WITH CHECK of literal true is caught -- polwithcheck IS NULL would miss it entirely');
+
+-- Each of these looks like a constraint and constrains nothing about WHICH tenant. The literal-true
+-- rule missed all four; they are the realistic spellings, not exotic ones.
+drop policy planted_write on public.planted;
+create policy planted_write on public.planted for insert to authenticated with check (1=1);
+select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'planted: untenanted-with-check'),
+  'a WITH CHECK of 1=1 is caught -- a string comparison against ''true'' is not the rule');
+
+drop policy planted_write on public.planted;
+create policy planted_write on public.planted for insert to authenticated
+  with check (auth.uid() is not null);
+select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'planted: untenanted-with-check'),
+  'a WITH CHECK that only proves you are logged in is caught -- it names no tenant');
+
+drop policy planted_write on public.planted;
+create policy planted_write on public.planted for insert to authenticated
+  with check (organization_id is not null);
+select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'planted: null-test-with-check'),
+  'a WITH CHECK that only proves the tenant key is PRESENT is caught -- present is not yours');
 
 drop policy planted_write on public.planted;
 create policy planted_write on public.planted for insert to authenticated

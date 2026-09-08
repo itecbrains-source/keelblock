@@ -48,9 +48,35 @@ cross join lateral (
   select 'write policy "' || p.polname || '" has no WITH CHECK'
     from pg_policy p where p.polrelid = s.oid and p.polcmd in ('a','w','*') and p.polwithcheck is null
   union all
-  select 'write policy "' || p.polname || '" has a trivially TRUE WITH CHECK'
+  -- The STRONG form of the rule. Asking "is this expression the literal true" is a string
+  -- comparison, and it catches exactly one spelling. It does not catch \`with check (1=1)\`, and more
+  -- to the point it does not catch the two a developer actually writes when a policy will not
+  -- compile and they want to move on: \`with check (auth.uid() is not null)\` and
+  -- \`with check (organization_id is not null)\`. Both look like constraints. Neither constrains
+  -- anything about WHICH tenant.
+  --
+  -- F-8 established that the presence of a WITH CHECK is not enough, because the real defect has
+  -- one. This extends that one step further: the property the schema actually wants is that the
+  -- expression MENTIONS THE TENANT KEY -- organization_id, or \`id\` on the organization table
+  -- itself, whose own id is the tenant key.
+  select 'write policy "' || p.polname || '" has a WITH CHECK that never mentions the tenant: '
+         || pg_get_expr(p.polwithcheck, p.polrelid)
     from pg_policy p where p.polrelid = s.oid and p.polcmd in ('a','w','*')
-      and pg_get_expr(p.polwithcheck, p.polrelid) in ('true','(true)')
+      and p.polwithcheck is not null
+      and pg_get_expr(p.polwithcheck, p.polrelid) !~ (
+        case when s.relname = 'organization'
+             then '(^|[^a-z_])(organization_id|id)([^a-z_]|$)'
+             else '(^|[^a-z_])organization_id([^a-z_]|$)' end
+      )
+  union all
+  -- The residual case the "mentions the key" rule lets through, named rather than left implicit:
+  -- an expression whose ONLY use of the key is a null test. It mentions organization_id and
+  -- constrains nothing about which organization, which is precisely the shape of the defect.
+  select 'write policy "' || p.polname || '" constrains only that the tenant key is present, not '
+         || 'which tenant it is: ' || pg_get_expr(p.polwithcheck, p.polrelid)
+    from pg_policy p where p.polrelid = s.oid and p.polcmd in ('a','w','*')
+      and p.polwithcheck is not null
+      and pg_get_expr(p.polwithcheck, p.polrelid) ~* '^\\(?\\s*organization_id\\s+is\\s+not\\s+null\\s*\\)?$'
 ) f
 order by 1;`;
 

@@ -196,3 +196,87 @@ describe('entry points', () => {
     expect(SERVICE_ROLE_ALLOWED).toEqual([]);
   });
 });
+
+// ── R-9 / R-10: the rules were regexes, and each missed shapes that are ordinary here ───────────
+
+describe('import graph (parsed, not matched)', () => {
+  it('sees the four forms the regex missed', () => {
+    const source = [
+      "import a from './a';",
+      "export * from './barrel';",
+      "export { b } from './b';",
+      "const c = await import('./c');",
+      "const d = require('./d');",
+    ].join('\n');
+    expect(importsOf(source).sort()).toEqual(['./a', './b', './barrel', './c', './d']);
+  });
+
+  it('MUTATION: the admin client reached through a re-export barrel is caught', () => {
+    // A `lib/queries/index.ts` barrel is the ordinary way a directory is organized, and the graph
+    // failed OPEN on it: an unparsed import is a path not walked, reported as clean.
+    const files: Record<string, string> = {
+      'src/app/page.tsx': "import { load } from '@/lib/queries';",
+      'src/lib/queries/index.ts': "export * from './projects';",
+      'src/lib/queries/projects.ts': "import { admin } from '@/lib/supabase/server-only/admin';",
+    };
+    const problems = findAdminReachableFrom(
+      ['src/app/page.tsx'],
+      (f: string) => files[f] ?? '',
+      (spec: string) =>
+        spec === '@/lib/queries'
+          ? 'src/lib/queries/index.ts'
+          : spec === './projects'
+            ? 'src/lib/queries/projects.ts'
+            : spec === '@/lib/supabase/server-only/admin'
+              ? 'src/lib/supabase/server-only/admin.ts'
+              : null,
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('index.ts');
+  });
+
+  it('does not invent imports from a string that merely looks like one', () => {
+    expect(importsOf('const s = "import x from \'./nope\'";')).toEqual([]);
+  });
+});
+
+describe('cache keys (every shape a function is written in)', () => {
+  const cached = (body: string) => findUnkeyedCaches(['f.ts'], () => body);
+
+  it('MUTATION: an ARROW function cached without the tenant is caught', () => {
+    // The more common style in a Next codebase, and the one the regex could not see at all.
+    const problems = cached("const getProjects = async () => { 'use cache'; return db(); };");
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('getProjects');
+  });
+
+  it('MUTATION: a METHOD cached without the tenant is caught', () => {
+    const problems = cached("const api = { async list() { 'use cache'; return db(); } };");
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('list');
+  });
+
+  it('MUTATION: a FILE-LEVEL directive caches every export, and unkeyed ones are caught', () => {
+    // The widest version of the defect was the one the old rule could not see: the file passed the
+    // pre-filter, yielded no function-declaration matches, and reported nothing.
+    const problems = cached(
+      ["'use cache';", 'export async function listProjects() { return db(); }'].join('\n'),
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('listProjects');
+  });
+
+  it('a keyed function is not flagged, in any shape', () => {
+    expect(
+      cached("const get = async (orgId: string) => { 'use cache'; return db(orgId); };"),
+    ).toEqual([]);
+    expect(cached("async function get(organizationId: string) { 'use cache'; }")).toEqual([]);
+    expect(
+      cached(["'use cache';", 'export async function get(orgId: string) {}'].join('\n')),
+    ).toEqual([]);
+  });
+
+  it("a file with no 'use cache' is not inspected at all", () => {
+    expect(cached('export async function get() { return db(); }')).toEqual([]);
+  });
+});

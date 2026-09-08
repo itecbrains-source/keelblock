@@ -15,7 +15,13 @@ describe('schema guard', () => {
     const path = 'supabase/tests/intent/004-schema-guard.test.sql';
     expect(existsSync(path)).toBe(true);
     const sql = readFileSync(path, 'utf8');
-    for (const violation of ['rls-disabled', 'no-policy', 'trivial-with-check']) {
+    for (const violation of [
+      'rls-disabled',
+      'no-policy',
+      'trivial-with-check',
+      'untenanted-with-check',
+      'null-test-with-check',
+    ]) {
       expect(sql, `${violation} has no planted case`).toContain(violation);
     }
     expect(sql, 'the root table case is missing').toContain('organization: rls-disabled');
