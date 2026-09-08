@@ -187,6 +187,12 @@
       "what": "the check that certifies every other check was a substring search",
       "to": ["blog", "docs"],
       "angle": "The sharpest instance of grep-versus-parse this project has: the meta-gate enforcing 'every gate has been shown to fail' did so by looking for a word, which a TODO comment satisfies. Publishable precisely because every proof it guarded turned out to be real — the defect was that nothing could have told us otherwise."
+    },
+    {
+      "id": "F-31",
+      "what": "a guarantee inherited from a platform default is a coincidence with good uptime",
+      "to": ["blog", "landing", "faq", "docs"],
+      "angle": "The single best argument this project can make for its own thesis, and it cost one CI run to find. An assertion green on every local run failed the first time it ran anywhere else, because two builds of the same Supabase Postgres image disagree about what anon may touch. RLS still held; the layer before it did not. The F-1 fix survived the same change because it was written down rather than inherited — same repo, same class, two outcomes, one difference."
     }
   ]
 }

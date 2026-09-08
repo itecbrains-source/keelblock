@@ -736,3 +736,53 @@ The general shape, and it is the one worth keeping from this whole pass: **a rul
 be enforced by something that reads structure.** TypeScript, the YAML parser and `JSON.parse` are
 already dependencies here; the remaining string matches are this project's largest single source of
 self-deception, and they are all in the layer whose job is to prevent it.
+
+## F-31 · A guarantee inherited from a platform default is a coincidence with good uptime
+
+**2026-09-08 · fixed in `20260908140000_revoke_anon_table_access.sql`**
+
+The first CI run this project has ever had failed, and it failed on something no local run could have
+caught.
+
+```
+# Failed test 10: "ANON: tenant tables are refused at the grant layer, before RLS is consulted"
+#       caught: no exception
+#       wanted: 42501
+```
+
+That assertion had been green on every local run since it was written. The difference is one number:
+
+```bash
+docker inspect supabase_db_keelblock --format '{{.Config.Image}}'
+#   public.ecr.aws/supabase/postgres:17.6.1.140      -- anon holds NO privilege on public tables
+grep -o 'supabase/postgres:[0-9.]*' ci.log
+#   supabase/postgres:17.6.1.167                     -- Supabase's default ACL grants anon DML again
+```
+
+**The severity, stated carefully, because it is not "a leak".** Row-level security still held on the
+newer image: every policy on these tables is `to authenticated`, so an `anon` SELECT returns zero
+rows and an `anon` INSERT is refused `42501` by the policy. What disappeared is the layer _before_
+that one — the privilege check — and with it the property this repository actually claims: that an
+unauthenticated role cannot reach a tenant table at all, whatever any policy happens to say. Defense
+in depth is exactly the thing you cannot notice losing.
+
+Two things follow, and the second is the one that generalizes.
+
+**The fix is to write the property down.** `revoke all ... from anon`, plus `alter default
+privileges` so a table added later cannot silently re-acquire it. Note that F-1's fix —
+`20260907130000`, which revoked TRUNCATE explicitly — **survived the image change intact**, because
+it was stated rather than inherited. The same repository, the same class of protection, two
+outcomes, and the only difference is whether someone wrote it down.
+
+**It could only have been found by running somewhere else.** `npm run check` was green locally at
+every commit — every gate, and the whole pgTAP suite — on an image that happened to be generous. The review's third killer risk was _"nothing has ever run"_, and its recommendation was to
+push and watch — with the note that there would be something, because nothing had ever executed.
+There was, on the first attempt, in the central claim.
+
+The same run found the smaller sibling: `20260908120000` revoked EXECUTE on the two SECURITY DEFINER
+trigger functions **from PUBLIC**, which removed `anon`'s access on 17.6.1.140 and did not on
+17.6.1.167, where it arrives by another route. Both were reported there as CRITICAL bypass surfaces
+and neither here. Naming the roles is one word longer and portable.
+
+The rule worth keeping: **if a security property is true because of a default you did not set, it is
+not a property, it is a version of somebody else's image.**
