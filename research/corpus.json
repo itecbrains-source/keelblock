@@ -285,6 +285,22 @@
       "url": "https://supastarter.dev/docs/nextjs/codebase/update",
       "title": "supastarter — Update the codebase",
       "claim": "Upgrade is `git pull upstream main --allow-unrelated-histories --rebase`. Their own words: 'with every change you make to your application, it will become harder to update your code base, because you are essentially rebasing your code on top of the latest supastarter code with Git' and 'If you have any merge conflicts, you will have to resolve them manually.'"
+    },
+    {
+      "id": "stripe-webhooks",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://docs.stripe.com/webhooks",
+      "title": "Stripe — Receive Stripe events in your webhook endpoint",
+      "claim": "'Stripe doesn't guarantee the delivery of events in the order that they're generated.' 'Don't use created to determine event order or whether you've already processed an event. Track event IDs to identify duplicate deliveries instead.' 'Webhook endpoints might occasionally receive the same event more than once.' 'Stripe attempts to deliver events to your destination for up to three days with an exponential back off in live mode.' Endpoints must return 2xx before complex logic, and signature verification uses the raw body with a default 5-minute timestamp tolerance."
+    },
+    {
+      "id": "stripe-entitlements",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://docs.stripe.com/billing/entitlements?dashboard-or-api=api",
+      "title": "Stripe — Entitlements",
+      "claim": "Features attach to products; entitlements.active_entitlement_summary.updated fires when a customer's entitlements change; List Active Entitlements retrieves them on demand, recommended 'on application startup, for authorization checks, or to reconcile state after a webhook delivery failure'. Stripe's explicit recommendation: 'We recommend you persist these entitlements internally for faster resolution.' The summary webhook's entitlements.data array is capped at 10 — beyond that the payload's entitlements.url must be paginated, so a handler treating data as complete silently revokes the rest."
     }
   ]
 }

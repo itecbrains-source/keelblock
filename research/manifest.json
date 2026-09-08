@@ -94,6 +94,14 @@
       "verifiedOn": "2026-09-08",
       "specs": ["SPEC-013"],
       "kind": "sourced"
+    },
+    {
+      "file": "11-BILLING-ENTITLEMENTS.md",
+      "area": "billing & entitlements",
+      "volatility": "moderate",
+      "verifiedOn": "2026-09-08",
+      "specs": ["SPEC-007"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {
