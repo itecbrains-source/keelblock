@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STEPS, EXIT, decideRun, summarize, REQUIRED_BINARIES, missingBinaries } from './check.mjs';
 import { readFileSync } from 'node:fs';
 
-const r = (id: string, ok: boolean) => ({ id, why: id, ok, ms: 1000 });
+const r = (id: string, ok: boolean) => ({ id, why: id, ms: 1000, status: ok ? 0 : 1 });
 
 describe('check runner', () => {
   it('reports green only when every step passed', () => {
@@ -97,5 +97,48 @@ describe('check runner', () => {
     for (const id of ['policy', 'generated']) {
       expect(STEPS.find((s) => s.id === id)!.needsDb).toBe(true);
     }
+  });
+});
+
+// ── R-12: a rule that did not run is not a rule that passed ────────────────────
+
+describe('degraded steps', () => {
+  const step = (id: string, status: number) => ({ id, why: id, ms: 0, status });
+
+  it('renders a degraded step as ~, not as a tick', () => {
+    const { lines } = summarize([step('freshness', EXIT.DEGRADED), step('unit', EXIT.OK)]);
+    expect(lines[0]).toContain('~ freshness');
+    expect(lines[1]).toContain('✓ unit');
+  });
+
+  it('MUTATION: a degraded run is not "all green"', () => {
+    // The failure this prevents: the warning goes to stderr inside a thirteen-step run, and the
+    // summary — the only line most people read — says everything is fine.
+    const s = summarize([step('freshness', EXIT.DEGRADED)]);
+    expect(s.ok, 'a run that skipped a rule must not report as green').toBe(false);
+    expect(s.degraded).toEqual(['freshness']);
+    // Exit stays 0 without --strict: a laptop on a hotel network must still be able to run this.
+    expect(s.exit).toBe(EXIT.OK);
+  });
+
+  it('--strict turns degraded into failure, which is what CI uses', () => {
+    // CI has a network, so an unreachable registry there is news rather than an environment quirk.
+    const s = summarize([step('freshness', EXIT.DEGRADED)], { strict: true });
+    expect(s.exit).toBe(EXIT.FAILED);
+    expect(s.ok).toBe(false);
+  });
+
+  it('a real failure still dominates a degradation', () => {
+    const s = summarize([step('freshness', EXIT.DEGRADED), step('policy', EXIT.FAILED)]);
+    expect(s.exit).toBe(EXIT.FAILED);
+    expect(s.failed).toEqual(['policy']);
+    expect(s.degraded).toEqual(['freshness']);
+  });
+
+  it('an all-ok run is still exit 0 and still says all green', () => {
+    const s = summarize([step('unit', EXIT.OK), step('lint', EXIT.OK)]);
+    expect(s.ok).toBe(true);
+    expect(s.exit).toBe(EXIT.OK);
+    expect(s.degraded).toEqual([]);
   });
 });

@@ -109,11 +109,16 @@ async function main() {
 
   const offline = process.argv.includes('--offline');
   const latest = offline ? {} : await fetchLatestMajors(Object.keys(stamp.pins));
-  if (!offline && Object.keys(latest).length === 0) {
-    console.warn(
-      'freshness: registry unreachable — the drift rule is skipped, the stamp rule is not',
-    );
-  }
+  // Degraded is NOT the same as passing, and until now it printed a warning to stderr inside a
+  // thirteen-step run whose summary printed a green tick. It does not take a hostile actor or an
+  // air-gapped runner: on one machine `curl https://registry.npmjs.org/next` returned 200 while
+  // Node's fetch failed, and the gate reported the registry unreachable from a networked host.
+  //
+  // The trilemma is real — fail hard and the gate is flaky, warn and it is optional. The third
+  // option is to make the degradation visible WHERE THE VERDICT IS READ, so exit 3 is "ran, but a
+  // rule was skipped", alongside 1 "found a problem" and 2 "could not run". `check` renders it as
+  // `~` rather than `✓`, and `--strict` (which CI uses, because CI has a network) makes it fail.
+  const degraded = !offline && Object.keys(latest).length === 0;
 
   const { ok, failures } = evaluateFreshness({
     stamp,
@@ -124,6 +129,14 @@ async function main() {
   });
 
   if (ok) {
+    if (degraded) {
+      console.warn(
+        `freshness: DEGRADED — ${Object.keys(stamp.pins).length} pins are within ` +
+          `${stamp.maxAgeDays}d, but the registry was unreachable, so the drift rule did not run. ` +
+          `The stamp rule did.`,
+      );
+      process.exit(3);
+    }
     console.log(
       `freshness: ok — ${Object.keys(stamp.pins).length} pins verified within ${stamp.maxAgeDays}d`,
     );

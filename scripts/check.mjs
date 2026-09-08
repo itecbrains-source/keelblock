@@ -83,7 +83,7 @@ export const STEPS = [
 ];
 
 /** Exit codes are a contract: 0 all green · 1 a gate failed · 2 the run could not be performed. */
-export const EXIT = { OK: 0, FAILED: 1, CANNOT_RUN: 2 };
+export const EXIT = { OK: 0, FAILED: 1, CANNOT_RUN: 2, DEGRADED: 3 };
 
 /**
  * A database-backed gate is never skipped when the database is absent — it aborts the whole run.
@@ -99,15 +99,29 @@ export function decideRun(steps, { dbAvailable }) {
 }
 
 /** Every step runs; failures are collected, never short-circuited. */
-export function summarize(results) {
-  const failed = results.filter((r) => !r.ok);
+/**
+ * A step that exits 3 RAN, and skipped a rule while doing it. Rendering that as `✓` is how a
+ * guarantee quietly becomes optional: the warning goes to stderr inside a thirteen-step run and the
+ * summary — the only line most people read — says everything is fine.
+ *
+ * @param {Array<{id: string, why: string, ms: number, status: number}>} results
+ * @param {{strict?: boolean}} [opts] CI passes strict, because CI has a network.
+ */
+export function summarize(results, { strict = false } = {}) {
+  const failed = results.filter((r) => r.status !== EXIT.OK && r.status !== EXIT.DEGRADED);
+  const degraded = results.filter((r) => r.status === EXIT.DEGRADED);
   const pad = Math.max(0, ...results.map((r) => r.id.length));
+  const mark = (r) => (r.status === EXIT.OK ? '✓' : r.status === EXIT.DEGRADED ? '~' : '✗');
+  // `ok` means nothing failed AND nothing was skipped, so the summary cannot say "all green" over a
+  // rule that did not run. `exit` is the process contract, and it stays 0 for a degradation unless
+  // --strict: a laptop on a hotel network must still be able to run the suite.
   return {
-    ok: failed.length === 0,
+    ok: failed.length === 0 && degraded.length === 0,
     failed: failed.map((f) => f.id),
-    exit: failed.length === 0 ? EXIT.OK : EXIT.FAILED,
+    degraded: degraded.map((d) => d.id),
+    exit: failed.length > 0 || (strict && degraded.length > 0) ? EXIT.FAILED : EXIT.OK,
     lines: results.map(
-      (r) => `  ${r.ok ? '✓' : '✗'} ${r.id.padEnd(pad)}  ${(r.ms / 1000).toFixed(1)}s  ${r.why}`,
+      (r) => `  ${mark(r)} ${r.id.padEnd(pad)}  ${(r.ms / 1000).toFixed(1)}s  ${r.why}`,
     ),
   };
 }
@@ -175,16 +189,29 @@ function main() {
     process.stdout.write(`\n──── ${step.id} · ${step.why}\n`);
     const t0 = Date.now();
     const r = spawnSync(step.cmd, step.args, { stdio: 'inherit' });
-    results.push({ ...step, ok: r.status === 0, ms: Date.now() - t0 });
+    results.push({
+      ...step,
+      status: r.status ?? EXIT.FAILED,
+      ok: r.status === 0,
+      ms: Date.now() - t0,
+    });
   }
 
-  const { ok, failed, exit, lines } = summarize(results);
+  const { ok, failed, degraded, exit, lines } = summarize(results, {
+    strict: process.argv.includes('--strict'),
+  });
   console.log('\n════ summary ════');
   for (const line of lines) console.log(line);
+  const note = degraded.length
+    ? `  ${degraded.length} degraded: ${degraded.join(', ')} — a rule did not run. ` +
+      `Re-run with --strict to treat that as failure.\n`
+    : '';
   console.log(
-    ok
-      ? `\n  all ${results.length} green\n`
-      : `\n  ${failed.length} failed: ${failed.join(', ')}\n`,
+    failed.length
+      ? `\n  ${failed.length} failed: ${failed.join(', ')}\n${note}`
+      : ok
+        ? `\n  all ${results.length} green\n`
+        : `\n${note}`,
   );
   process.exit(exit);
 }

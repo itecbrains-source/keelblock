@@ -29,7 +29,9 @@ jobs:
       - uses: supabase/setup-cli@v1
         with: { version: latest }
       - run: supabase start
-      - run: npm run check
+      # --strict: a degraded gate is a rule that did not run. On a laptop that can be a
+      # hotel network; on a runner with a network it is news, so it fails here.
+      - run: npm run check -- --strict
       # The access matrix is evidence, so it is published from the run that produced it.
       - uses: actions/upload-artifact@v4
         if: always()
