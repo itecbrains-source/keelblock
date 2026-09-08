@@ -1,5 +1,13 @@
 # keel spec set
 
+**Every spec is grounded in authoritative research before it is authored.** A spec written from
+recollection encodes whatever was true when the author last looked, and in fast-moving areas that is
+worse than no spec — it reads as settled. Research memos live in [`research/`](../research/), cite
+primary sources where they exist, and separate **settled** from **contested** so the spec can ship
+the contested part honestly labelled rather than silently. SPEC-028 is the worked example: it exists
+because FAQ rich results were removed on a specific date, and both common beliefs about what that
+means are wrong.
+
 Governed by [`docs/PRODUCT.md`](../docs/PRODUCT.md) and the [ADRs](../docs/adr/). Format is the
 playbook's `_TEMPLATE.spec.md`: intent · scope/non-scope · sources of truth · REQ/AC · DoD ·
 deferrals. **Thin.** A spec that outgrows the feature it governs has failed its own purpose.
@@ -32,7 +40,7 @@ template's own instruction is to keep it thin.
 | SPEC-021 | Admin, user management & **audited impersonation** | B-2 | 001, 002 | planned |
 | SPEC-022 | Onboarding flow | B-5 | 005 | planned |
 | SPEC-023 | Legal pages & error monitoring | B-9 | — | planned |
-| SPEC-028 | SEO & structured data — canonical, OG, JSON-LD, sitemap, robots, hreflang | B-8 | 004 | planned |
+| SPEC-028 | SEO & structured data — canonical, OG, JSON-LD, sitemap, robots, hreflang, AI-crawler policy | B-8 | 004, 010 | **draft** |
 | SPEC-029 | Product analytics — one provider behind a seam | — | 003 | planned |
 | SPEC-030 | Local development — offline loop, mail catcher, object storage | B-1 | 003 | planned |
 | SPEC-025 | Audit log — native, RLS-scoped, in the access matrix | **B-2** | 001, 002, 021 | planned |

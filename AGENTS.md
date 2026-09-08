@@ -73,6 +73,20 @@ in the change that broke it.
 | What is built, and what is next? | `spec/README.md` |
 | What did we decide not to do yet? | `spec/DEFERRAL_REGISTRY.md` |
 
+## Before you author a spec
+
+**Research it from authoritative sources first, and write the memo.** A spec written from
+recollection encodes whatever was true when its author last looked — and in a fast-moving area that
+is worse than no spec, because it reads as settled.
+
+Memos live in `research/`, cite primary sources where they exist, and **separate settled from
+contested**, so the spec can ship the contested part honestly labelled rather than silently.
+
+`research/05-SEO-2026.md` is the worked example. Written from memory it would have said "add FAQ
+schema for rich results" — a recommendation that has been wrong since 7 May 2026, when those results
+were removed. The memo also shows why the *opposite* conclusion is wrong: the markup still matters,
+for a different reason than it used to.
+
 ## Two habits that matter here
 
 **Measure, then claim.** Nothing in this repository asserts behaviour nobody reproduced. Several

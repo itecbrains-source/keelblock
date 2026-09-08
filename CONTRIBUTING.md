@@ -58,6 +58,12 @@ Two layers, deliberately:
 Assert a write rejection **as the writer**, never by reading afterwards — and remember that a failing
 `USING` on `UPDATE` is a silent no-op (`UPDATE 0`, no error), so those cases assert on the data.
 
+## Authoring a spec
+
+Research first, from authoritative sources, and commit the memo alongside it. Cite primary sources
+where they exist, and mark clearly what is **settled** versus **contested** — a spec that presents a
+contested practice as established is the same defect as an unbacked claim, and harder to spot.
+
 ## Deferring work
 
 Debt is allowed; **unlogged debt is not**, and neither is debt whose moment has arrived and nobody
