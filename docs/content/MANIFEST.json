@@ -265,6 +265,12 @@
       "what": "the check that certifies every other check enumerated them by filename, exempting the two rule-enforcing scripts that were not named `check-*` — and when pointed at them, its strictness rule condemned three working proofs",
       "to": ["blog", "docs"],
       "angle": "The sequel to F-41 and the more useful half: the fix for a check that counts attempts is to ask what it PRODUCED, and the question generalizes to every counting rule in a codebase. Also the counter-lesson nobody publishes — a false positive in a strictness check is worse than a gap, because the repair it demands is rewriting correct code. The rule said three mutation proofs exercised nothing; they went through a one-line helper. Believing it would have meant damaging working tests to satisfy a rule that was itself too narrow."
+    },
+    {
+      "id": "F-44",
+      "what": "the same test-versus-navigation race as F-42, in a different file, surfaced by CI on a documentation-only commit",
+      "to": ["blog", "docs"],
+      "angle": "The recurrence is what makes it publishable: once is bad luck, twice is a class. The rule that falls out is sharper than 'add a wait' — when the page is going to navigate, assert on the RESPONSE, not the DOM, because a response body is a fixed artifact and the DOM is a moving one. Also a second data point for the uncomfortable half of F-42: a green local run can be evidence of a faster machine rather than of correct code."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

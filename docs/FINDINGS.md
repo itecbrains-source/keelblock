@@ -1244,3 +1244,38 @@ bindings to a fixpoint: a helper that reaches the gate counts, a helper that rea
 
 A completeness assertion closes the rest: every script under `scripts/` is either run by `check` or
 carries its own mutation proof, so nothing is exempt merely by being absent from a list.
+
+## F-44 · The same race, in a test that had been green for a week
+
+**2026-09-08 · found by CI on an unrelated commit · fixed in `e2e/journeys/protected-route.spec.ts`**
+
+A documentation-only change went red:
+
+```
+Error: page.content: Unable to retrieve content because the page is navigating
+and changing the content.
+```
+
+`/orgs` answers an unauthenticated caller with 200 and a prerendered shell, then redirects on the
+client (F-38). The test read `await page.content()` immediately after `goto`, so it was reading the
+DOM while the browser was replacing it. Locally it won that race on every run for a week; the runner
+lost it.
+
+This is F-42 a second time — a test racing the framework's own navigation, where a green local run
+is evidence of a faster machine — and the recurrence is the point. Once is bad luck; twice is a class,
+and the rule that falls out of it is sharper than "add a wait":
+
+> **When the page is going to navigate, assert on the response, not on the DOM.**
+
+The fix is not a workaround, it is the better assertion. The property under test is that the
+protected route's _response_ carries no tenant data:
+
+```ts
+const response = await page.goto('/orgs');
+const body = (await response!.text()).toLowerCase();
+```
+
+A response body is a fixed artifact. The DOM is a moving one, and this test was asking a moving thing
+a question about a fixed one. A `waitForURL` before reading would also have gone green while leaving
+the assertion pointed at whatever happened to be rendered by then — which is the login page, not the
+thing the test is named after.

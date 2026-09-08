@@ -32,8 +32,18 @@ test.describe('an unauthenticated caller at a protected route', () => {
     const orgId = await seed.createOrg(owner, 'Cartographers');
     await seed.createProject(owner, orgId, 'Undersea cable route');
 
-    await page.goto('/orgs');
-    const body = (await page.content()).toLowerCase();
+    // The RESPONSE to /orgs, not the DOM afterwards.
+    //
+    // This read `await page.content()` and went red on CI with "Unable to retrieve content because
+    // the page is navigating and changing the content" — the route answers 200 with a shell and then
+    // client-side redirects to /login (F-38), so reading the live DOM races that navigation. Locally
+    // it won the race every time; the runner lost it, which is F-42's shape a second time.
+    //
+    // Reading the response body is not a workaround, it is the better assertion: the property under
+    // test is that the protected route's response carries no tenant data, and a response body is a
+    // fixed artifact where the DOM is a moving one.
+    const response = await page.goto('/orgs');
+    const body = (await response!.text()).toLowerCase();
 
     expect(body, 'no organization name').not.toContain('cartographers');
     expect(body, 'no project name').not.toContain('undersea cable route');
