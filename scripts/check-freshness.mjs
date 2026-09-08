@@ -84,18 +84,28 @@ export const majorOf = (range) => {
 
 async function fetchLatestMajors(names) {
   const out = {};
-  await Promise.all(
-    names.map(async (name) => {
-      try {
-        const res = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/latest`, {
-          signal: AbortSignal.timeout(8000),
-        });
-        if (res.ok) out[name] = majorOf((await res.json()).version);
-      } catch {
-        /* offline — rule 2 degrades, rule 1 still bites */
+  // Bounded concurrency and one retry, because degradation is now VISIBLE (exit 3) and fatal under
+  // --strict, so it has to mean something. Measured: twelve simultaneous requests with a single
+  // 8s ceiling time out under load — a full `verify` run alongside four local Postgres stacks was
+  // enough — and a gate that cries wolf about the network gets its --strict flag deleted, which is
+  // how the rule became optional in the first place.
+  const queue = [...names];
+  const worker = async () => {
+    for (let name = queue.pop(); name; name = queue.pop()) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/latest`, {
+            signal: AbortSignal.timeout(8000),
+          });
+          if (res.ok) out[name] = majorOf((await res.json()).version);
+          break;
+        } catch {
+          /* transient on the first pass; a real outage on the second — then rule 2 degrades */
+        }
       }
-    }),
-  );
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
   return out;
 }
 
