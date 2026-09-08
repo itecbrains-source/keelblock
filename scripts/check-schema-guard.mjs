@@ -26,7 +26,7 @@ const QUERY = `
 -- is the tenant key. The root was invisible to the first version of this query -- the single most
 -- important table in the schema, missed because it does not reference itself.
 with scoped as (
-  select c.oid, c.relname, c.relrowsecurity
+  select c.oid, c.relname, c.relrowsecurity, c.relforcerowsecurity
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
   where n.nspname = 'public' and c.relkind = 'r'
@@ -42,6 +42,15 @@ with scoped as (
 select s.relname || E'\\t' || f.violation from scoped s
 cross join lateral (
   select 'row-level security is DISABLED' as violation where not s.relrowsecurity
+  union all
+  -- ENABLE is not enough. The table owner on Supabase (postgres) is not a superuser but carries
+  -- rolbypassrls, so without FORCE the owner reads and writes every tenant's rows -- and anything
+  -- running as the owner, which includes every SECURITY DEFINER function in this schema, does too.
+  -- Added after organization_invitation shipped ENABLE-only while the other three tables had
+  -- carried FORCE since the foundation migration. The guard whose stated job is "every tenant table
+  -- is protected" reported ok; the access-matrix gate is what found it.
+  select 'row-level security is not FORCED -- the owner bypasses it'
+    where s.relrowsecurity and not s.relforcerowsecurity
   union all
   select 'no policy at all' where not exists (select 1 from pg_policy p where p.polrelid = s.oid)
   union all

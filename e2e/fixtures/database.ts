@@ -47,6 +47,12 @@ export type Seeded = {
   createUser: (label: string) => Promise<SeededUser>;
   createOrg: (owner: SeededUser, name: string) => Promise<string>;
   createProject: (owner: SeededUser, orgId: string, name: string) => Promise<void>;
+  invite: (
+    admin: SeededUser,
+    orgId: string,
+    invitee: SeededUser,
+    role: 'owner' | 'admin' | 'member',
+  ) => Promise<string>;
   cleanup: () => Promise<void>;
 };
 
@@ -123,6 +129,24 @@ export function seeder(): Seeded {
     async createProject(owner, orgId, name) {
       const { error } = await owner.client.from('project').insert({ organization_id: orgId, name });
       if (error) throw error;
+    },
+
+    /**
+     * An invitation, minted and accepted through the same two functions the screens call. The token
+     * is returned because the fixture is standing in for the email keelblock does not send -- it is
+     * never read back out of the table, which holds only a hash (SPEC-006 REQ-3), so there is no
+     * back door here that the product does not have.
+     */
+    async invite(adminUser, orgId, invitee, role) {
+      const minted = await adminUser.client.rpc('invite_member', {
+        org: orgId,
+        invitee_email: invitee.email,
+        invited_role: role,
+      });
+      if (minted.error) throw minted.error;
+      const accepted = await invitee.client.rpc('accept_invitation', { token: minted.data });
+      if (accepted.error) throw accepted.error;
+      return minted.data as string;
     },
 
     async cleanup() {

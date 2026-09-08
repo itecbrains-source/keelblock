@@ -55,6 +55,56 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_invitation: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          organization_id: string
+          revoked_at: string | null
+          role: Database["public"]["Enums"]["org_role"]
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at: string
+          id?: string
+          organization_id: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          revoked_at?: string | null
+          role?: Database["public"]["Enums"]["org_role"]
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitation_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_member: {
         Row: {
           created_at: string
@@ -119,8 +169,27 @@ export type Database = {
     }
     Functions: {
       _rlsa_try: { Args: { sql: string }; Returns: undefined }
+      accept_invitation: { Args: { token: string }; Returns: string }
       create_organization: {
         Args: { org_name: string; org_slug: string }
+        Returns: string
+      }
+      invitation_preview: {
+        Args: { token: string }
+        Returns: Database["public"]["CompositeTypes"]["invitation_preview_result"][]
+        SetofOptions: {
+          from: "*"
+          to: "invitation_preview_result"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      invite_member: {
+        Args: {
+          invited_role: Database["public"]["Enums"]["org_role"]
+          invitee_email: string
+          org: string
+        }
         Returns: string
       }
       is_org_admin: { Args: { org: string }; Returns: boolean }
@@ -129,12 +198,16 @@ export type Database = {
         Args: { org: string }
         Returns: Database["public"]["Enums"]["org_role"]
       }
+      revoke_invitation: { Args: { invitation: string }; Returns: undefined }
     }
     Enums: {
       org_role: "owner" | "admin" | "member"
     }
     CompositeTypes: {
-      [_ in never]: never
+      invitation_preview_result: {
+        organization_name: string | null
+        invited_role: Database["public"]["Enums"]["org_role"] | null
+      }
     }
   }
 }

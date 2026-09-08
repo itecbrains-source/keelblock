@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planProbes } from './check-policies.mjs';
+import { planProbes, reconcileEmitted } from './check-policies.mjs';
 
 const valid = {
   organization_member: {
@@ -67,5 +67,51 @@ describe('policy probe plan', () => {
     expect(referenced.length).toBeGreaterThan(0);
     for (const path of referenced)
       expect(existsSync(path), `${path} is referenced but missing`).toBe(true);
+  });
+});
+
+describe('reconcileEmitted — the check whose absence hid a one-table proof', () => {
+  const skip = [{ table: 'organization_member' }];
+  const all = [
+    '000-setup-tests-hooks_rlsautotest.sql',
+    '010-rls-enabled_rlsautotest.sql',
+    '101-rls-organization_rlsautotest.sql',
+    '102-rls-organization_invitation_rlsautotest.sql',
+    '103-rls-organization_member_rlsautotest.sql',
+    '104-rls-project_rlsautotest.sql',
+  ];
+  const probe = ['organization', 'organization_invitation', 'project'];
+
+  it('reports the tables whose suites are actually on disk', () => {
+    const r = reconcileEmitted(all, probe, skip);
+    expect(r.suites).toEqual(['organization', 'organization_invitation', 'project']);
+    expect(r.missing).toEqual([]);
+    expect(r.remove).toEqual(['103-rls-organization_member_rlsautotest.sql']);
+  });
+
+  it('THE REGRESSION: a run that emitted only the last table is caught', () => {
+    // Verbatim what the per-table loop produced — each invocation reconciled away the previous
+    // one's file, so `project` was the only survivor while the gate printed three names.
+    const r = reconcileEmitted(
+      ['000-setup-tests-hooks_rlsautotest.sql', '104-rls-project_rlsautotest.sql'],
+      probe,
+      [],
+    );
+    expect(r.missing).toEqual(['organization', 'organization_invitation']);
+  });
+
+  it('does not count the RLS-on guard as a table', () => {
+    // `010-rls-enabled` made three probed tables report as four, which equalled the table count.
+    const r = reconcileEmitted(all, probe, skip);
+    expect(r.suites).not.toContain('enabled');
+  });
+
+  it('a not-probeable entry that matches nothing is reported, not silently honoured', () => {
+    const r = reconcileEmitted(all, probe, [{ table: 'organizaton_member' }]);
+    expect(r.unmatchedSkips).toEqual(['organizaton_member']);
+  });
+
+  it('is not vacuous: given nothing, every planned table is missing', () => {
+    expect(reconcileEmitted([], probe, []).missing).toEqual(probe);
   });
 });

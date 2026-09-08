@@ -1,7 +1,7 @@
 # SPEC-004: Authentication
 
 > Status: `done` · Research: [`research/07-AUTH-2026.md`](../research/07-AUTH-2026.md) · ADRs: [002](../docs/adr/ADR-002-auth.md), [011](../docs/adr/ADR-011-app-router-conventions.md)
-> Contracts: SPEC-001, SPEC-002, SPEC-003, SPEC-005 ·
+> Contracts: SPEC-001, SPEC-002, SPEC-003, SPEC-005, SPEC-006 ·
 
 ## Intent
 

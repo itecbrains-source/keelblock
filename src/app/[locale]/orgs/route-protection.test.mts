@@ -102,6 +102,10 @@ describe('the protected route refuses an unauthenticated caller', () => {
       activeOrg: async () => null,
       listMembers: async () => [],
     }));
+    // Mocked for the same reason as the DAL: it is `server-only`, so importing the page without it
+    // fails on the import rather than on the assertion. The refusal happens before either is read.
+    vi.doMock('@/lib/orgs/invitations', () => ({ listInvitations: async () => [] }));
+    vi.doMock('next/headers', () => ({ headers: async () => new Headers() }));
 
     // The session-dependent component, not the default export: that one wraps this in <Suspense>
     // and so never awaits it. Measured — asserting against the wrapper passed while proving nothing.

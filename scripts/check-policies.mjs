@@ -8,7 +8,7 @@
  * teaches people to ignore the runner. The committed evidence is `docs/ACCESS-MATRIX.md`.
  */
 import { spawnSync, execFileSync } from 'node:child_process';
-import { existsSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 
 const DB =
   process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
@@ -69,6 +69,49 @@ export function planProbes(tables, notProbeable = NOT_PROBEABLE) {
   return { probe, skip };
 }
 
+/**
+ * What the generator actually WROTE, reconciled against what was planned.
+ *
+ * Pure, and exported, because its absence is what hid the worst defect this gate has had: the
+ * per-table loop deleted its own output (each run reconciles away files "no longer part of this
+ * run"), so one suite existed while the gate reported three -- and nothing compared the claim to the
+ * directory. A count taken from exit codes is not a measurement of coverage.
+ *
+ * @param {string[]} files basenames in supabase/tests/rls
+ * @param {string[]} probe tables that must have a suite
+ * @param {Array<{table: string}>} skip tables whose coverage was transferred elsewhere
+ * @returns {{ suites: string[], remove: string[], missing: string[], unmatchedSkips: string[] }}
+ */
+export function reconcileEmitted(files, probe, skip) {
+  // 1xx only. `010-rls-enabled_rlsautotest.sql` is the tool's RLS-on guard, not a table's suite, and
+  // counting it as one made three probed tables report as four -- a number that happened to equal
+  // the table count, so it read as complete.
+  const byTable = new Map();
+  for (const f of files) {
+    const m = /^1\d\d-rls-(.+)_rlsautotest\.sql$/.exec(f);
+    if (m) byTable.set(m[1], f);
+  }
+  // A transferred table's suite is deleted so the runner does not execute it -- but a skip entry
+  // that matches NOTHING is a typo quietly widening into a coverage hole, which is the same failure
+  // in different clothes, so it is reported rather than ignored.
+  const remove = [],
+    unmatchedSkips = [];
+  for (const sk of skip) {
+    const f = byTable.get(sk.table);
+    if (!f) unmatchedSkips.push(sk.table);
+    else {
+      remove.push(f);
+      byTable.delete(sk.table);
+    }
+  }
+  return {
+    suites: [...byTable.keys()].sort(),
+    remove,
+    missing: probe.filter((t) => !byTable.has(t)),
+    unmatchedSkips,
+  };
+}
+
 function main() {
   if (!existsSync(RLSA)) {
     console.error('rlsautotest is not installed. Run:');
@@ -111,31 +154,61 @@ function main() {
     console.log(`policy: ${s.table} — covered by ${s.coveredBy}`);
   }
 
-  const probed = [];
-  for (const table of probe) {
-    const r = spawnSync(
-      RLSA,
-      [
-        '--db-url',
-        DB,
-        '--supabase',
-        '--table',
-        table,
-        '--emit',
-        '.',
-        ...UNRELIABLE.flatMap((u) => ['--allow-unreliable', u]),
-        '--no-fail',
-      ],
-      { stdio: ['ignore', 'ignore', 'inherit'] },
-    );
-    if (r.status !== 0) {
-      console.error(`policy: could not generate the suite for ${table}`);
-      process.exit(2);
-    }
-    probed.push(table);
+  // ONE invocation for the whole schema, which is how the tool is meant to be driven ("omit
+  // --table, with --emit, to do every RLS table in the schema").
+  //
+  // It used to be a loop, one call per table, and that loop silently destroyed its own output. Each
+  // run ends with a reconciliation step -- `removed N stale generated file(s) no longer part of this
+  // run` -- which is correct for a whole-schema run and lethal in a loop: generating `organization`
+  // wrote its file, generating `organization_invitation` deleted it, and generating `project`
+  // deleted that. One table survived, always the last one.
+  //
+  // Nothing failed, because `--no-fail` returns 0 and the loop counted an exit code rather than a
+  // file. The gate then printed `generated suites for 3/4 RLS tables (organization,
+  // organization_invitation, project)` while exactly one suite existed on disk. Measured
+  // 2026-09-08, on the run that added `organization_invitation`: the exhaustive layer -- the one
+  // this project points at when it says isolation is proven rather than asserted -- had been
+  // proving a single table.
+  const r = spawnSync(
+    RLSA,
+    [
+      '--db-url',
+      DB,
+      '--supabase',
+      '--emit',
+      '.',
+      ...UNRELIABLE.flatMap((u) => ['--allow-unreliable', u]),
+      '--no-fail',
+    ],
+    { stdio: ['ignore', 'ignore', 'inherit'] },
+  );
+  if (r.status !== 0) {
+    console.error('policy: the generated suite could not be produced');
+    process.exit(2);
   }
+
+  const { suites, remove, missing, unmatchedSkips } = reconcileEmitted(
+    readdirSync('supabase/tests/rls'),
+    probe,
+    skip,
+  );
+  if (unmatchedSkips.length) {
+    console.error(
+      `policy: ${unmatchedSkips.join(', ')} listed as not-probeable, but the generator emitted ` +
+        'nothing for them. Either the table is gone or the name is wrong, and an entry that ' +
+        'matches nothing transfers no coverage.',
+    );
+    process.exit(2);
+  }
+  for (const f of remove) rmSync(`supabase/tests/rls/${f}`);
+  if (missing.length) {
+    console.error(`policy: no suite was generated for ${missing.join(', ')} -- refusing to report`);
+    console.error('  coverage that does not exist on disk.');
+    process.exit(2);
+  }
+
   console.log(
-    `policy: generated suites for ${probed.length}/${tables.length} RLS tables (${probed.join(', ')})`,
+    `policy: generated suites for ${suites.length}/${tables.length} RLS tables (${suites.join(', ')})`,
   );
 
   const run = spawnSync('supabase', ['test', 'db'], { stdio: 'inherit' });

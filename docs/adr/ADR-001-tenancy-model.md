@@ -64,3 +64,35 @@ B-2 and the new-table guard are possible at all; billing maps cleanly to one Str
 every write policy — not just `USING` on reads, which is the single most common RLS mistake and is
 what lets a user write a row into another tenant. This gets its own hand-written intent test, because
 a generated suite will confirm a missing `WITH CHECK` as green.
+
+## Addendum, 2026-09-08 — when a `SECURITY DEFINER` function is allowed to exist
+
+Decided while closing DEF-014, whose trigger was "SPEC-006 is done" precisely so the question would
+be answered against real code rather than from imagination.
+
+**A definer RPC is used only where a policy CANNOT express the operation. Everything a policy can
+express stays in the policy.**
+
+There are exactly two such operations today, and both are genuinely inexpressible:
+
+- `create_organization` — the creator must become the owner in the same transaction, and at the
+  moment of the INSERT there is no membership row for a policy to consult.
+- `accept_invitation` — it writes a membership for somebody who is, by definition, not yet a member.
+  No policy on `organization_member` could permit that without permitting much more.
+
+Membership administration is not on that list. It is gated by `is_org_admin` in the policy, with the
+invariants a policy cannot state — only an owner may change ownership, an organization may not be
+orphaned — held by triggers.
+
+The temptation is to move it behind RPCs anyway, because then the direct write is denied at the
+privilege layer and the denial becomes assertable. That is a real gain, and it is outweighed by what
+it costs. SPEC-006 measured the cost the same week: `invite_member` re-checked authority with
+`if not public.is_org_admin(org)`, `is_org_admin` returned NULL rather than false for a non-member,
+`not NULL` is NULL, and the guard fell through in silence — an invitation minted into an organization
+the caller had no membership in, with no error. In a policy that same NULL is a refusal, so no policy
+was ever wrong; the defect existed only inside the definer function.
+
+That is the general shape rather than one bug. **A definer function moves an authorization decision
+from somewhere the database enforces to somewhere a human wrote it**, and every one added is another
+place that must be got right by hand. Two are worth it because there is no alternative. Replacing
+working policies with a third and a fourth would trade a proven boundary for a hand-written one.

@@ -78,6 +78,14 @@
       "verifiedOn": "2026-09-08",
       "specs": ["SPEC-005"],
       "kind": "sourced"
+    },
+    {
+      "file": "09-INVITATION-BOUNDARY.md",
+      "area": "the first row readable by a non-member — invitation tokens and the narrow-door exception",
+      "volatility": "moderate",
+      "verifiedOn": "2026-09-08",
+      "specs": ["SPEC-006"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {

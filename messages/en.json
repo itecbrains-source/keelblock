@@ -45,6 +45,24 @@
     "create": "Create an organization",
     "name": "Name",
     "slug": "URL slug",
-    "createSubmit": "Create"
+    "createSubmit": "Create",
+    "invitations": "Invitations",
+    "inviteEmail": "Invite by email",
+    "inviteRole": "As",
+    "inviteSubmit": "Invite",
+    "inviteRevoke": "Revoke",
+    "inviteNone": "No invitations are outstanding.",
+    "inviteLinkOnce": "Send them this link. It is shown once — the database keeps only a hash of it, so no screen can show it again.",
+    "inviteExpires": "expires"
+  },
+  "invite": {
+    "title": "You have been invited",
+    "subtitle": "Accepting adds you to the organization with the role you were offered.",
+    "offer": "{org} has invited you to join as {role}.",
+    "accept": "Accept invitation",
+    "working": "Joining",
+    "signInFirst": "Sign in first — joining attaches this organization to your account.",
+    "signIn": "Sign in",
+    "unknown": "This invitation cannot be used. It may never have existed, or it may have expired, been withdrawn, or already been accepted. We do not say which: telling them apart would confirm to someone guessing at links that they had found a real one."
   }
 }

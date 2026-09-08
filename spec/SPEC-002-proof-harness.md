@@ -1,7 +1,7 @@
 # SPEC-002: Proof harness
 
 > Status: `partial` (spike-validated 2026-09-07 — see `research/03-SPIKE-RESULTS.md`) · Bars: **B-2**, **B-4** · ADRs: [005](../docs/adr/ADR-005-testing.md)
-> Contracts: SPEC-001, SPEC-003, SPEC-004, SPEC-005 ·
+> Contracts: SPEC-001, SPEC-003, SPEC-004, SPEC-005, SPEC-006 ·
 
 ## Intent
 
@@ -83,6 +83,11 @@ most suites reach for test ids and then quietly stop asserting anything about th
 Recorded now, before any journey test exists, because retrofitting locators across a written suite
 never happens.
 
+**And enforced, which it was not at first.** The criterion originally cited the page objects — files
+that complied. Appending `getByTestId('members').locator('.row')` to them left `tsc`, `lint`, `unit`
+and `boundaries` green, so the property bar B-7 partly rests on was checked by nobody. A criterion
+whose evidence is code that currently complies is not a criterion.
+
 ### REQ-4 — the access matrix is generated and published
 
 A committed, human-readable artifact: for every tenant-scoped table, which role may SELECT, INSERT,
@@ -126,7 +131,7 @@ reached. "Expected 0, got 1" is a true statement and a useless one at 2am.
 | AC-8  | REQ-7    | demonstration | `docs/TESTING.md` — a timed local run of both suites, recorded with the machine and the conditions                                                                                                                                                                       | **done** |
 | AC-9  | REQ-8    | test          | `supabase/tests/intent/failure-message.test.sql` — an induced leak's message names table, command, identity and row                                                                                                                                                      | planned  |
 | AC-10 | REQ-1b   | test          | `scripts/check-free-tier-complete.test.ts` — the full proof suite runs green and the access matrix generates from a checkout containing **no paid components** (ADR-009's anti-degradation rule)                                                                         | planned  |
-| AC-3c | REQ-3b   | test          | `e2e/pages/index.ts` and `e2e/fixtures/auth.ts` — every locator resolves by role, label or accessible name; no CSS selector and no test id appears in the suite                                                                                                          | **done** |
+| AC-3c | REQ-3b   | test          | `scripts/accessible-locators.test.mts` — a parsed rule over the journey suite: a test id or a CSS/XPath selector fails, proven by appending one to the real page objects. Parsed rather than searched, because the forbidden names appear in the prose explaining them   | **done** |
 | AC-11 | REQ-1b   | test          | `supabase/tests/generated/seed-is-real.test.sql` — every generated suite seeds the rows it asserts on; a suite planning N assertions against an empty fixture fails                                                                                                      | planned  |
 
 **AC-4 is the load-bearing one**, and the spike corrected it. The defect must be **semantic** — a

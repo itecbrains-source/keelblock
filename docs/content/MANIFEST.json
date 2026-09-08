@@ -241,6 +241,18 @@
       "what": "a 429 throttle was reported to the user as 'a sign-in link is on its way', for the whole life of the feature",
       "to": ["blog", "docs", "faq"],
       "angle": "The argument for the journey layer in one defect: three green test layers could not see it, and the first browser walk found it immediately. Also a precise correction to a real security practice — anti-enumeration requires hiding whether an account exists, not hiding that the provider refused."
+    },
+    {
+      "id": "F-40",
+      "what": "a boolean helper returned NULL for a non-member — correct in every policy that used it, and silently wrong the first time it was used in an `if`",
+      "to": ["blog", "docs", "faq"],
+      "angle": "The sharpest illustration of why two test layers exist. In a policy USING clause Postgres reads NULL as a refusal, so the helper was right where it was used and no isolation test could see it; the generated prober mocks these helpers to true/false, so it structurally cannot observe what the real one returns. It took an acceptance test written before the function, in the first procedural caller, to surface a mint into an organization the caller had no membership in. Generalizes to any Postgres codebase with is_… helpers built on a nullable lookup rather than exists()."
+    },
+    {
+      "id": "F-41",
+      "what": "the exhaustive RLS prober covered one table while the gate reported three, because the gate counted exit codes instead of files",
+      "to": ["blog", "docs"],
+      "angle": "Self-inflicted, in the gate this project points at when it says isolation is proven rather than asserted — which is exactly why it is worth publishing. Each per-table invocation reconciled away the previous one's output, and --no-fail returns zero, so nothing failed. The lesson is the repository's own recurring one in its most expensive location: a check that cannot fail is indistinguishable from a check that passes, and the fix was to compare the claim against the directory. Ships with five mutation proofs, one replaying the exact one-file directory the defect produced."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",
@@ -305,6 +317,23 @@
       "battlecard": "A switcher that is allowed to be wrong",
       "oneLine": "*Ask what their organization switcher does when it is wrong — and how long a revoked admin keeps their access.*",
       "artifacts": ["src/lib/orgs/active-org.ts"]
+    },
+    {
+      "spec": "SPEC-006",
+      "claim": "A removed member loses access on their very next request, not when their token expires — proven by a browser journey that fails if the removal is skipped. And the one row a stranger must read is exposed through a single function returning a named two-column type, not a policy that admits anon.",
+      "rivals": "The usual invitation surface is a policy admitting `anon` plus an application-side filter on the token, which selects the row before deciding the caller was entitled to it — and the usual membership check is a JWT claim, which cannot be revoked before it expires. Supabase's own RBAC guide recommends the claim pattern and does not mention the window; its default access token lives up to an hour.",
+      "evidence": [
+        "research/09-INVITATION-BOUNDARY.md",
+        "supabase/tests/intent/006-invitations.test.sql",
+        "e2e/journeys/invitation.spec.ts",
+        "spec/SPEC-006-invitations.md"
+      ],
+      "battlecard": "Revocation you can watch happen",
+      "oneLine": "*Ask them to remove a signed-in teammate while you watch, and time how long the access lasts.*",
+      "artifacts": [
+        "supabase/migrations/20260908160000_invitations.sql",
+        "src/lib/orgs/invitations.ts"
+      ]
     }
   ]
 }

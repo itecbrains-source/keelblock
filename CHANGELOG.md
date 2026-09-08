@@ -9,9 +9,54 @@ entries are what make the rest worth believing. Full reproductions live in
 
 ## [Unreleased]
 
-The tenancy foundation, the proof harness, the gates, sign-in and organizations (SPEC-001, SPEC-002,
-SPEC-003, SPEC-004, SPEC-005). Invitations, billing and the remaining product surfaces are specced
-and not built — run `npm run status`, which reads the repository rather than this paragraph.
+The tenancy foundation, the proof harness, the gates, sign-in, organizations and invitations
+(SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-006). Billing and the remaining product
+surfaces are specced and not built — run `npm run status`, which reads the repository rather than
+this paragraph.
+
+### Added
+
+- **Invitations (SPEC-006).** Invite by email, preview with the token alone, accept, revoke. The
+  token is 256 bits and only its sha256 is stored, so a leaked table is not a set of working
+  invitations, and the link is shown to the inviter exactly once because no screen can recover it
+  afterwards. **The one row a non-member must read is exposed through a single `SECURITY DEFINER`
+  function returning a named two-column type** — not a policy admitting `anon` plus an
+  application-side token filter, which selects the row before deciding the caller was entitled to it
+  ([`research/09-INVITATION-BOUNDARY.md`](research/09-INVITATION-BOUNDARY.md)). Spent, revoked,
+  expired and invented tokens are all answered identically, so the endpoint is not an oracle.
+- **Revocation is now walked, not argued.** SPEC-005 claimed a removed member loses access on their
+  next request rather than at token expiry, because membership is read from the table inside the
+  policy. There was nothing to revoke yet. There is now: a journey signs Bob in, has Alice remove him
+  through her own screen, and reloads — his session still valid, his access gone. The test is
+  mutation-proven; skipping the removal makes it fail.
+
+### Fixed
+
+- **`is_org_admin` returned NULL for a non-member, and NULL is not false** (F-40). Its sibling
+  `is_org_member` is built on `exists` and returned false; this one was
+  `org_role_of(org) in ('owner','admin')`, and `org_role_of` is NULL for a non-member. Harmless in a
+  policy, where Postgres treats NULL as a refusal — which is why no isolation test could see it, and
+  why the generated prober, which mocks these helpers, never could either. It surfaced the moment a
+  procedural caller wrote `if not public.is_org_admin(org)`: `not NULL` is NULL, the branch does not
+  run, and an invitation was minted into an organization the caller had no membership in, with no
+  error. Fixed in the helper rather than the caller, because the next caller has every reason to
+  trust a boolean-returning function named `is_…`.
+- **The exhaustive RLS prober was covering one table while reporting three** (F-41). `check-policies`
+  invoked the generator once per table, and each run ends by reconciling away files "no longer part
+  of this run" — correct for the whole-schema invocation the tool documents, lethal in a loop. The
+  gate counted exit codes rather than files, and `--no-fail` returns zero, so it printed three table
+  names while one suite existed on disk. It now runs once for the schema and refuses to report
+  coverage it cannot find in the directory.
+- **`organization_invitation` shipped with RLS enabled but not FORCED**, so its owner — and every
+  `SECURITY DEFINER` function, which runs as that owner — bypassed it. The other three tenant tables
+  have carried `force row level security` since the foundation migration. The new-table guard, whose
+  stated job is that every tenant table is protected, did not check for it; it does now, with a
+  planted violation proving it.
+- **An `owner` invitation could be minted and never accepted.** The SPEC-001 owner-authority trigger
+  refuses the membership `accept_invitation` would create, so the invitee read "invited you to join
+  as owner", pressed Accept, and got "not found" forever. Refused at mint instead: letting acceptance
+  through would have required bypassing that trigger, which would turn a token into a route from
+  admin to owner.
 
 ### Changed
 

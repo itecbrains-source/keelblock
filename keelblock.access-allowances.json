@@ -32,6 +32,22 @@
     {
       "key": "bypass:supabase_etl_admin",
       "reason": "NOT REACHABLE, reproduced 2026-09-08 (F-27). This is a Supabase platform role, not one this schema creates. No role is a member of it, and `set role anon; set role supabase_etl_admin` fails with 'permission denied to set role'. The prober flags it because it carries LOGIN and is absent from its own sanctioned list, which names service_role, postgres, supabase_admin, supabase_auth_admin and supabase_storage_admin but predates this role. It is not client-reachable in the sense the CRITICAL label implies."
+    },
+    {
+      "key": "bypass:invitation_preview(token text)",
+      "reason": "BY DESIGN, and it is the deliberate exception SPEC-006 exists to bound. This is the ONLY thing in the schema a caller with no membership may reach, because the person holding an invitation link has no account yet: requiring one to read who invited them inverts the flow. The alternative was a policy admitting anon plus an application-side token filter, refused in research/09-INVITATION-BOUNDARY.md because that is the F-15 shape -- the row reaches memory before anything decides the caller was entitled to it. The opening is narrowed three ways: it returns a NAMED COMPOSITE TYPE of two columns, so widening it is an ALTER TYPE in a migration rather than an edit to a select list; the lookup is by sha256 of a 256-bit token, so it is not enumerable; and expired, revoked, spent and invented tokens all return zero rows, so it cannot be used as an oracle for which guesses were once good. Proven by supabase/tests/intent/006-invitations.test.sql (17 assertions)."
+    },
+    {
+      "key": "bypass:invite_member(org uuid, invitee_email text, invited_role org_role)",
+      "reason": "BY DESIGN. Minting an invitation is one transaction -- generate a 256-bit token, store only its sha256, set the expiry -- and the plaintext is returned to the caller once and never again recoverable. It is SECURITY DEFINER because there is deliberately NO insert grant and NO insert policy on organization_invitation: a single write path is what makes hashing, expiry and the admin re-check unavoidable rather than conventional. Being definer means RLS is bypassed inside it, so it re-checks is_org_admin ITSELF, and that check is what an attacker posting straight at the action meets. EXECUTE is revoked from PUBLIC and anon, granted to authenticated only. A first draft of this function trusted `if not is_org_admin(...)` while the helper returned NULL for a non-member, and the authoring test caught the mint into a foreign organization; the helper was fixed in 20260908170000."
+    },
+    {
+      "key": "bypass:accept_invitation(token text)",
+      "reason": "BY DESIGN. Acceptance writes a membership row for a caller who is BY DEFINITION not yet a member, so no policy on organization_member could permit it without permitting far more. It takes one parameter -- the token -- and derives everything else: the organization and the role come from the stored row, not from the caller, so there is no argument to tamper with. It binds to auth.uid() at the moment of the call, marks the invitation spent in the same statement, and refuses a spent, revoked or expired token with the same error, so redemption is single-use and gives nothing away. EXECUTE revoked from PUBLIC and anon; granted to authenticated, because an identity to bind the membership to is the one prerequisite."
+    },
+    {
+      "key": "bypass:revoke_invitation(invitation uuid)",
+      "reason": "BY DESIGN, and it is the counterpart to the absent write policy. An admin must be able to withdraw an outstanding invitation, and there is no UPDATE grant on the table -- deliberately, because granting one to satisfy an admin update policy would also let an admin move expires_at or clear accepted_at without passing a single rule this spec enforces. So revocation is a definer function that re-checks is_org_admin on the invitation's OWN organization and touches nothing else. It takes effect on the next read rather than at an expiry, because the preview asks the table every time and caches nothing; supabase/tests/intent/006 asserts the invitation resolves before the revocation and not after."
     }
   ]
 }

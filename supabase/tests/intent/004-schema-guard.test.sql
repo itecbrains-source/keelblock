@@ -5,11 +5,11 @@
 -- nothing behind. A unit test of the surrounding string-splitting would prove nothing about the
 -- thing that actually protects the data.
 begin;
-select plan(9);
+select plan(10);
 
 create or replace function pg_temp.guard_violations() returns setof text language sql as $$
   with scoped as (
-    select c.oid, c.relname, c.relrowsecurity
+    select c.oid, c.relname, c.relrowsecurity, c.relforcerowsecurity
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind = 'r'
       and (c.relname = 'organization' or exists (
@@ -19,6 +19,7 @@ create or replace function pg_temp.guard_violations() returns setof text languag
   select s.relname || ': ' || f.violation from scoped s
   cross join lateral (
     select 'rls-disabled' as violation where not s.relrowsecurity
+    union all select 'rls-not-forced' where s.relrowsecurity and not s.relforcerowsecurity
     union all select 'no-policy' where not exists (select 1 from pg_policy p where p.polrelid = s.oid)
     union all select 'no-with-check' from pg_policy p
       where p.polrelid = s.oid and p.polcmd in ('a','w','*') and p.polwithcheck is null
@@ -54,6 +55,12 @@ select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'plante
   'a new tenant table with no policy is caught');
 
 alter table public.planted enable row level security;
+-- ENABLE without FORCE. The realistic mistake -- it looks protected, `relrowsecurity` is true, and
+-- the owner (and therefore every definer function) still reads every tenant's rows. This is exactly
+-- what `organization_invitation` shipped as before the access-matrix gate caught it.
+select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'planted: rls-not-forced'),
+  'ENABLE without FORCE is caught -- relrowsecurity is true and the owner still bypasses it');
+alter table public.planted force row level security;
 create policy planted_read on public.planted for select to authenticated
   using (public.is_org_member(organization_id));
 create policy planted_write on public.planted for insert to authenticated with check (true);

@@ -191,6 +191,53 @@ A forgotten filter is a correctness bug here. Elsewhere it is a disclosure.
 
 ---
 
+## Revocation you can watch happen
+
+**What keelblock claims.** A removed member loses access on their very next request, not when their token expires — proven by a browser journey that fails if the removal is skipped. And the one row a stranger must read is exposed through a single function returning a named two-column type, not a policy that admits anon.
+
+**What the field does instead.** The usual invitation surface is a policy admitting `anon` plus an application-side filter on the token, which selects the row before deciding the caller was entitled to it — and the usual membership check is a JWT claim, which cannot be revoked before it expires. Supabase's own RBAC guide recommends the claim pattern and does not mention the window; its default access token lives up to an hour.
+
+Every kit in this category can invite a teammate. Two questions separate them, and neither is
+answered by a screenshot of an invite form.
+
+**The first is what a stranger can reach.** An invitation is the one row in a multi-tenant schema
+that somebody outside the tenant must be able to read — they have no account yet, so requiring one to
+see who invited them inverts the flow. The usual answer is a policy that admits `anon` and an
+application-side filter on the token. That is the same two-step shape the isolation argument turns
+on: the row is selected, is in memory, and is in the log if anything logs the query, before anything
+decides the caller was entitled to it. keelblock takes the exception in exactly one place, as one
+`SECURITY DEFINER` function whose return type is a **named composite of two columns** — the
+organization's name and the offered role. Widening it is an `ALTER TYPE` in a migration, which is a
+reviewable event, rather than an edit to a `select` list during a refactor. And spent, revoked,
+expired and invented tokens all return zero rows from the same call, so the endpoint cannot be used
+as an oracle for which guesses were once good.
+
+**The second is how long a removed person keeps their access, and it is the one worth asking a
+vendor.** SPEC-005 made the argument: keelblock reads membership from the table inside the policy on
+every request rather than stamping it into a token, so revocation lands immediately. Until there was
+a membership to revoke, that was an argument.
+
+It is now a test that runs on every push. Bob is signed in and looking at Acme. Alice removes him
+through her own screen. Bob reloads and Acme is gone — his session untouched and still perfectly
+valid, because what changed is a row, and the row is what the policy reads. The common alternative
+cannot do this: a JWT claim is a photograph of the database taken when the token was issued, the
+server consults nothing to trust it, and this project's own `jwt_expiry` is `3600`. **Ask how long
+their revoked admin stays an admin, and ask to watch.**
+
+That test is mutation-proven, which is the part that makes it evidence rather than decoration:
+deleting the removal step makes it fail. A green journey that would also be green if the feature
+were absent proves nothing, and this repository has now caught several of its own checks in exactly
+that state — including, while this spec was being built, a generated suite that reported coverage of
+three tables while one file existed on disk.
+
+**Evidence:** [`research/09-INVITATION-BOUNDARY.md`](../../research/09-INVITATION-BOUNDARY.md) · [`supabase/tests/intent/006-invitations.test.sql`](../../supabase/tests/intent/006-invitations.test.sql) · [`e2e/journeys/invitation.spec.ts`](../../e2e/journeys/invitation.spec.ts) · [`spec/SPEC-006-invitations.md`](../../spec/SPEC-006-invitations.md)
+
+**State.** SPEC-006 is `done` · 7 requirements · 9 of 9 criteria met. Verify: `npm run check`.
+
+**The one-line version.** *Ask them to remove a signed-in teammate while you watch, and time how long the access lasts.*
+
+---
+
 ## Where keelblock is behind, stated because a battlecard that only wins is marketing
 
 | Axis                  | Field                                       | keelblock                                                           |

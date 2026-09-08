@@ -2,10 +2,13 @@ import { Suspense } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/dal';
+import { headers } from 'next/headers';
 import { activeOrg, listMemberships, listMembers } from '@/lib/orgs/dal';
+import { listInvitations } from '@/lib/orgs/invitations';
 import { OrgSwitcher } from './org-switcher';
 import { CreateOrgForm } from './create-org-form';
 import { MembersList } from './members-list';
+import { InvitationsList } from './invitations-list';
 
 /**
  * The first authenticated route — SPEC-005 REQ-7.
@@ -31,11 +34,20 @@ export async function Organizations() {
   const user = await getCurrentUser();
   if (!user) redirect('/login?next=/orgs');
 
-  const [memberships, current, members] = await Promise.all([
+  const [memberships, current, members, invitations, requestHeaders] = await Promise.all([
     listMemberships(),
     activeOrg(),
     listMembers(),
+    // Empty for a non-admin: the policy refuses the read rather than the component hiding it.
+    listInvitations(),
+    headers(),
   ]);
+
+  // The link is built from the host that served this request, so it is right behind a proxy and in
+  // a preview deployment without a second environment variable to keep in step with the first.
+  const forwarded = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host') ?? '';
+  const scheme = requestHeaders.get('x-forwarded-proto') ?? 'http';
+  const origin = forwarded ? `${scheme}://${forwarded}` : '';
 
   return (
     <>
@@ -61,6 +73,22 @@ export async function Organizations() {
               remove: t('remove'),
               makeAdmin: t('makeAdmin'),
               makeMember: t('makeMember'),
+            }}
+          />
+          <InvitationsList
+            organizationId={current?.organization_id ?? ''}
+            invitations={invitations}
+            canAdminister={current?.role === 'owner' || current?.role === 'admin'}
+            origin={origin}
+            labels={{
+              heading: t('invitations'),
+              email: t('inviteEmail'),
+              role: t('inviteRole'),
+              invite: t('inviteSubmit'),
+              revoke: t('inviteRevoke'),
+              none: t('inviteNone'),
+              linkOnce: t('inviteLinkOnce'),
+              expires: t('inviteExpires'),
             }}
           />
         </>

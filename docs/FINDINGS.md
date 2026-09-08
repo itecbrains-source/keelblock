@@ -1088,3 +1088,85 @@ Worth stating plainly because it is the argument for the layer: this defect ship
 which had twelve acceptance criteria, a verified end-to-end magic-link round trip recorded in the
 spec, and a manual smoke test of ten auth paths. Every one of those exercised the HAPPY path once.
 Nobody asks for a second link while testing.
+
+## F-40 · A boolean helper that returned NULL, safe in a policy and unsafe in an `if`
+
+**2026-09-08 · found by SPEC-006's acceptance test, before the function it tested existed · fixed in `supabase/migrations/20260908170000_null_safe_is_org_admin.sql`**
+
+Measured on a clean stack, for a caller who belongs to no organization:
+
+```
+is_org_member  -> false
+is_org_admin   -> NULL
+```
+
+Two sibling helpers, the same name shape, different answers to the same question. `is_org_member` is
+built on `exists`, which is never null. `is_org_admin` was:
+
+```sql
+select public.org_role_of(org) in ('owner', 'admin');
+```
+
+and `org_role_of` returns NULL for a non-member, so the whole expression is NULL.
+
+**Nothing caught it, and the two reasons are the interesting part.** In a policy `USING` clause
+Postgres treats NULL as a refusal, so every policy in the schema behaved correctly and no isolation
+test could have seen it — the helper was, in the place it was used, right. And the generated prober
+_mocks_ these helpers to `select true` / `select false` in order to isolate the wiring, so it proves
+a policy consults the helper and by construction can never observe what the real one returns.
+
+It surfaces the first time the helper is used in procedural code, which SPEC-006 was:
+
+```sql
+if not public.is_org_admin(org) then
+  raise insufficient_privilege using message = 'not an administrator of this organization';
+end if;
+```
+
+`not NULL` is NULL, `if NULL then` does not branch, and the guard falls through in silence. The
+acceptance test — written before the function, and asserting that an invitation cannot be minted into
+an organization the caller does not administer — reported `caught: no exception`. An invitation was
+minted into an organization the caller had no membership in at all.
+
+The repair is in the helper, not the caller. A caller-side `coalesce(…, false)` fixes one site and
+leaves the trap armed for the next person, who has every reason to trust a boolean-returning function
+named `is_…`. The intent suite now asserts all three shapes, including the procedural one that
+actually broke, so the fix is proven where the defect lived rather than where it was noticed.
+
+## F-41 · The exhaustive prober covered one table and reported three
+
+**2026-09-08 · found while adding a table, by reading the directory instead of the log · fixed in `scripts/check-policies.mjs`**
+
+The generated layer is the one this project points at when it says isolation is _proven_ rather than
+asserted. It printed:
+
+```
+policy: generated suites for 3/4 RLS tables (organization, organization_invitation, project)
+```
+
+and exactly one suite existed on disk.
+
+`check-policies` invoked the generator once per table. Each invocation ends with a reconciliation
+step — `reconciled: removed 1 stale generated file(s) no longer part of this run` — which is correct
+for the whole-schema invocation the tool documents (_"omit `--table`, with `--emit`, to do every RLS
+table in the schema"_) and lethal in a loop: generating `organization` wrote its file, generating
+`organization_invitation` deleted it, and generating `project` deleted that. One table survived,
+always the last one.
+
+Nothing failed, because `--no-fail` returns zero and the loop counted an exit code rather than a
+file. **A count taken from exit codes is not a measurement of coverage.** A second, smaller instance
+of the same habit sat beside it: the tool's `010-rls-enabled` guard file was being counted as a
+table's suite, which made three probed tables report as four — a number that happened to equal the
+table count, and so read as complete.
+
+Now the gate runs once for the schema and reconciles what was **written** against what was planned:
+a table with no suite on disk fails the run rather than being counted, and a `NOT_PROBEABLE` entry
+that matches no emitted file fails too, because a skip that matches nothing transfers no coverage. It
+is a pure function with five mutation proofs, one of which replays the exact one-file directory this
+defect produced.
+
+The same run also found `organization_invitation` had shipped with RLS `ENABLE`d but not `FORCE`d —
+so its owner, and every `SECURITY DEFINER` function running as that owner, bypassed it. Three other
+tenant tables had carried `force row level security` since the foundation migration. The new-table
+guard, whose stated job is that every tenant table is protected, did not look for it; it does now,
+with a planted `ENABLE`-without-`FORCE` table proving the rule fires.

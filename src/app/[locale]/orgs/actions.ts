@@ -27,6 +27,10 @@ const Slug = z
   .regex(/^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/, 'lowercase letters, digits and hyphens');
 const Uuid = z.uuid();
 const Role = z.enum(['owner', 'admin', 'member']);
+const Email = z.email().max(320);
+// 32 bytes, hex. Shape-checked before it reaches the database so a malformed value is refused here
+// rather than becoming a hash lookup that misses -- same outcome, but one of them is a query.
+const Token = z.string().regex(/^[0-9a-f]{64}$/);
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 
@@ -128,6 +132,80 @@ export async function removeMember(
     .eq('user_id', target.data);
   if (error) return { ok: false, message: error.message };
   if (count === 0) return { ok: false, message: 'not permitted' };
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+/**
+ * REQ-1 — minting an invitation. The token is returned to the CALLER, once, and never stored in the
+ * clear: the row holds a sha256 of it, so a leaked table is not a set of working invitations.
+ *
+ * The admin check here is not the boundary. `invite_member` is security-definer, which means RLS is
+ * bypassed inside it, so it re-checks `is_org_admin` itself — and that check is what an attacker
+ * posting straight at this action meets. This layer exists to make the refusal legible.
+ */
+export async function inviteMember(
+  organizationId: unknown,
+  email: unknown,
+  role: unknown,
+): Promise<ActionResult & { token?: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, message: 'unauthorized' };
+  const org = Uuid.safeParse(organizationId);
+  const address = Email.safeParse(email);
+  const invited = Role.safeParse(role);
+  if (!org.success || !address.success || !invited.success)
+    return { ok: false, message: 'invalid' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('invite_member', {
+    org: org.data,
+    invitee_email: address.data,
+    invited_role: invited.data,
+  });
+  // 42501 is the function refusing a caller who does not administer the organization. It arrives as
+  // an error rather than zero rows because a definer function raises; a policy would have filtered.
+  if (error) return { ok: false, message: error.code === '42501' ? 'not permitted' : 'failed' };
+  revalidatePath('/', 'layout');
+  return { ok: true, token: data ?? undefined };
+}
+
+/**
+ * REQ-6 — revocation, which takes effect on the next read rather than at some expiry. There is no
+ * cached copy of an invitation's validity anywhere: the preview asks the table every time.
+ */
+export async function revokeInvitation(invitationId: unknown): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, message: 'unauthorized' };
+  const id = Uuid.safeParse(invitationId);
+  if (!id.success) return { ok: false, message: 'invalid' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('revoke_invitation', { invitation: id.data });
+  if (error) return { ok: false, message: error.code === '42501' ? 'not permitted' : 'failed' };
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+/**
+ * REQ-5 — acceptance binds the invitation to whoever is signed in NOW, and grants the role the
+ * inviter chose. The caller supplies a token and nothing else: no organization id, no role, so
+ * there is no parameter for them to tamper with.
+ *
+ * A signed-in caller is required. Deliberately: accepting is a membership change, and the identity
+ * it binds to has to be one the database can name.
+ */
+export async function acceptInvitation(token: unknown): Promise<ActionResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, message: 'unauthorized' };
+  const parsed = Token.safeParse(token);
+  if (!parsed.success) return { ok: false, message: 'invalid' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('accept_invitation', { token: parsed.data });
+  // Spent, revoked, expired and invented tokens all raise the same P0001, and this reports them the
+  // same way. Distinguishing them here would undo the care taken in the function.
+  if (error) return { ok: false, message: 'invalid invitation' };
   revalidatePath('/', 'layout');
   return { ok: true };
 }

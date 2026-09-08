@@ -2,7 +2,7 @@
 -- These were written AFTER an audit found both defects live. They are the cases the first intent
 -- suite did not think of, which is the honest argument for auditing a suite you wrote yourself.
 begin;
-select plan(8);
+select plan(11);
 
 insert into auth.users (id, instance_id, aud, role, email) values
   ('11111111-1111-1111-1111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','owner@t'),
@@ -68,6 +68,33 @@ select lives_ok(
      delete from public.organization_member
        where user_id = '11111111-1111-1111-1111-111111111111'; $$,
   'SUCCESSION: an owner may leave once another owner exists');
+
+-- ── the helpers answer the same question the same way ───────────────────────
+-- `is_org_admin` returned NULL for a non-member (measured 2026-09-08) while its sibling
+-- `is_org_member` returned false. In a policy USING clause NULL reads as a refusal, so no isolation
+-- test could see it, and the generated prober mocks these helpers to true/false so by construction
+-- it never observes the real return. It surfaces only in procedural code -- `if not NULL then` does
+-- not branch -- which is why the third assertion below is the one that matters: it reproduces the
+-- exact shape SPEC-006's `invite_member` uses, and it fails against the pre-fix function.
+set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+
+select is(public.is_org_member('00000000-0000-0000-0000-0000000000ff'), false,
+  'HELPERS: is_org_member answers false for an organization the caller has no membership in');
+
+select is(public.is_org_admin('00000000-0000-0000-0000-0000000000ff'), false,
+  'HELPERS: is_org_admin answers false too -- NULL here is not false, it is the absence of an answer');
+
+create or replace function pg_temp.guard_shape(org uuid) returns text language plpgsql as $$
+begin
+  if not public.is_org_admin(org) then
+    return 'refused';
+  end if;
+  return 'allowed';
+end;
+$$;
+select is(pg_temp.guard_shape('00000000-0000-0000-0000-0000000000ff'), 'refused',
+  'HELPERS: `if not is_org_admin(...)` REFUSES -- the guard shape every definer function uses, and '
+  'the one a NULL return falls straight through');
 
 reset role;
 select * from finish();
