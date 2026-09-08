@@ -32,6 +32,9 @@ template's own instruction is to keep it thin.
 | SPEC-021 | Admin, user management & **audited impersonation** | B-2 | 001, 002 | planned |
 | SPEC-022 | Onboarding flow | B-5 | 005 | planned |
 | SPEC-023 | Legal pages & error monitoring | B-9 | — | planned |
+| SPEC-025 | Audit log — native, RLS-scoped, in the access matrix | **B-2** | 001, 002, 021 | planned |
+| SPEC-026 | API keys — resolve to an organisation and role, subject to the same policies | **B-2** | 001, 002 | planned |
+| SPEC-027 | Outbound webhooks — payloads scoped to the subscribing organisation | **B-2** | 001, 025 | planned |
 | **Phase 5 — adoption** ||||
 | SPEC-011 | `create-keel-app` | B-1 | 007 | planned |
 | SPEC-012 | Docs & the stranger walkthrough | B-5 | — | planned |
@@ -76,7 +79,7 @@ stale. It is a table rather than a sentence because a gate should never have to 
 | Bar | Owned by |
 |---|---|
 | B-1 | SPEC-011 |
-| B-2 | SPEC-001, SPEC-002, SPEC-005, SPEC-006, SPEC-018, SPEC-021 |
+| B-2 | SPEC-001, SPEC-002, SPEC-005, SPEC-006, SPEC-018, SPEC-021, SPEC-025, SPEC-026, SPEC-027 |
 | B-3 | SPEC-003 |
 | B-4 | SPEC-002, SPEC-003 |
 | B-5 | SPEC-012, SPEC-022 |

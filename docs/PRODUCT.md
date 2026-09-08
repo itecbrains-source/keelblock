@@ -172,7 +172,10 @@ advantage is real but not threefold. It is enough.
 4. Organisations · 5. Team & invitations · 6. Billing (Stripe: subscriptions, seats, usage) ·
 7. Custom domains · 8. Ops & health · 9. **Transactional email** · 10. **File storage** ·
 11. **Background jobs & cron** · 12. **Notifications** · 13. **Admin, user management &
-impersonation**
+impersonation** · 14. **Audit log** · 15. **API keys** · 16. **Outbound webhooks**
+
+Auth covers what the field's routes reveal as table stakes and specs often forget: email
+verification, password reset, resend, account unlock, and an organisation switcher.
 
 Plus the adoption layer: `create-keel-app` · docs · demo deployment · upgrade guides · onboarding
 flow · legal pages · error monitoring · deployment guides.
@@ -188,6 +191,26 @@ Not "features we lack" — features whose cost is permanent and whose value is a
 | **AI chatbot examples** | A demo dressed as a feature. |
 | **Multiple analytics providers** | One, behind a seam. |
 | **Blog / CMS** | Most teams use a real CMS. The seam stays clean; the machinery does not ship. |
+
+### Three borrowed features, and why keel's versions are different
+
+BoxyHQ ships SSO, audit logs and webhooks — and **all three are third-party services**: Jackson
+(their own product), Retraced, and Svix. Its Prisma schema contains no audit or webhook model at all.
+A buyer gets integration code and three vendor relationships. That is a defensible choice, and
+"delegate, do not build" is usually right — an audit-log implementation inside a starter is a
+liability nobody maintains.
+
+**It is the wrong choice for exactly three things, for one reason: they are tenant-isolation
+surfaces, and isolation is what keel claims.**
+
+| Feature | Field's version | keel's version |
+|---|---|---|
+| **API keys** | A credential fetched by id, then compared to a team in application code — **`getApiKeyById` is the source of [F-15](FINDINGS.md)**, the clearest illustration of the pattern keel exists to replace | A key resolves to an organisation and role, and every query it makes is subject to the same policies as a session. The bypass route that an API key normally opens does not exist. |
+| **Audit log** | Delegated to an external service, so the trail lives outside the isolation boundary the product claims | Native and RLS-scoped, so **one tenant provably cannot read another's audit trail** — and it appears in `ACCESS-MATRIX.md` like everything else. Also a hard requirement for impersonation, which is already in scope. |
+| **Outbound webhooks** | Delegated for delivery, with payload scoping left to the caller | Payloads scoped to the subscribing organisation, proven by test. A webhook is a data-egress path; scoping it correctly is the same problem as a query, and it is the one place teams leak tenant data without noticing. |
+
+Delivery infrastructure — retries, fan-out, signing at scale — stays a seam. Svix can sit behind it.
+**What does not get delegated is the part that decides who sees what.**
 
 ### Impersonation is the interesting one
 

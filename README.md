@@ -61,6 +61,26 @@ opaque policy functions. See [F-2](docs/FINDINGS.md).
 
 Two of the eight were keel's own mistakes. They are published for the same reason as the rest.
 
+## What's in it
+
+Sixteen areas, **Next.js only** — no Nuxt, no SvelteKit, no TanStack Start, no React Native. That is
+what makes feature-completeness affordable rather than a slogan: the field maintains the same feature
+set across three frameworks, so keel has roughly three times the budget per feature.
+
+Marketing shell · auth (password, magic link, OAuth, passkeys, 2FA, verification, reset, unlock) ·
+account · organisations · team & invitations · billing · custom domains · ops & health ·
+transactional email · file storage · background jobs · notifications · admin & audited impersonation
+· **audit log** · **API keys** · **outbound webhooks**.
+
+**Deliberately not shipped**, with reasons in [`docs/PRODUCT.md`](docs/PRODUCT.md): five payment
+providers, a choice of two ORMs, an AI chatbot demo, a CMS. Each is a comparison-table row bought
+with permanent maintenance.
+
+The last three in that list are the interesting ones. The field delegates audit logs, webhooks and
+SSO to third-party services — a buyer gets integration code and three vendor bills, and the audit
+trail lives *outside* the isolation boundary the product claims. keel builds the three that are
+**tenant-isolation surfaces** natively and proves them; delivery infrastructure stays a seam.
+
 ## Getting started
 
 **Prerequisites:** Node 26 · Docker (for the local Supabase stack) · the
