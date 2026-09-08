@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { planUpgrade, UPSTREAM_OWNED, REGENERATE_NEVER_SHIP } from './upgrade.mjs';
+import {
+  planUpgrade,
+  assertPlanDelivers,
+  UPSTREAM_OWNED,
+  REGENERATE_NEVER_SHIP,
+} from './upgrade.mjs';
 
 /**
  * The ownership boundary is the entire safety property of the upgrade path. If it is wrong in the
@@ -56,5 +61,46 @@ describe('planUpgrade — what an upgrade may take, and what it must never touch
       const claimed = UPSTREAM_OWNED.some((p) => generated.startsWith(p));
       expect(claimed, `${generated} is claimed by both rules`).toBe(false);
     }
+  });
+});
+
+describe('assertPlanDelivers — the positive control the job was missing', () => {
+  /**
+   * The same shape as `checkPositiveControls` one layer up, and it was found the same way.
+   *
+   * An empty plan copies nothing, runs `supabase migration up --include-all` as a no-op, and exits
+   * 0. Because `supabase/tests/intent/` is upstream-owned, today's suite only ARRIVES if the upgrade
+   * took files — so an empty plan leaves the scaffold running the OLD tag's tests against the OLD
+   * tag's schema, which is green. And "the buyer's own code survived" passes trivially, because
+   * nothing moved. The job asserts "the upgraded project passes its own tests" where it means
+   * "passes today's tests", and those coincide only when the upgrade actually happened.
+   */
+  const real = ['supabase/migrations/20260908170000_null_safe_is_org_admin.sql'];
+
+  it('a plan that takes something is delivered', () => {
+    expect(assertPlanDelivers({ take: real, leave: [], regenerate: [] })).toEqual([]);
+  });
+
+  it('MUTATION: the empty plan — a wrong ref, a rename, a shallow checkout — is refused', () => {
+    const problems = assertPlanDelivers({ take: [], leave: [], regenerate: [] });
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/nothing|empty|delivered/i);
+  });
+
+  it('MUTATION: a plan that moves only files the buyer owns is not an upgrade', () => {
+    // The subtler shape: the diff resolved, but every path in it was left alone. Nothing upstream
+    // owns arrived, so today's suite is still the old one, and the job would still be green.
+    const problems = assertPlanDelivers({
+      take: [],
+      leave: ['src/app/[locale]/orgs/page.tsx', 'README.md'],
+      regenerate: [],
+    });
+    expect(problems).toHaveLength(1);
+  });
+
+  it('a regenerate-only plan is still refused — a generated artifact is never delivered', () => {
+    expect(
+      assertPlanDelivers({ take: [], leave: [], regenerate: ['src/lib/db/database.types.ts'] }),
+    ).toHaveLength(1);
   });
 });

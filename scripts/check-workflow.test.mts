@@ -209,3 +209,24 @@ describe('the upgrade job proves B-10 rather than describing it', () => {
     expect(guarded).not.toMatch(/git diff --quiet HEAD -- src messages/);
   });
 });
+
+describe('the upgrade job cannot pass on an upgrade that delivered nothing', () => {
+  const upgradeRuns = runs('upgrade').join('\n');
+
+  it('asserts a file ADDED since the tag is present in the scaffold', () => {
+    // Without this, every step in the job is satisfied by nothing having happened.
+    expect(upgradeRuns).toMatch(/--diff-filter=A/);
+    expect(upgradeRuns).toMatch(/test -f "\/tmp\/scaffold\/\$NEW"/);
+  });
+
+  it('refuses a release with no added upstream-owned file, rather than passing vacuously', () => {
+    expect(upgradeRuns).toMatch(/cannot prove an/);
+  });
+
+  it('MUTATION: removing the positive control is caught', () => {
+    const without = load(
+      raw.replace(/\s+- name: the upgrade actually delivered something[\s\S]*?exit 1; \}\n/, '\n'),
+    );
+    expect(runs('upgrade', without).join('\n')).not.toMatch(/--diff-filter=A/);
+  });
+});

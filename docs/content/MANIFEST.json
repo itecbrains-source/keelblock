@@ -289,6 +289,12 @@
       "what": "the guide for the task where people leak data taught the exact defect a gate had learned to catch hours earlier",
       "to": ["blog", "docs"],
       "angle": "A gate catching a defect is not the same as the defect being unlearned. The schema guard learned about missing FORCE ROW LEVEL SECURITY the same day, from a real table that shipped without it — and the flagship guide teaching people to write those tables was not read, so it would have kept teaching it. Measured rather than reasoned: a table built exactly as the guide said reports RLS forced? false, and separately has no grant at all, so it is also unreachable. One gap fails open and one fails closed, which is a useful pair."
+    },
+    {
+      "id": "F-48",
+      "what": "the CI job proving the upgrade path could pass while delivering nothing — and the bar had already been claimed on it",
+      "to": ["blog", "docs"],
+      "angle": "The sharpest instance of the recurring lesson, because the author had already written the rule that catches this exact shape. checkPositiveControls exists because a suite of nothing but denials is green against an empty database; the upgrade job was a job whose every step was satisfied by absence. Writing the rule did not stop the same hole being built into the next thing. A lesson learned in one place does not transfer by itself — which is an argument for gates over understanding, made against its own author."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

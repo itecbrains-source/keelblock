@@ -163,6 +163,28 @@ jobs:
         # is the documented path, so this job and the documentation cannot drift.
         run: node "$GITHUB_WORKSPACE/scripts/upgrade.mjs" "$GITHUB_SHA" /tmp/scaffold
 
+      # The positive control. Every other step in this job is satisfied by NOTHING HAVING HAPPENED:
+      # an empty plan runs the migrations as a no-op, leaves the old tag's tests in place so they
+      # pass against the old tag's schema, and trivially satisfies the buyer-untouched check. This
+      # asserts something must be PRESENT — the same reason `checkPositiveControls` exists one layer
+      # down, where a suite of nothing but denials is green against an empty database.
+      #
+      # Computed rather than pinned, so it does not need editing per release: take a file ADDED to
+      # an upstream-owned path since the tag, and require it in the scaffold.
+      - name: the upgrade actually delivered something
+        run: |
+          TAG="$(git tag --sort=-creatordate | head -1)"
+          NEW="$(git diff --name-only --diff-filter=A "$TAG" "$GITHUB_SHA" \
+                   -- supabase/migrations supabase/tests/intent | head -1)"
+          if [ -z "$NEW" ]; then
+            echo "No upstream-owned file has been ADDED since $TAG, so this job cannot prove an"
+            echo "upgrade delivered anything. That is a vacuous run, not a passing one."
+            exit 1
+          fi
+          echo "positive control: $NEW must be present in the scaffold"
+          test -f "/tmp/scaffold/$NEW" || {
+            echo "$NEW did not arrive — the upgrade reported success and delivered nothing"; exit 1; }
+
       - name: TODAY's suite, against the upgraded project
         working-directory: /tmp/scaffold
         run: supabase test db

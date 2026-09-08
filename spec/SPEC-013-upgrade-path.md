@@ -81,6 +81,18 @@ shipped. The upgrade reports them for regeneration and does not touch them.
 An upgrade that reports only its successes reads as a complete one. The path prints the files it left
 alone and the artifacts needing regeneration, every run.
 
+### REQ-8 — an upgrade that delivered nothing must not report success
+
+MEASURED (F-48), and found after B-10 was claimed. Every step of the job was satisfied by nothing
+having happened: an empty plan copies no files, runs the migrations as a no-op, leaves the previous
+tag's tests in place so they pass against the previous tag's schema, and trivially satisfies the
+buyer-untouched check because nothing moved. The job reported _"the upgraded project passes its own
+tests"_ while meaning _"passes today's tests"_, and those coincide only when the upgrade happened.
+
+This is `checkPositiveControls` one layer up. Both the path and the job now require something to be
+PRESENT: the plan refuses when it takes nothing, and the job asserts that a file added to an
+upstream-owned path since the tag arrived in the scaffold.
+
 ### REQ-7 — the path is executed in CI, against a diverged project
 
 B-10's stated proof. The job scaffolds at the previous tag, gives that buyer their own migration dated
@@ -89,16 +101,17 @@ buyer's files are unchanged. Until it runs on the runner it is a script somebody
 
 ## Acceptance criteria
 
-| AC   | Verifies | Method | Evidence                                                                                                                                                                                                                                                                       | Status   |
-| ---- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| AC-1 | REQ-1    | test   | `scripts/upgrade.test.mts` — `planUpgrade` splits a release's changed paths into taken, left and regenerate; the lists are asserted non-empty and disjoint                                                                                                                     | **done** |
-| AC-2 | REQ-2    | test   | `scripts/upgrade.test.mts` — six real buyer paths (`src/app/[locale]/orgs/page.tsx`, `messages/en.json`, `package.json` among them) are asserted NEVER taken, plus a path under a buyer-named directory to prove the prefix anchors at the start rather than matching anywhere | **done** |
-| AC-3 | REQ-3    | test   | `.github/workflows/check.yml` `upgrade` job — the buyer adopts every new migration and today's full suite runs against the result; measured failing under selective adoption (F-46)                                                                                            | **done** |
-| AC-4 | REQ-4    | test   | `.github/workflows/fixtures/buyer_customer_note.sql` is dated `20260910090000`, after the fix it will receive, precisely to force the refusal; the `upgrade` job applies with `--include-all` and `scripts/check-workflow.test.mts` asserts the fixture is used                | **done** |
-| AC-5 | REQ-5    | test   | `scripts/upgrade.test.mts` — a generated artifact is neither taken nor left silently; it is reported for regeneration                                                                                                                                                          | **done** |
-| AC-6 | REQ-6    | test   | `scripts/upgrade.test.mts` — the plan's `leave` and `regenerate` sets are returned rather than discarded, which is what the script prints                                                                                                                                      | **done** |
-| AC-7 | REQ-7    | test   | `scripts/check-workflow.test.mts` — asserts against the PARSED workflow that the job scaffolds at the previous tag, resets the scaffold, and fails the build unless the buyer's files are unchanged; mutation-proven by removing the guard step                                | **done** |
-| AC-8 | REQ-7    | test   | `docs/TESTING.md` — the first green run (34282685924, 2026-09-08) recorded from its LOG rather than its badge: the tag it scaffolded at, the buyer's own migration applied first, the two applied out of order, every file in today's suite, and no change under `src/`        | **done** |
+| AC   | Verifies | Method | Evidence                                                                                                                                                                                                                                                                                           | Status   |
+| ---- | -------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| AC-1 | REQ-1    | test   | `scripts/upgrade.test.mts` — `planUpgrade` splits a release's changed paths into taken, left and regenerate; the lists are asserted non-empty and disjoint                                                                                                                                         | **done** |
+| AC-2 | REQ-2    | test   | `scripts/upgrade.test.mts` — six real buyer paths (`src/app/[locale]/orgs/page.tsx`, `messages/en.json`, `package.json` among them) are asserted NEVER taken, plus a path under a buyer-named directory to prove the prefix anchors at the start rather than matching anywhere                     | **done** |
+| AC-3 | REQ-3    | test   | `.github/workflows/check.yml` `upgrade` job — the buyer adopts every new migration and today's full suite runs against the result; measured failing under selective adoption (F-46)                                                                                                                | **done** |
+| AC-4 | REQ-4    | test   | `.github/workflows/fixtures/buyer_customer_note.sql` is dated `20260910090000`, after the fix it will receive, precisely to force the refusal; the `upgrade` job applies with `--include-all` and `scripts/check-workflow.test.mts` asserts the fixture is used                                    | **done** |
+| AC-5 | REQ-5    | test   | `scripts/upgrade.test.mts` — a generated artifact is neither taken nor left silently; it is reported for regeneration                                                                                                                                                                              | **done** |
+| AC-6 | REQ-6    | test   | `scripts/upgrade.test.mts` — the plan's `leave` and `regenerate` sets are returned rather than discarded, which is what the script prints                                                                                                                                                          | **done** |
+| AC-7 | REQ-7    | test   | `scripts/check-workflow.test.mts` — asserts against the PARSED workflow that the job scaffolds at the previous tag, resets the scaffold, and fails the build unless the buyer's files are unchanged; mutation-proven by removing the guard step                                                    | **done** |
+| AC-9 | REQ-8    | test   | `scripts/upgrade.test.mts` — four cases including the empty plan, a plan that moves only buyer-owned files, and a regenerate-only plan, each refused; `scripts/check-workflow.test.mts` asserts the job's positive control against the parsed workflow and is mutation-proven by removing the step | **done** |
+| AC-8 | REQ-7    | test   | `docs/TESTING.md` — the first green run (34282685924, 2026-09-08) recorded from its LOG rather than its badge: the tag it scaffolded at, the buyer's own migration applied first, the two applied out of order, every file in today's suite, and no change under `src/`                            | **done** |
 
 ## Definition of Done
 

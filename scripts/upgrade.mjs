@@ -64,6 +64,38 @@ export function planUpgrade(changedPaths) {
   return { take, leave, regenerate };
 }
 
+/**
+ * An upgrade that took nothing is not an upgrade, and it is the failure this job is WORST at
+ * noticing.
+ *
+ * The hole, before this existed: an empty plan copies nothing, runs `supabase migration up
+ * --include-all` as a no-op, and exits 0. Because `supabase/tests/intent/` is upstream-owned,
+ * today's suite only ARRIVES if the upgrade took files — so an empty plan leaves the scaffold
+ * running the old tag's tests against the old tag's schema, which is green, and the
+ * buyer's-code-survived check passes trivially because nothing moved.
+ *
+ * The job then reports "the upgraded project passes its own tests" while meaning "passes today's
+ * tests". Those coincide only when the upgrade actually happened, and any silent diff failure — a
+ * wrong ref, a rename, a shallow checkout — separates them without a word.
+ *
+ * This is `checkPositiveControls` one layer up: a suite whose every assertion is a denial is green
+ * against an empty database, and a job whose every step is satisfied by absence is green against an
+ * absent upgrade. Both need something that must be PRESENT.
+ *
+ * @param {{take: string[], leave: string[], regenerate: string[]}} plan
+ * @returns {string[]}
+ */
+export function assertPlanDelivers(plan) {
+  if (plan.take.length > 0) return [];
+  return [
+    'upgrade: the plan takes NOTHING. Every later step in this job passes when nothing was ' +
+      "delivered — the migrations run as a no-op, the scaffold keeps the old tag's tests, and " +
+      'the buyer-untouched check is satisfied by nothing having moved. Refusing rather than ' +
+      'reporting success. Likely causes: the release ref does not resolve, the checkout is ' +
+      'shallow, or an upstream-owned path was renamed and UPSTREAM_OWNED was not.',
+  ];
+}
+
 function run(cmd, args, cwd) {
   return execFileSync(cmd, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
 }
@@ -75,9 +107,17 @@ function main() {
     .trim()
     .split('\n')
     .filter(Boolean);
-  const { take, leave, regenerate } = planUpgrade(changed);
+  const plan = planUpgrade(changed);
+  const { take, leave, regenerate } = plan;
 
-  if (take.length) run('git', ['checkout', release, '--', ...take], cwd);
+  // Before anything else: an upgrade that delivers nothing must not report success.
+  const undelivered = assertPlanDelivers(plan);
+  if (undelivered.length) {
+    for (const p of undelivered) console.error(p);
+    process.exit(2);
+  }
+
+  run('git', ['checkout', release, '--', ...take], cwd);
 
   console.log(`upgrade: took ${take.length} upstream-owned file(s) from ${release}`);
   console.log(

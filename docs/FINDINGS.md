@@ -1391,3 +1391,46 @@ The uncomfortable part is the sequencing. The schema guard learned to catch a mi
 not read on the same day, and would have kept teaching it. **A gate catching a defect is not the same
 as the defect being unlearned**, and the documentation is where it gets unlearned. That is the
 argument for ADR-019 rather than a general belief that documentation is good.
+
+## F-48 · The upgrade job could pass while delivering nothing, and B-10 was already claimed on it
+
+**2026-09-08 · found by review after the bar was claimed · fixed in `scripts/upgrade.mjs` and the `upgrade` job**
+
+`scripts/upgrade.mjs` computed which files an upgrade may take and then did this:
+
+```js
+if (take.length) run('git', ['checkout', release, '--', ...take], cwd);
+```
+
+An empty plan skipped the checkout **silently**. Everything after it still passed:
+
+- `supabase migration up --include-all` ran as a no-op;
+- `supabase/tests/intent/` is upstream-owned, so today's suite only arrives **if the upgrade took
+  files** — an empty plan leaves the scaffold running the previous tag's tests against the previous
+  tag's schema, which is green;
+- and "the buyer's own code survived" was satisfied by nothing having moved.
+
+So the job asserted _"the upgraded project passes its own tests"_ while claiming _"passes today's
+tests"_. Those coincide only when the upgrade actually happened, and any silent diff failure — a
+wrong ref, a rename, a shallow checkout — separates them without a word. **B-10 had already been
+claimed on this job**, and its first two green runs were genuine only because the plan happened to be
+non-empty.
+
+Verified rather than reasoned:
+
+```
+$ node -e "import('./scripts/upgrade.mjs').then(m=>console.log(JSON.stringify(m.planUpgrade([]))))"
+{"take":[],"leave":[],"regenerate":[]}
+```
+
+**It is the same defect as F-41, one layer up**, and the rule that catches F-41's shape was already in
+this repository: `checkPositiveControls` exists because a generated suite whose every assertion is a
+denial is equally green against an empty database. A job whose every step is satisfied by absence is
+equally green against an absent upgrade. Writing that rule did not stop me writing the same hole in
+the next thing I built, which is the part worth recording — a lesson learned in one place does not
+transfer by itself.
+
+Both layers now require something present. `assertPlanDelivers` refuses a plan that takes nothing and
+exits `2` (verified: `real exit code: 2`). The job computes a file **added** to an upstream-owned path
+since the tag and requires it in the scaffold, and refuses a release where no such file exists rather
+than passing vacuously — because a run that cannot prove anything is not a passing one.
