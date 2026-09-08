@@ -1170,3 +1170,40 @@ so its owner, and every `SECURITY DEFINER` function running as that owner, bypas
 tenant tables had carried `force row level security` since the foundation migration. The new-table
 guard, whose stated job is that every tenant table is protected, did not look for it; it does now,
 with a planted `ENABLE`-without-`FORCE` table proving the rule fires.
+
+## F-42 · The accessible-locator rule collided with the framework, and a race hid it
+
+**2026-09-08 · found by the first CI run of the SPEC-006 journeys · fixed in `e2e/pages/index.ts`, `src/app/[locale]/orgs/invitations-list.tsx`, `src/app/[locale]/invite/[token]/accept-form.tsx`**
+
+Three local runs green, then:
+
+```
+Error: strict mode violation: getByRole('alert') resolved to 2 elements:
+    1) <p role="alert" …>This invitation cannot be used. It may never have…</p>
+    2) <div role="alert" aria-live="assertive" id="__next-route-announcer__"></div>
+```
+
+Next injects a route announcer into the body for screen readers, and it carries `role="alert"`.
+SPEC-002 REQ-3b bans test ids and CSS selectors, so page objects reach for roles — which is the right
+rule, and it put the suite on a collision course with the framework. **The project's own discipline
+produced the ambiguity.**
+
+What made it survive local runs is the part worth keeping. The announcer mounts after hydration, so
+whether it exists when an assertion resolves is a **race**, and a laptop won it every time while a
+slower runner lost it on the first try. A green local run was not weak evidence here; it was evidence
+of a faster machine.
+
+Measured rather than assumed, by waiting for hydration and counting: `unscoped=2 announcer=1
+scoped=1`. Scoping to `main` — where the application's alerts live and the announcer never does —
+resolves it, and the measurement is what shows the fix addresses the collision rather than merely
+moving past it.
+
+**Then the measurement found a second defect nobody was looking for.** One of the two alerts inside
+`main` was empty: `<p role="alert" class="min-h-5 text-sm"></p>`, rendered unconditionally by the
+members list. That is not a bug — it is deliberate and correct. A live region has to exist _before_
+its content arrives; one created in the same commit as its message is frequently never announced.
+
+The two components written for SPEC-006 rendered theirs conditionally, `{refusal ? <p role="alert">…`
+— so every refusal they produced was visible and, for a screen-reader user, silent. Both now hold a
+permanent region like their sibling. The page object was corrected to match what its own comment
+already claimed it returned: the alert that is **saying something**, not every element with the role.

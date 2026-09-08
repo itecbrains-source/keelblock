@@ -53,6 +53,10 @@ test.describe('invitations', () => {
 
     // REQ-4: the same link, a second time, is answered exactly as an invented one would be.
     await invite.goto(token!);
+    // Count asserted, not just visibility. `toBeVisible` already fails strict mode on two matches,
+    // but it fails the same way whether the locator is ambiguous or the refusal is missing, and
+    // those are different bugs. This one names the ambiguity -- which is what actually happened.
+    await expect(invite.refusal()).toHaveCount(1);
     await expect(invite.refusal()).toBeVisible();
     await expect(invite.accept()).toHaveCount(0);
 

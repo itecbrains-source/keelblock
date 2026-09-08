@@ -128,11 +128,14 @@ export function InvitationsList({
         </ul>
       )}
 
-      {refusal ? (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
-          {refusal}
-        </p>
-      ) : null}
+      {/* Rendered ALWAYS, empty when there is nothing to say -- the same shape as `members-list`.
+          A live region has to exist before its content arrives; one created in the same commit as
+          its message is frequently not announced at all, which turns a refusal into silence for
+          exactly the people who most need to hear it. The first draft of this file rendered it
+          conditionally. */}
+      <p role="alert" className="min-h-5 text-sm text-red-700 dark:text-red-400">
+        {refusal}
+      </p>
     </section>
   );
 }

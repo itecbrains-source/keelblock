@@ -253,6 +253,12 @@
       "what": "the exhaustive RLS prober covered one table while the gate reported three, because the gate counted exit codes instead of files",
       "to": ["blog", "docs"],
       "angle": "Self-inflicted, in the gate this project points at when it says isolation is proven rather than asserted — which is exactly why it is worth publishing. Each per-table invocation reconciled away the previous one's output, and --no-fail returns zero, so nothing failed. The lesson is the repository's own recurring one in its most expensive location: a check that cannot fail is indistinguishable from a check that passes, and the fix was to compare the claim against the directory. Ships with five mutation proofs, one replaying the exact one-file directory the defect produced."
+    },
+    {
+      "id": "F-42",
+      "what": "the no-test-ids rule pushed page objects onto roles, which collided with Next's route announcer — and the collision was a race that every local run won and the first CI run lost",
+      "to": ["blog", "docs", "faq"],
+      "angle": "Two things worth publishing. A good rule (accessible locators, no test ids) has a cost nobody warns you about: the framework also ships elements with roles, and `role=\"alert\"` is one of them. And a green local run can be evidence of a faster machine rather than of correct code — the announcer mounts after hydration, so the assertion was racing it. Measuring instead of inferring then turned up an unrelated accessibility defect: two new components created their live region at the same moment as its message, which is the shape that never announces."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

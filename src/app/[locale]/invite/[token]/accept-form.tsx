@@ -33,11 +33,10 @@ export function AcceptForm({
       >
         {pending ? labels.working : labels.accept}
       </button>
-      {refusal ? (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
-          {refusal}
-        </p>
-      ) : null}
+      {/* Always present, empty when nothing is wrong -- see `invitations-list` for why. */}
+      <p role="alert" className="min-h-5 text-sm text-red-700 dark:text-red-400">
+        {refusal}
+      </p>
     </div>
   );
 }
