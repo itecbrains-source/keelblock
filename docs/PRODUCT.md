@@ -196,15 +196,19 @@ flow · legal pages · error monitoring · deployment guides.
 
 ### Refused deliberately, with reasons
 
-Not "features we lack" — features whose cost is permanent and whose value is a comparison-table row:
+Not "features we lack" — features whose cost is permanent and whose value is a comparison-table row.
 
-| Refused                          | Why                                                                                                                                     |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Five payment providers**       | Stripe covers nearly every buyer. The other four are four webhook surfaces to maintain forever, in exchange for one row in a grid.      |
-| **Prisma _or_ Drizzle**          | Choice-as-a-feature is double maintenance for a decision the buyer makes once. ADR-003 settled it, and the reason was tenant isolation. |
-| **AI chatbot examples**          | A demo dressed as a feature.                                                                                                            |
-| **Multiple analytics providers** | One, behind a seam.                                                                                                                     |
-| **Blog / CMS**                   | Most teams use a real CMS. The seam stays clean; the machinery does not ship.                                                           |
+**Read the first column carefully: three of these refuse a MENU, not a capability.** Payments,
+analytics and data access are all in scope. What is refused is shipping several of each and
+maintaining them forever, so that a buyer who chooses once can see a choice they will not make.
+
+| Refused                           | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A menu of payment providers**   | Stripe is in scope (SPEC-007). Each additional provider is a webhook surface, a reconciliation path and its own edge cases, maintained for as long as the kit exists — and every one is a place a subscription can silently diverge from an entitlement. A team changes processor roughly never, and when it does the work is a migration, not a config flag.                                                                                                                                        |
+| **An ORM on the query path**      | Not a preference between Prisma and Drizzle. A client on a direct Postgres connection authenticates as a privileged role and **bypasses RLS unless explicitly configured** — true of both — so the default read path would step around the enforcement this product exists to provide, and the failure is silent (ADR-003). `supabase-js` carries the user's JWT, so RLS applies by construction rather than by remembering to configure it.                                                         |
+| **An example AI assistant**       | The hard part of putting an assistant in a multi-tenant app is not the SDK call, it is which rows it may read — and that is answered by the same policies as every other read, which this kit already proves. What an example adds is a model version, a prompt and a provider to keep current forever, in exchange for a screenshot. Nothing here stands in the way of adding one; it is simply not ours to maintain.                                                                               |
+| **A menu of analytics providers** | Analytics is in scope: one provider, behind a seam that is genuinely built and exercised (SPEC-029), so swapping it is a file rather than a fork. A menu is N integrations to keep current, N sets of docs, and N ways for the same event to end up named differently.                                                                                                                                                                                                                               |
+| **A blog and a CMS**              | Nothing ships and **nothing is coupled to one** — that is the whole of the claim. Content modelling is where a starter's opinions age fastest and where teams least want inherited ones; most already have a CMS or will pick their own. There is deliberately no CMS abstraction either: an unexercised seam rots (ADR-002), so the kit stays free of the assumption rather than shipping an interface with nothing behind it. Adding yours costs nothing because there is nothing to unpick first. |
 
 ### Why not Astro for the marketing pages
 
