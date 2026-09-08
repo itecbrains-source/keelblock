@@ -30,7 +30,9 @@ describe('security headers', () => {
   });
 
   it('MUTATION: production script-src never contains unsafe-inline', () => {
-    const scriptSrc = csp().split(';').find((d) => d.trim().startsWith('script-src'))!;
+    const scriptSrc = csp()
+      .split(';')
+      .find((d) => d.trim().startsWith('script-src'))!;
     expect(scriptSrc).not.toContain('unsafe-inline');
   });
 

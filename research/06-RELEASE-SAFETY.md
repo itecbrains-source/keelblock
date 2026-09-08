@@ -1,7 +1,7 @@
 # Release safety — migrations, drift, and what a preflight must actually check
 
-*Researched 2026-09-07. **This memo corrected SPEC-016 in three places**, which is the argument for
-having written it before building rather than after.*
+_Researched 2026-09-07. **This memo corrected SPEC-016 in three places**, which is the argument for
+having written it before building rather than after._
 
 ## What I had wrong
 
@@ -9,24 +9,24 @@ SPEC-016 was authored from reasoning about the code/schema deploy race. Three co
 
 ### 1 · Expand-contract is three phases, not two
 
-I wrote *"schema first, code after."* The pattern is **Parallel Change**, named by Danilo Sato on
+I wrote _"schema first, code after."_ The pattern is **Parallel Change**, named by Danilo Sato on
 Martin Fowler's bliki in 2014 — the primary source for it — and it has three phases:
 
-| Phase | What happens |
-|---|---|
-| **Expand** | Add the new column/table/index. Remove nothing. |
-| **Migrate** | Backfill, and have the application **dual-write** or read-new-with-fallback. Confirm consistency **under real traffic**, not just staging. |
-| **Contract** | Only once every running instance uses the new structure, remove the old. |
+| Phase        | What happens                                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Expand**   | Add the new column/table/index. Remove nothing.                                                                                            |
+| **Migrate**  | Backfill, and have the application **dual-write** or read-new-with-fallback. Confirm consistency **under real traffic**, not just staging. |
+| **Contract** | Only once every running instance uses the new structure, remove the old.                                                                   |
 
-The invariant, in the original's words: throughout expand and migrate, *"existing clients will
+The invariant, in the original's words: throughout expand and migrate, _"existing clients will
 continue to consume the old version, and the new changes can be introduced incrementally without
-affecting them."* **The middle phase is where the actual work is**, and I had omitted it entirely —
+affecting them."_ **The middle phase is where the actual work is**, and I had omitted it entirely —
 which would have produced a preflight that waves through a two-step deploy that still breaks.
 
 ### 2 · "Wait a full rollout cycle" is the part nobody specifies
 
 The literature is explicit that contract must not run until every instance is on the new code, and
-vague about how you *know*. For keel this is answerable rather than hand-waved: the deep health
+vague about how you _know_. For keel this is answerable rather than hand-waved: the deep health
 endpoint already reports the applied migration head, so the contract phase can require evidence
 rather than a guess.
 
@@ -41,9 +41,9 @@ backups at all. That is the most serious omission the research found.
 **Lock-taking DDL is its own hazard class**, separate from destructiveness. From the PostgreSQL
 documentation directly:
 
-> *"Normally PostgreSQL locks the table to be indexed against writes and performs the entire index
+> _"Normally PostgreSQL locks the table to be indexed against writes and performs the entire index
 > build with a single scan of the table. Other transactions can still read the table, but if they try
-> to insert, update, or delete rows in the table they will block until the index build is finished."*
+> to insert, update, or delete rows in the table they will block until the index build is finished."_
 
 Neither destructive nor obviously dangerous — and it takes production down under load. A preflight
 checking only for `DROP` misses it entirely.

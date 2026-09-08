@@ -22,8 +22,10 @@ import { spawnSync } from 'node:child_process';
  * @returns {Array<{ id: string, claim: string }>}
  */
 export function parseBars(markdown) {
-  return [...markdown.matchAll(/^\|\s*(B-\d+)\s*\|\s*(.+?)\s*\|/gm)]
-    .map(([, id, claim]) => ({ id, claim: claim.replace(/\*/g, '').trim() }));
+  return [...markdown.matchAll(/^\|\s*(B-\d+)\s*\|\s*(.+?)\s*\|/gm)].map(([, id, claim]) => ({
+    id,
+    claim: claim.replace(/\*/g, '').trim(),
+  }));
 }
 
 /**
@@ -40,7 +42,10 @@ export function parseCoverage(markdown) {
   /** @type {Record<string, string[]>} */
   const map = {};
   for (const m of markdown.matchAll(/^\|\s*(B-\d+)\s*\|\s*([^|]+?)\s*\|/gm)) {
-    map[m[1]] = m[2].split(',').map((s) => s.trim()).filter((s) => /^SPEC-\d+$/.test(s));
+    map[m[1]] = m[2]
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => /^SPEC-\d+$/.test(s));
   }
   return map;
 }
@@ -64,13 +69,15 @@ export function checkBarCoverage(bars, coverage, { isRegistered, isAuthored }) {
     if (!owners || owners.length === 0) {
       problems.push(
         `${bar.id} has no owning spec — "${bar.claim.slice(0, 60)}…" is a promise in PRODUCT.md ` +
-        `with nothing accountable for it. This is exactly how B-3 became an unbacked claim.`
+          `with nothing accountable for it. This is exactly how B-3 became an unbacked claim.`,
       );
       continue;
     }
     for (const owner of owners) {
       if (!isRegistered(owner)) {
-        problems.push(`${bar.id} names ${owner}, which is not in the spec index — a dangling reference reads as coverage`);
+        problems.push(
+          `${bar.id} names ${owner}, which is not in the spec index — a dangling reference reads as coverage`,
+        );
       } else if (!isAuthored(owner)) {
         pending.push(`${bar.id} → ${owner} (registered, not yet authored)`);
       }
@@ -89,20 +96,31 @@ function main() {
     isAuthored: (id) => specFiles.some((f) => f.startsWith(id)),
   });
 
-  if (bars.length === 0) problems.push('no acceptance bars found in PRODUCT.md — the table moved or broke');
+  if (bars.length === 0)
+    problems.push('no acceptance bars found in PRODUCT.md — the table moved or broke');
 
   if (problems.length) {
     console.error('promises: FAILED\n');
     for (const p of problems) console.error(`  [bar]  ${p}`);
     process.exit(1);
   }
-  console.log(`promises: ${bars.length} bars, all owned` +
-    (pending.length ? ` (${pending.length} resting on specs not yet authored)` : ''));
+  console.log(
+    `promises: ${bars.length} bars, all owned` +
+      (pending.length ? ` (${pending.length} resting on specs not yet authored)` : ''),
+  );
   for (const p of pending) console.log(`  · ${p}`);
 
   // The other two halves of the same promise, each with its own tests.
-  for (const script of ['scripts/check-deferrals.mjs', 'scripts/check-research.mjs', 'scripts/check-contracts.mjs', 'scripts/check-content.mjs', 'scripts/status.mjs']) {
-    const r = spawnSync('node', [script, ...(script.endsWith('status.mjs') ? ['--check'] : [])], { stdio: 'inherit' });
+  for (const script of [
+    'scripts/check-deferrals.mjs',
+    'scripts/check-research.mjs',
+    'scripts/check-contracts.mjs',
+    'scripts/check-content.mjs',
+    'scripts/status.mjs',
+  ]) {
+    const r = spawnSync('node', [script, ...(script.endsWith('status.mjs') ? ['--check'] : [])], {
+      stdio: 'inherit',
+    });
     if (r.status !== 0) process.exit(r.status ?? 1);
   }
 }

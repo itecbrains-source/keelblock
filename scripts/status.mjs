@@ -29,7 +29,9 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
       id: f.slice(0, 8),
       status: (t.match(/^> Status: `(\w+)`/m) ?? [, '?'])[1],
       reqs: (t.match(/^### REQ-/gm) ?? []).length,
-      acs: [...t.matchAll(/^\|\s*AC-[\w.]+\s*\|[^|]*\|[^|]*\|[^|]*\|\s*\*{0,2}([\w ]+?)\*{0,2}\s*\|/gm)].map((m) => m[1].trim()),
+      acs: [
+        ...t.matchAll(/^\|\s*AC-[\w.]+\s*\|[^|]*\|[^|]*\|[^|]*\|\s*\*{0,2}([\w ]+?)\*{0,2}\s*\|/gm),
+      ].map((m) => m[1].trim()),
     };
   });
   const registry = read('spec/DEFERRAL_REGISTRY.md');
@@ -38,13 +40,15 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
 
   return {
     findings: (read('docs/FINDINGS.md').match(/^## F-\d+/gm) ?? []).length,
-    gates: fs.readdirSync('scripts').filter((f) => f.startsWith('check-') && f.endsWith('.mjs')).length,
+    gates: fs.readdirSync('scripts').filter((f) => f.startsWith('check-') && f.endsWith('.mjs'))
+      .length,
     specs,
     adrs: fs.readdirSync('docs/adr').filter((f) => f.endsWith('.md')).length,
     memos: fs.readdirSync('research').filter((f) => f.endsWith('.md')).length,
     sources: JSON.parse(read('research/corpus.json') || '{"sources":[]}').sources.length,
     bars: (read('docs/PRODUCT.md').match(/^\| B-\d+/gm) ?? []).length,
-    openDefs, closedDefs,
+    openDefs,
+    closedDefs,
   };
 }
 
@@ -73,8 +77,8 @@ export function checkCountClaims(docs, c) {
         if (Number(m[1]) !== actual) {
           problems.push(
             `${file}: says "${m[1]} ${noun}", but there are ${actual}. ` +
-            `A count in prose goes stale the moment reality moves — cite \`npm run status\` instead, ` +
-            `or fix the number.`
+              `A count in prose goes stale the moment reality moves — cite \`npm run status\` instead, ` +
+              `or fix the number.`,
           );
         }
       }
@@ -94,7 +98,8 @@ function walkDocs() {
     }
   };
   for (const d of ['docs', 'spec', 'research']) if (existsSync(d)) visit(d);
-  for (const f of ['README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'CHANGELOG.md']) if (existsSync(f)) out[f] = readFileSync(f, 'utf8');
+  for (const f of ['README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'CHANGELOG.md'])
+    if (existsSync(f)) out[f] = readFileSync(f, 'utf8');
   return out;
 }
 
@@ -114,7 +119,11 @@ function main() {
   const shipped = c.specs.filter((s) => s.status === 'done');
   const openAcs = c.specs.flatMap((s) => s.acs.filter((a) => a !== 'done'));
   let head = '';
-  try { head = execFileSync('git', ['log', '-1', '--format=%h %s'], { encoding: 'utf8' }).trim(); } catch { /* not a repo */ }
+  try {
+    head = execFileSync('git', ['log', '-1', '--format=%h %s'], { encoding: 'utf8' }).trim();
+  } catch {
+    /* not a repo */
+  }
 
   console.log(`
   keel — computed ${new Date().toISOString().slice(0, 10)}, not written down
@@ -123,7 +132,9 @@ function main() {
   SPECS      ${c.specs.length} authored · ${shipped.length} done · ${c.specs.filter((s) => s.status === 'partial').length} partial · ${c.specs.filter((s) => s.status === 'draft').length} draft`);
   for (const s of c.specs) {
     const done = s.acs.filter((a) => a === 'done').length;
-    console.log(`             ${s.id}  ${s.status.padEnd(8)} ${s.reqs} REQ · ${done}/${s.acs.length} AC done`);
+    console.log(
+      `             ${s.id}  ${s.status.padEnd(8)} ${s.reqs} REQ · ${done}/${s.acs.length} AC done`,
+    );
   }
   console.log(`
   DEFERRALS  ${c.openDefs} open · ${c.closedDefs} closed

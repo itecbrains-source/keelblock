@@ -37,28 +37,39 @@ describe('local CI verifier', () => {
   it('MUTATION: a Node major mismatch fails — it would silently invalidate every other result', () => {
     const fail = ACTION_HANDLERS['actions/setup-node']({ with: { 'node-version': '18' } });
     expect(fail.state).toBe('failed');
-    const ok = ACTION_HANDLERS['actions/setup-node']({ with: { 'node-version': process.versions.node.split('.')[0] } });
+    const ok = ACTION_HANDLERS['actions/setup-node']({
+      with: { 'node-version': process.versions.node.split('.')[0] },
+    });
     expect(ok.state).toBe('asserted');
   });
 
   it('MUTATION: an artifact path that does not exist fails — CI would upload nothing', () => {
-    expect(ACTION_HANDLERS['actions/upload-artifact']({ with: { path: 'docs/NOPE.md' } }).state).toBe('failed');
-    expect(ACTION_HANDLERS['actions/upload-artifact']({ with: { path: 'docs/ACCESS-MATRIX.md' } }).state).toBe('asserted');
+    expect(
+      ACTION_HANDLERS['actions/upload-artifact']({ with: { path: 'docs/NOPE.md' } }).state,
+    ).toBe('failed');
+    expect(
+      ACTION_HANDLERS['actions/upload-artifact']({ with: { path: 'docs/ACCESS-MATRIX.md' } }).state,
+    ).toBe('asserted');
   });
 
   it('MUTATION: skipped steps never count toward the fidelity claim', () => {
     // The whole point: "CI passed locally" is worthless if a third of it was skipped.
     const s = summarize([
-      { state: 'ran', label: 'a' }, { state: 'skipped', label: 'b' },
-      { state: 'asserted', label: 'c' }, { state: 'skipped', label: 'd' },
+      { state: 'ran', label: 'a' },
+      { state: 'skipped', label: 'b' },
+      { state: 'asserted', label: 'c' },
+      { state: 'skipped', label: 'd' },
     ]);
     expect(s.fidelity).toBe(0.25);
-    expect(s.ok).toBe(true);          // skips are reported, not fatal
+    expect(s.ok).toBe(true); // skips are reported, not fatal
     expect(s.counts.skipped).toBe(2);
   });
 
   it('MUTATION: any failed step fails the run', () => {
-    const s = summarize([{ state: 'ran', label: 'a' }, { state: 'failed', label: 'npm run check' }]);
+    const s = summarize([
+      { state: 'ran', label: 'a' },
+      { state: 'failed', label: 'npm run check' },
+    ]);
     expect(s.ok).toBe(false);
     expect(s.failed).toEqual(['npm run check']);
   });
@@ -69,7 +80,9 @@ describe('local CI verifier', () => {
     const { parse } = await import('yaml');
     const wf = parse(readFileSync('.github/workflows/check.yml', 'utf8'));
     const used = Object.values(wf.jobs as Record<string, { steps?: Array<{ uses?: string }> }>)
-      .flatMap((j) => j.steps ?? []).map((s) => String(s.uses ?? '').split('@')[0]).filter(Boolean);
+      .flatMap((j) => j.steps ?? [])
+      .map((s) => String(s.uses ?? '').split('@')[0])
+      .filter(Boolean);
     for (const a of used) expect(ACTION_HANDLERS[a], `${a} has no local handler`).toBeDefined();
   });
 });

@@ -21,7 +21,7 @@ over four funded competitors, and that reason is proof. Each is the other's answ
 
 - keel's central claim must remain **completely true with nothing paid installed**, or the claim is
   advertising for an upsell and the project is worse than the kits it criticises.
-- Open core fails, and is resented, when the free tier is *deliberately degraded* to manufacture a
+- Open core fails, and is resented, when the free tier is _deliberately degraded_ to manufacture a
   paid one.
 - The line must follow something real, not a feature-count negotiation.
 
@@ -29,11 +29,11 @@ over four funded competitors, and that reason is proof. Each is the other's answ
 
 **Chosen: split along proof versus evidence.**
 
-| | Free, MIT, in keel | Paid, separate |
-|---|---|---|
-| **Job** | *Prove the system is correct — to you* | *Produce evidence — for a third party* |
+|          | Free, MIT, in keel                                                                                                         | Paid, separate                                                                                            |
+| -------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Job**  | _Prove the system is correct — to you_                                                                                     | _Produce evidence — for a third party_                                                                    |
 | Contents | org-isolation, role boundaries, auth-required, query-perf, the intent layer, mutation proofs, the access matrix, the gates | SOC2 evidence export, auditor pack, traceability matrix, incident-response runbooks, compliance reporting |
-| Buyer | every developer | a company facing an assessor |
+| Buyer    | every developer                                                                                                            | a company facing an assessor                                                                              |
 
 The line is real because the market already draws it: **developers do not pay for tests; companies
 pay for evidence they can hand to an auditor.** The paid tier is not a better version of the free
@@ -55,7 +55,7 @@ wrong, not the code.
 
 **Positive:** keel gets a proof layer that already exists and works rather than months of rebuilding;
 the toolkit gets the distribution it lacks; and the free tier is complete for its own purpose, which
-is what keeps open core honest. The paid tier's value also *grows* with keel's adoption instead of
+is what keeps open core honest. The paid tier's value also _grows_ with keel's adoption instead of
 competing with it.
 
 **Negative — three, named:**
@@ -64,7 +64,7 @@ competing with it.
    Components changed how every authenticated page is written (ADR-004 amendment). Adoption is a
    modernisation, not a copy.
 2. **Its generated tests are not self-proving.** `002-org-isolation.sql` ships its seed block
-   commented out with *"TODO: uncomment and adapt"* — eight planned assertions against data nobody
+   commented out with _"TODO: uncomment and adapt"_ — eight planned assertions against data nobody
    created. In keel the schema is known, so this gets strictly better; but adopting it as-is would
    ship a suite that passes without testing anything, which is the exact defect B-4 exists to catch.
 3. **Two repositories to keep from rotting**, and only one of them has the freshness gate. The paid

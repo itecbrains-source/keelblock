@@ -57,12 +57,23 @@ export function validate(entries) {
     if (seen.has(e.id)) problems.push(`${e.id}: duplicate id`);
     seen.add(e.id);
     if (!e.reason || e.reason.length < 20) {
-      problems.push(`${e.id}: no real reason. "Not yet" is not a reason — say what is genuinely blocking it.`);
+      problems.push(
+        `${e.id}: no real reason. "Not yet" is not a reason — say what is genuinely blocking it.`,
+      );
     }
-    const kind = String(e.trigger ?? '').split(':')[0].replace(/`/g, '');
-    const arg = String(e.trigger ?? '').split(':').slice(1).join(':').replace(/`/g, '').trim();
+    const kind = String(e.trigger ?? '')
+      .split(':')[0]
+      .replace(/`/g, '');
+    const arg = String(e.trigger ?? '')
+      .split(':')
+      .slice(1)
+      .join(':')
+      .replace(/`/g, '')
+      .trim();
     if (!TRIGGER_KINDS.includes(kind)) {
-      problems.push(`${e.id}: trigger "${e.trigger}" is not machine-evaluable. One of: ${TRIGGER_KINDS.join(', ')}`);
+      problems.push(
+        `${e.id}: trigger "${e.trigger}" is not machine-evaluable. One of: ${TRIGGER_KINDS.join(', ')}`,
+      );
     } else if (!arg) {
       problems.push(`${e.id}: trigger "${kind}" has no argument`);
     }
@@ -88,9 +99,10 @@ export function findGaps(ids) {
   for (let n = nums[0]; n < nums[nums.length - 1]; n++) {
     if (!nums.includes(n)) missing.push(`DEF-${String(n).padStart(3, '0')}`);
   }
-  return missing.map((id) =>
-    `${id} is missing from the registry. Ids are never reused, so a gap means a row was deleted — ` +
-    `recover it from git history rather than rewriting it, or record deliberately why it is gone.`
+  return missing.map(
+    (id) =>
+      `${id} is missing from the registry. Ids are never reused, so a gap means a row was deleted — ` +
+      `recover it from git history rather than rewriting it, or record deliberately why it is gone.`,
   );
 }
 
@@ -105,12 +117,18 @@ export function evaluateTrigger(trigger, deps) {
   const kind = raw.split(':')[0];
   const arg = raw.split(':').slice(1).join(':').trim();
   switch (kind) {
-    case 'file-exists': return deps.fileExists(arg);
-    case 'env-set':     return deps.envSet(arg);
-    case 'spec-done':   return deps.specDone(arg);
-    case 'date':        return deps.today >= arg;
-    case 'decided':     return false;   // never fires on its own, by design
-    default:            return false;
+    case 'file-exists':
+      return deps.fileExists(arg);
+    case 'env-set':
+      return deps.envSet(arg);
+    case 'spec-done':
+      return deps.specDone(arg);
+    case 'date':
+      return deps.today >= arg;
+    case 'decided':
+      return false; // never fires on its own, by design
+    default:
+      return false;
   }
 }
 
@@ -134,30 +152,39 @@ function walk(dir, out = []) {
 export function findOrphanMarkers(files, knownIds, read) {
   const orphans = [];
   for (const file of files) {
-    read(file).split('\n').forEach((line, i) => {
-      // NOT /\b(TODO|FIXME|@defer)\b/ — a leading \b can never match before `@`, because a space
-      // and an `@` are both non-word characters. That version silently ignored every @defer marker,
-      // which is the one marker form this project's own conventions recommend. Found by the mutation
-      // proof below, not by review.
-      if (!/(\bTODO\b|\bFIXME\b|@defer\b)/.test(line)) return;
-      const ref = line.match(/DEF-\d+/);
-      if (!ref) orphans.push(`${file}:${i + 1} — marker with no DEF-* id`);
-      else if (!knownIds.has(ref[0])) orphans.push(`${file}:${i + 1} — references ${ref[0]}, which is not in the registry`);
-    });
+    read(file)
+      .split('\n')
+      .forEach((line, i) => {
+        // NOT /\b(TODO|FIXME|@defer)\b/ — a leading \b can never match before `@`, because a space
+        // and an `@` are both non-word characters. That version silently ignored every @defer marker,
+        // which is the one marker form this project's own conventions recommend. Found by the mutation
+        // proof below, not by review.
+        if (!/(\bTODO\b|\bFIXME\b|@defer\b)/.test(line)) return;
+        const ref = line.match(/DEF-\d+/);
+        if (!ref) orphans.push(`${file}:${i + 1} — marker with no DEF-* id`);
+        else if (!knownIds.has(ref[0]))
+          orphans.push(`${file}:${i + 1} — references ${ref[0]}, which is not in the registry`);
+      });
   }
   return orphans;
 }
 
 function main() {
-  if (!existsSync(REGISTRY)) { console.error(`deferrals: ${REGISTRY} is missing`); process.exit(2); }
+  if (!existsSync(REGISTRY)) {
+    console.error(`deferrals: ${REGISTRY} is missing`);
+    process.exit(2);
+  }
   const entries = parseRegistry(readFileSync(REGISTRY, 'utf8'));
   const problems = validate(entries);
 
   const files = walk('.').filter((f) => !SELF_EXEMPT.some((e) => f.endsWith(e)));
-  const orphans = findOrphanMarkers(files, new Set(entries.map((e) => e.id)), (f) => readFileSync(f, 'utf8'));
+  const orphans = findOrphanMarkers(files, new Set(entries.map((e) => e.id)), (f) =>
+    readFileSync(f, 'utf8'),
+  );
 
   // Closed rows count too — an id is never reused, so the sequence spans both sections.
-  const closed = (readFileSync(REGISTRY, 'utf8').split(/^## Closed/m)[1] ?? '').match(/DEF-\d+/g) ?? [];
+  const closed =
+    (readFileSync(REGISTRY, 'utf8').split(/^## Closed/m)[1] ?? '').match(/DEF-\d+/g) ?? [];
   problems.push(...findGaps([...entries.map((e) => e.id), ...closed]));
 
   const deps = {

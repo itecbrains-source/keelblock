@@ -24,12 +24,20 @@ describe('promises gate', () => {
   });
 
   it('MUTATION: a dangling spec reference fails — it reads as coverage and is not', () => {
-    const r = checkBarCoverage(bars, { 'B-1': ['SPEC-999'] }, { ...all, isRegistered: () => false });
+    const r = checkBarCoverage(
+      bars,
+      { 'B-1': ['SPEC-999'] },
+      { ...all, isRegistered: () => false },
+    );
     expect(r.problems[0]).toMatch(/dangling reference reads as coverage/);
   });
 
   it('a registered-but-unwritten spec is honest planning, not a failure', () => {
-    const r = checkBarCoverage(bars, { 'B-1': ['SPEC-011'] }, { isRegistered: () => true, isAuthored: () => false });
+    const r = checkBarCoverage(
+      bars,
+      { 'B-1': ['SPEC-011'] },
+      { isRegistered: () => true, isAuthored: () => false },
+    );
     expect(r.problems).toEqual([]);
     expect(r.pending).toEqual(['B-1 → SPEC-011 (registered, not yet authored)']);
   });

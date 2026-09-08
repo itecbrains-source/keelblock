@@ -14,7 +14,7 @@ describe('generated-artifact gate', () => {
     const p = compareGenerated('export type X = 1', 'export type X = 2');
     expect(p).toHaveLength(1);
     expect(p[0]).toMatch(/does not fail to compile/);
-    expect(p[0]).toMatch(/npm run generate/);      // names the fix, not just the fault
+    expect(p[0]).toMatch(/npm run generate/); // names the fix, not just the fault
   });
 
   it('MUTATION: a missing committed artifact is drift, not an absence to shrug at', () => {

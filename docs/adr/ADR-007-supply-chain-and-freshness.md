@@ -35,7 +35,7 @@ Three rules, ordered by how hard they are to dodge:
 Offline degrades rule 2 only, and only while rule 1 is green, so "no network" can never become the
 permanent excuse.
 
-Supporting measures: `npm ci --ignore-scripts` · **gitleaks** pre-commit *and over full history* ·
+Supporting measures: `npm ci --ignore-scripts` · **gitleaks** pre-commit _and over full history_ ·
 Renovate for proposals · a **weekly scheduled clean-clone build** that installs from scratch and runs
 the full check, because a template has no users to exercise it and that job is the substitute · npm
 **Trusted Publishing (OIDC) with provenance attestations** when `create-keel-app` is published.
@@ -48,7 +48,7 @@ dependency check can see — that the thing no longer installs on a current runt
 
 **Negative:** the gate fails on a schedule whether or not anything is wrong, which is friction by
 design and will be tempting to disable. Two mitigations: the window is generous (45 days), and moving
-a date is defined as *a claim that you looked* — so the honest cost of a green build is ten minutes of
+a date is defined as _a claim that you looked_ — so the honest cost of a green build is ten minutes of
 actually looking, which is the entire point.
 
 **Explicitly rejected:** advisory-only output (`npm outdated` in a log). That is what every rotting

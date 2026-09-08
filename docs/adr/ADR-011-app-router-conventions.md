@@ -17,10 +17,10 @@ make the safe path the obvious one.
 
 ### 1 · Server Actions for the app; Route Handlers for the outside world
 
-| | Use | Why |
-|---|---|---|
-| **Server Action** | every mutation the browser initiates | CSRF handled by the framework, no endpoint to name, secure and version-free by default, and it lives beside the UI that calls it |
-| **Route Handler** | webhooks, third-party callbacks, a public API, health checks | anything with a caller that is not this app needs a stable URL, its own authentication, and rate limiting |
+|                   | Use                                                          | Why                                                                                                                              |
+| ----------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Server Action** | every mutation the browser initiates                         | CSRF handled by the framework, no endpoint to name, secure and version-free by default, and it lives beside the UI that calls it |
+| **Route Handler** | webhooks, third-party callbacks, a public API, health checks | anything with a caller that is not this app needs a stable URL, its own authentication, and rate limiting                        |
 
 The failure this prevents is mixing them: **a Server Action invoked from outside the browser breaks
 the assumptions that make it safe**, so if something needs a URL it is a Route Handler with explicit
@@ -71,7 +71,7 @@ possible, on the component that actually needs interactivity. A client component
 database directly.
 
 Any component reading cookies sits inside `<Suspense>` — not a style preference but a build
-requirement under Cache Components (ADR-004), which is why *loading* is a designed state rather than
+requirement under Cache Components (ADR-004), which is why _loading_ is a designed state rather than
 an afterthought.
 
 ### 6 · Database types are generated, committed, and checked for staleness

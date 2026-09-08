@@ -1,19 +1,19 @@
 # Field scan — what already exists, and where the gap actually is
 
-*Researched 2026-09-07. Every claim below is sourced; re-verify before acting on it, because this
-field moves and a stale competitive read is worse than none.*
+_Researched 2026-09-07. Every claim below is sourced; re-verify before acting on it, because this
+field moves and a stale competitive read is worse than none._
 
 ## The market is paid
 
-| Kit | Price | Stack | Multi-tenant | Tests | Open |
-|---|---|---|---|---|---|
-| **MakerKit** | $349–649 (free OSS lite) | Next 16, React 19, Supabase, **Drizzle**, **Better Auth** | yes, hybrid personal/team | some | no |
-| **Supastarter** | €349–€1,499 | Next / Nuxt / SvelteKit | yes, "deep" | **Playwright e2e** | no |
-| **ShipFast** | $199–299 | Next, minimal | no — single-tenant B2C | no | no |
-| **Achromatic** | paid | Next | yes | — | no |
-| **`nextjs/saas-starter`** | free | Next 16, Postgres, **Drizzle**, shadcn/ui | owner/member roles | no | yes |
-| **BoxyHQ** | free | Next 15.5, **Pages Router**, Prisma, NextAuth + SAML Jackson | teams, **app-layer only** | 1 unit file + Playwright e2e | **yes, Apache-2.0** |
-| **nextacular** | free | Next **13.5**, Pages Router, Prisma, NextAuth 4 | workspaces, app-layer only | **zero** | yes |
+| Kit                       | Price                    | Stack                                                        | Multi-tenant               | Tests                        | Open                |
+| ------------------------- | ------------------------ | ------------------------------------------------------------ | -------------------------- | ---------------------------- | ------------------- |
+| **MakerKit**              | $349–649 (free OSS lite) | Next 16, React 19, Supabase, **Drizzle**, **Better Auth**    | yes, hybrid personal/team  | some                         | no                  |
+| **Supastarter**           | €349–€1,499              | Next / Nuxt / SvelteKit                                      | yes, "deep"                | **Playwright e2e**           | no                  |
+| **ShipFast**              | $199–299                 | Next, minimal                                                | no — single-tenant B2C     | no                           | no                  |
+| **Achromatic**            | paid                     | Next                                                         | yes                        | —                            | no                  |
+| **`nextjs/saas-starter`** | free                     | Next 16, Postgres, **Drizzle**, shadcn/ui                    | owner/member roles         | no                           | yes                 |
+| **BoxyHQ**                | free                     | Next 15.5, **Pages Router**, Prisma, NextAuth + SAML Jackson | teams, **app-layer only**  | 1 unit file + Playwright e2e | **yes, Apache-2.0** |
+| **nextacular**            | free                     | Next **13.5**, Pages Router, Prisma, NextAuth 4              | workspaces, app-layer only | **zero**                     | yes                 |
 
 **Correction to this memo (2026-09-07):** the original scan missed
 [BoxyHQ](https://github.com/boxyhq/saas-starter-kit) — 4,928 stars, 1,228 forks, 30 contributors,
@@ -43,7 +43,7 @@ reading its feature list as a bar to match.
 
 The free options define the gap precisely:
 
-- **`nextjs/saas-starter`** is deliberately minimal and its README *points users at the paid kits*. It
+- **`nextjs/saas-starter`** is deliberately minimal and its README _points users at the paid kits_. It
   uses email+password JWTs in cookies, Drizzle, and Postgres — **not Supabase, and not RLS.**
 - **nextacular** is the right idea, unmaintained in substance.
 
@@ -52,7 +52,7 @@ the hole, and it is a real one — not a story told to justify building. Four th
 stars have accumulated on a kit whose isolation is a function call each route must remember.
 
 **What BoxyHQ is better at, and keel should not pretend otherwise:** enterprise surface (SSO, SCIM,
-audit logs, webhooks, API keys — all *delegated to services* rather than built, which is the right
+audit logs, webhooks, API keys — all _delegated to services_ rather than built, which is the right
 instinct), i18n done properly, dead-code detection via `knip`, page-object fixtures in its e2e
 suite, and — the hardest thing to copy — distribution: 30 contributors and a thousand forks.
 
@@ -62,13 +62,13 @@ Consistent across every independent comparison, and these are keel's design cons
 marketing copy:
 
 1. **Bloat** — features you did not want, that you now maintain.
-2. **Inflexibility** — *"starting in someone else's code and style is off-putting"*; retrofitting the
+2. **Inflexibility** — _"starting in someone else's code and style is off-putting"_; retrofitting the
    kit's implementation to your need can cost more than writing it yourself.
-3. **Untested** — *"a tangled mess of untested, unscalable code that leads you in the totally wrong
-   direction."*
-4. **The stated gap, verbatim:** *"multi-tenancy, enterprise auth, and audit-grade security are not
+3. **Untested** — _"a tangled mess of untested, unscalable code that leads you in the totally wrong
+   direction."_
+4. **The stated gap, verbatim:** _"multi-tenancy, enterprise auth, and audit-grade security are not
    what these tools produce out of the box — they produce a starting point, not a production
-   enterprise system."*
+   enterprise system."_
 
 Point 4 is the thesis. Points 1–3 are the constraints that stop keel becoming what it replaces.
 
@@ -89,7 +89,7 @@ Naming these so the choice is a decision rather than an oversight:
   non-goal, and their locale gate only earns its keep once i18n exists.
 - **The enterprise feature set.** Registered as DEF-005, not copied — and the ordering stands:
   isolation proven, then table stakes.
-- **Page-object boilerplate.** The *pattern* is settled (SPEC-002 REQ-3b); the code gets written when
+- **Page-object boilerplate.** The _pattern_ is settled (SPEC-002 REQ-3b); the code gets written when
   there is a flow to drive, not before.
 - **Their RBAC matrix shape.** SPEC-001 REQ-7 already specifies a role model pinned across TypeScript
   and SQL. Theirs is a good confirmation of the shape, not a new idea to import.
@@ -112,8 +112,8 @@ here (stack, tenancy mechanism, test presence, price) was read from the source, 
 **Secondary** — comparison write-ups, several vendor-authored. Used to find candidates, never to
 establish a fact about one:
 
-- [MakerKit — best Next.js SaaS boilerplates](https://makerkit.dev/blog/saas/best-nextjs-saas-boilerplate) *(vendor-authored; read for its own positioning)*
+- [MakerKit — best Next.js SaaS boilerplates](https://makerkit.dev/blog/saas/best-nextjs-saas-boilerplate) _(vendor-authored; read for its own positioning)_
 - [StarterPick — supastarter vs makerkit vs ixartz vs shipfast](https://starterpick.com/guides/supastarter-vs-makerkit-vs-ixartz-vs-shipfast-2026)
 - [buildmvpfast — best SaaS boilerplate 2026](https://www.buildmvpfast.com/blog/best-saas-boilerplate-starter-kit-2026-nextjs)
-- [SaaS Pegasus — boilerplates and starter kits](https://www.saaspegasus.com/guides/saas-boilerplates-and-starter-kits/) *(the bloat/inflexibility critique)*
+- [SaaS Pegasus — boilerplates and starter kits](https://www.saaspegasus.com/guides/saas-boilerplates-and-starter-kits/) _(the bloat/inflexibility critique)_
 - [Vercel — Next.js SaaS Starter](https://vercel.com/templates/next.js/next-js-saas-starter)

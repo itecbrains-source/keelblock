@@ -38,6 +38,28 @@ jobs:
           name: access-matrix
           path: docs/ACCESS-MATRIX.md
 
+  # Dependency vulnerabilities. Built in, no dependency of its own, and fails only on high severity —
+  # a gate that fires on every transitive `low` gets ignored within a week.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 26, cache: npm }
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+
+  # Data-flow and injection classes no gate in this repository looks for. Free on public
+  # repositories, GitHub-native, and it costs nothing to keep.
+  codeql:
+    runs-on: ubuntu-latest
+    permissions: { security-events: write, contents: read }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: github/codeql-action/init@v3
+        with: { languages: javascript-typescript, queries: security-extended }
+      - uses: github/codeql-action/analyze@v3
+
   secrets:
     runs-on: ubuntu-latest
     steps:

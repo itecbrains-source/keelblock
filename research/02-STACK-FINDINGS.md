@@ -1,21 +1,21 @@
 # Stack findings — and the decisions they force
 
-*Researched 2026-09-07. Each section ends with the ADR it feeds. Nothing here is decided.*
+_Researched 2026-09-07. Each section ends with the ADR it feeds. Nothing here is decided._
 
 ## 1. Auth — genuinely contested, and it is the load-bearing choice
 
 MakerKit moved to **Better Auth**, whose organization plugin ships organizations, members,
 invitations and RBAC as generated schema + server APIs + client SDK. Independent comparisons call
-that *"the strongest reason to pick Better Auth for B2B SaaS"*, and note that Supabase and Auth.js
-*"leave tenancy to your app (or a kit)."*
+that _"the strongest reason to pick Better Auth for B2B SaaS"_, and note that Supabase and Auth.js
+_"leave tenancy to your app (or a kit)."_
 
 The counterweight, from the same sources: **Supabase Auth is the pick when you want
 database-enforced authorization through RLS** — which is keel's entire differentiator. Supabase RLS
 policies key off `auth.uid()` from a Supabase-issued JWT; Better Auth owns users in your own
 Postgres and issues its own session, so RLS integration is something you build rather than inherit.
 
-**The real trade:** Better Auth hands you the tenancy *feature set* and leaves you to wire the
-*enforcement*. Supabase Auth hands you the enforcement substrate and leaves you to build the feature
+**The real trade:** Better Auth hands you the tenancy _feature set_ and leaves you to wire the
+_enforcement_. Supabase Auth hands you the enforcement substrate and leaves you to build the feature
 set. Keel's claim is enforcement, so this leans Supabase — but the org/invite/RBAC work Better Auth
 would have given free is then keel's to write, and that is a large share of v1.
 
@@ -30,14 +30,14 @@ any leak or unprotected table. Featured in Supabase's July 2026 developer update
 
 **Its own README states the limit, and it is the whole point:**
 
-> *"It proves your database enforces what your policies declare. It cannot know your intent: a wrong
-> policy will be faithfully (and greenly) confirmed."*
+> _"It proves your database enforces what your policies declare. It cannot know your intent: a wrong
+> policy will be faithfully (and greenly) confirmed."_
 
 That is the "a check that cannot fail" trap in someone else's words. So the answer is **both layers,
 and they are different tests**:
 
 - **Declaration ↔ enforcement** — generated, exhaustive, free. Adopt `rlsautotest`; do not rebuild it.
-- **Intent ↔ declaration** — hand-written, small, adversarial. *Should* a member read another org's
+- **Intent ↔ declaration** — hand-written, small, adversarial. _Should_ a member read another org's
   invoices? Only a human can assert that, and only these tests catch a confidently-wrong policy.
 
 Also note the operational caveat: it seeds rows and executes real queries before rolling back, so it
@@ -88,7 +88,7 @@ reaches the database. **This deserves its own gate.**
 
 - `npm ci --ignore-scripts`; postinstall is a live attack vector (npm 11 already warns via
   `allow-scripts`).
-- **gitleaks** pre-commit *and over full history* — a hit is a live compromise: revoke and rotate first.
+- **gitleaks** pre-commit _and over full history_ — a hit is a live compromise: revoke and rotate first.
 - **Renovate/Dependabot** to propose bumps — necessary but not sufficient: nextacular had CI and
   rotted anyway. Automation proposes; a gate must force.
 - **Trusted Publishing (OIDC) + provenance attestations** via Sigstore if keel is ever published to

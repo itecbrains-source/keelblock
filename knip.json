@@ -6,11 +6,7 @@
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{mjs,mts}"],
 
-  "ignore": [
-    "src/lib/supabase/**",
-    "src/lib/env.ts",
-    "src/lib/db/database.types.ts"
-  ],
+  "ignore": ["src/lib/supabase/**", "src/lib/env.ts", "src/lib/db/database.types.ts"],
   "ignoreDependencies": [
     "@supabase/ssr",
     "@supabase/supabase-js",

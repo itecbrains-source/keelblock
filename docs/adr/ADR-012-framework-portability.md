@@ -9,7 +9,7 @@ across three frameworks, so a single target is what makes feature-completeness a
 than a slogan.
 
 The reasonable follow-up is whether that forecloses a Nuxt, SvelteKit or TanStack Start port later —
-and whether a second framework should be added *now* for marketing pages (Astro was the specific
+and whether a second framework should be added _now_ for marketing pages (Astro was the specific
 suggestion).
 
 ## Decisions
@@ -30,12 +30,12 @@ reproductions, which no competitor can publish because none of them did the meas
 A port is affordable or not depending on what has to be rewritten. In keel, the expensive half is
 **already framework-agnostic**:
 
-| Portable as-is | Rewritten per framework |
-|---|---|
-| `supabase/` — schema, policies, pgTAP suites | `src/app/` — routes, layouts |
-| `scripts/` — all twelve gates, the access matrix | `src/components/` |
+| Portable as-is                                        | Rewritten per framework                      |
+| ----------------------------------------------------- | -------------------------------------------- |
+| `supabase/` — schema, policies, pgTAP suites          | `src/app/` — routes, layouts                 |
+| `scripts/` — all twelve gates, the access matrix      | `src/components/`                            |
 | `spec/`, `docs/adr/` — every decision and requirement | the framework adapter in `src/lib/supabase/` |
-| `messages/` — translations | |
+| `messages/` — translations                            |                                              |
 
 The database is the product; the framework is a delivery mechanism for it. A Nuxt port inherits
 tenant isolation, the proof harness, the gates and the access matrix unchanged, and rewrites the
@@ -56,6 +56,6 @@ view layer.
 matters — isolation, proven — comes with it unchanged. The rules cost nothing today because they
 describe what the code already does.
 
-**Negative:** this is a *provision*, not a plan. No second framework is promised, and if one is never
+**Negative:** this is a _provision_, not a plan. No second framework is promised, and if one is never
 built, the two rules were still worth having — they are the same discipline that keeps the gates
 runnable and the framework coupling shallow.

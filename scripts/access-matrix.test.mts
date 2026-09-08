@@ -3,17 +3,27 @@ import { render } from './access-matrix.mjs';
 
 /** A clean two-identity report: a member reaches the row, an outsider does not. */
 const clean = {
-  tables: [{
-    table: 'project',
-    rls_enabled: true,
-    policied: ['SELECT', 'INSERT'],
-    idgrid: {
-      SELECT: { authorized: { exp: true, pass: true }, other: { exp: false, pass: true },
-                anon: { exp: false, pass: true }, service_role: { exp: true, pass: true } },
-      INSERT: { authorized: { exp: true, pass: true }, other: { exp: false, pass: true },
-                anon: { exp: false, pass: true }, service_role: { exp: true, pass: true } },
+  tables: [
+    {
+      table: 'project',
+      rls_enabled: true,
+      policied: ['SELECT', 'INSERT'],
+      idgrid: {
+        SELECT: {
+          authorized: { exp: true, pass: true },
+          other: { exp: false, pass: true },
+          anon: { exp: false, pass: true },
+          service_role: { exp: true, pass: true },
+        },
+        INSERT: {
+          authorized: { exp: true, pass: true },
+          other: { exp: false, pass: true },
+          anon: { exp: false, pass: true },
+          service_role: { exp: true, pass: true },
+        },
+      },
     },
-  }],
+  ],
   bypass_surfaces: [],
 };
 
@@ -66,7 +76,9 @@ describe('access matrix', () => {
 
   it('MUTATION: a bypass surface is listed with its severity', () => {
     const withBypass = clone(clean);
-    withBypass.bypass_surfaces = [{ severity: 'CRITICAL', object: 'is_org_member(uuid)', reason: 'callable by anon' }];
+    withBypass.bypass_surfaces = [
+      { severity: 'CRITICAL', object: 'is_org_member(uuid)', reason: 'callable by anon' },
+    ];
     const out = render(withBypass);
     expect(out).toContain('CRITICAL');
     expect(out).toContain('is_org_member(uuid)');
@@ -74,9 +86,16 @@ describe('access matrix', () => {
   });
 
   it('is deterministic — tables and bypass rows are ordered, so a diff means a real change', () => {
-    const a = clone(clean); const b = clone(clean);
-    a.tables = [{ ...a.tables[0], table: 'zeta' }, { ...a.tables[0], table: 'alpha' }];
-    b.tables = [{ ...b.tables[0], table: 'alpha' }, { ...b.tables[0], table: 'zeta' }];
+    const a = clone(clean);
+    const b = clone(clean);
+    a.tables = [
+      { ...a.tables[0], table: 'zeta' },
+      { ...a.tables[0], table: 'alpha' },
+    ];
+    b.tables = [
+      { ...b.tables[0], table: 'alpha' },
+      { ...b.tables[0], table: 'zeta' },
+    ];
     expect(render(a)).toBe(render(b));
   });
 

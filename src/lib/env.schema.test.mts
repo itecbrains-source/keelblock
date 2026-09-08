@@ -29,8 +29,13 @@ describe('environment validation', () => {
   });
 
   it('MUTATION: every secret shape is caught, not just the one we thought of', () => {
-    for (const name of ['NEXT_PUBLIC_STRIPE_SECRET', 'NEXT_PUBLIC_API_TOKEN', 'NEXT_PUBLIC_DB_PASSWORD',
-                        'NEXT_PUBLIC_SENTRY_DSN', 'NEXT_PUBLIC_JWT_PRIVATE_KEY']) {
+    for (const name of [
+      'NEXT_PUBLIC_STRIPE_SECRET',
+      'NEXT_PUBLIC_API_TOKEN',
+      'NEXT_PUBLIC_DB_PASSWORD',
+      'NEXT_PUBLIC_SENTRY_DSN',
+      'NEXT_PUBLIC_JWT_PRIVATE_KEY',
+    ]) {
       expect(validateEnv({ ...valid, [name]: 'x' }).ok, `${name} was allowed through`).toBe(false);
     }
   });
@@ -52,7 +57,10 @@ describe('environment validation', () => {
   });
 
   it('reports EVERY problem at once — fixing them one boot at a time is the worst loop there is', () => {
-    const r = validateEnv({ NEXT_PUBLIC_SUPABASE_URL: 'nope', NEXT_PUBLIC_SERVICE_ROLE_KEY: 'leak' });
+    const r = validateEnv({
+      NEXT_PUBLIC_SUPABASE_URL: 'nope',
+      NEXT_PUBLIC_SERVICE_ROLE_KEY: 'leak',
+    });
     expect(!r.ok && r.problems.length).toBeGreaterThanOrEqual(3);
   });
 });

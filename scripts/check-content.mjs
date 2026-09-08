@@ -26,15 +26,18 @@ export const findingIds = (md) => [...md.matchAll(/^## (F-\d+)\b/gm)].map((m) =>
 
 /** @param {string} md @returns {Array<{q: string, cites: string[]}>} */
 export function parseFaq(md) {
-  return md.split(/^### /m).slice(1).map((block) => {
-    const [q, ...rest] = block.split('\n');
-    const body = rest.join('\n');
-    return {
-      q: q.trim(),
-      // A citation is a link into the repository — not an outbound URL, which proves nothing here.
-      cites: [...body.matchAll(/\]\((?!https?:)([^)#]+)/g)].map((m) => m[1].trim()),
-    };
-  });
+  return md
+    .split(/^### /m)
+    .slice(1)
+    .map((block) => {
+      const [q, ...rest] = block.split('\n');
+      const body = rest.join('\n');
+      return {
+        q: q.trim(),
+        // A citation is a link into the repository — not an outbound URL, which proves nothing here.
+        cites: [...body.matchAll(/\]\((?!https?:)([^)#]+)/g)].map((m) => m[1].trim()),
+      };
+    });
 }
 
 /**
@@ -54,28 +57,35 @@ export function checkContent(manifest, findings, faq, exists) {
     if (!routed.has(id)) {
       problems.push(
         `${id} is in FINDINGS.md but routed nowhere. Decide now where it belongs — blog, landing, ` +
-        `faq, docs, or internal with a reason. The reasoning is never fresher than today.`
+          `faq, docs, or internal with a reason. The reasoning is never fresher than today.`,
       );
     }
   }
   for (const m of manifest.material) {
-    if (!findings.includes(m.id)) problems.push(`${m.id} is routed but no longer exists in FINDINGS.md`);
+    if (!findings.includes(m.id))
+      problems.push(`${m.id} is routed but no longer exists in FINDINGS.md`);
     for (const d of m.to) {
-      if (!kinds.includes(d)) problems.push(`${m.id} routes to "${d}", which is not a declared destination`);
+      if (!kinds.includes(d))
+        problems.push(`${m.id} routes to "${d}", which is not a declared destination`);
     }
     if (m.to.includes('internal') && !m.angle) {
-      problems.push(`${m.id} is marked internal with no reason — that is how material gets quietly buried`);
+      problems.push(
+        `${m.id} is marked internal with no reason — that is how material gets quietly buried`,
+      );
     }
     if (m.to.length === 0) problems.push(`${m.id} has no destination`);
   }
 
   for (const { q, cites } of faq) {
     if (cites.length === 0) {
-      problems.push(`FAQ "${q.slice(0, 50)}…" cites nothing. An answer resting on an assertion is the defect this project exists to avoid.`);
+      problems.push(
+        `FAQ "${q.slice(0, 50)}…" cites nothing. An answer resting on an assertion is the defect this project exists to avoid.`,
+      );
     }
     for (const c of cites) {
       const resolved = c.startsWith('../') ? c.replace('../', '') : `docs/${c}`;
-      if (!exists(resolved)) problems.push(`FAQ "${q.slice(0, 40)}…" cites ${c}, which does not exist`);
+      if (!exists(resolved))
+        problems.push(`FAQ "${q.slice(0, 40)}…" cites ${c}, which does not exist`);
     }
   }
   return problems;
@@ -94,8 +104,13 @@ function main() {
   }
   const counts = {};
   for (const m of manifest.material) for (const d of m.to) counts[d] = (counts[d] ?? 0) + 1;
-  const summary = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${v} ${k}`).join(' · ');
-  console.log(`content: ok — ${findings.length} findings routed (${summary}), ${faq.length} FAQ answers all cited`);
+  const summary = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${v} ${k}`)
+    .join(' · ');
+  console.log(
+    `content: ok — ${findings.length} findings routed (${summary}), ${faq.length} FAQ answers all cited`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

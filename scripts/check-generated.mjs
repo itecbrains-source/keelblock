@@ -26,8 +26,8 @@ export function compareGenerated(committed, generated, path = TYPES) {
   if (committed === generated) return [];
   return [
     `${path} is STALE — the schema has changed since it was generated.\n` +
-    `    A stale type does not fail to compile; it compiles and is wrong at runtime.\n` +
-    `    Regenerate and read the diff:  npm run generate`,
+      `    A stale type does not fail to compile; it compiles and is wrong at runtime.\n` +
+      `    Regenerate and read the diff:  npm run generate`,
   ];
 }
 
@@ -38,9 +38,13 @@ function main() {
   // ── 1 · database types ───────────────────────────────────────────────────────
   let generated;
   try {
-    generated = execFileSync('supabase', ['gen', 'types', 'typescript', '--local'], { encoding: 'utf8' });
+    generated = execFileSync('supabase', ['gen', 'types', 'typescript', '--local'], {
+      encoding: 'utf8',
+    });
   } catch {
-    console.error('generated: could not reach the database. Is the local stack running? `supabase start`');
+    console.error(
+      'generated: could not reach the database. Is the local stack running? `supabase start`',
+    );
     process.exit(2);
   }
 
@@ -53,19 +57,23 @@ function main() {
   }
 
   // ── 2 · access matrix ────────────────────────────────────────────────────────
-  const matrix = spawnSync('node', ['scripts/access-matrix.mjs', ...(check ? ['--check'] : [])],
-    { stdio: check ? ['ignore', 'ignore', 'pipe'] : 'inherit', encoding: 'utf8' });
+  const matrix = spawnSync('node', ['scripts/access-matrix.mjs', ...(check ? ['--check'] : [])], {
+    stdio: check ? ['ignore', 'ignore', 'pipe'] : 'inherit',
+    encoding: 'utf8',
+  });
   if (matrix.status !== 0) {
     problems.push((matrix.stderr ?? 'docs/ACCESS-MATRIX.md is stale').trim());
   }
 
   if (!problems.length) {
-    console.log(check ? 'generated: ok — types and access matrix are both current' : 'generated: done');
+    console.log(
+      check ? 'generated: ok — types and access matrix are both current' : 'generated: done',
+    );
     process.exit(0);
   }
   console.error('generated: FAILED\n');
   for (const p of problems) console.error(`  ${p}\n`);
   process.exit(1);
-  }
+}
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

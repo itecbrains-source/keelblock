@@ -20,7 +20,7 @@ caught in a document during review rather than by a customer.
 They enforce isolation in application code. The most popular free kit does this ([F-15](FINDINGS.md)):
 
 ```ts
-const row = await getById(id);                     // any tenant's row, by id alone
+const row = await getById(id); // any tenant's row, by id alone
 if (row.teamId !== teamId) throw new ApiError(403); // and now it is in memory
 ```
 

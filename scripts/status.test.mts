@@ -19,13 +19,18 @@ describe('derived status', () => {
 
   it('MUTATION: a document claiming the wrong number of findings is caught', () => {
     // The exact failure: prose says 22, reality says 23, and a reader believes the prose.
-    const p = checkCountClaims({ 'README.md': `keel has ${c.findings + 1} findings with repros.` }, c);
+    const p = checkCountClaims(
+      { 'README.md': `keel has ${c.findings + 1} findings with repros.` },
+      c,
+    );
     expect(p).toHaveLength(1);
     expect(p[0]).toMatch(/goes stale the moment reality moves/);
   });
 
   it('MUTATION: every countable noun is actually checked, not just the first', () => {
-    const doc = Object.keys(COUNTABLE).map((noun) => `We have 999 ${noun}.`).join('\n');
+    const doc = Object.keys(COUNTABLE)
+      .map((noun) => `We have 999 ${noun}.`)
+      .join('\n');
     expect(checkCountClaims({ 'd.md': doc }, c)).toHaveLength(Object.keys(COUNTABLE).length);
   });
 
@@ -54,7 +59,10 @@ describe('derived status', () => {
 
   it('a spec marked done has every criterion closed — the closure rule, on the real repo', () => {
     for (const s of c.specs.filter((x) => x.status === 'done')) {
-      expect(s.acs.filter((a) => a !== 'done'), `${s.id} is done with open criteria`).toEqual([]);
+      expect(
+        s.acs.filter((a) => a !== 'done'),
+        `${s.id} is done with open criteria`,
+      ).toEqual([]);
     }
   });
 });

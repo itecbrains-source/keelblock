@@ -25,8 +25,8 @@ const raw = readFileSync('.github/workflows/check.yml', 'utf8');
 const wf = load(raw);
 
 const steps = (job: string, w: Workflow = wf): Step[] => w.jobs[job]?.steps ?? [];
-const runs  = (job: string, w: Workflow = wf) => steps(job, w).map((s) => String(s.run ?? ''));
-const uses  = (job: string, w: Workflow = wf) => steps(job, w).map((s) => String(s.uses ?? ''));
+const runs = (job: string, w: Workflow = wf) => steps(job, w).map((s) => String(s.run ?? ''));
+const uses = (job: string, w: Workflow = wf) => steps(job, w).map((s) => String(s.uses ?? ''));
 const stepUsing = (job: string, prefix: string, w: Workflow = wf) =>
   steps(job, w).find((s) => String(s.uses ?? '').startsWith(prefix));
 
@@ -53,7 +53,10 @@ describe('CI workflow', () => {
 
   it('has the weekly clean-clone build — the substitute for having users', () => {
     const schedules = wf.on?.schedule ?? [];
-    expect(schedules.length, 'no scheduled run: nothing exercises the template between commits').toBeGreaterThan(0);
+    expect(
+      schedules.length,
+      'no scheduled run: nothing exercises the template between commits',
+    ).toBeGreaterThan(0);
     expect(schedules[0].cron).toMatch(/^\S+ \S+ \S+ \S+ \S+$/);
   });
 
@@ -81,7 +84,8 @@ describe('CI workflow', () => {
   it('MUTATION: plain `npm ci` (install scripts enabled) is caught', () => {
     const m = load(raw);
     m.jobs.check.steps = steps('check', m).map((s) =>
-      s.run?.startsWith('npm ci') ? { ...s, run: 'npm ci' } : s);
+      s.run?.startsWith('npm ci') ? { ...s, run: 'npm ci' } : s,
+    );
     expect(runs('check', m).find((r) => r.startsWith('npm ci'))).not.toContain('--ignore-scripts');
   });
 
@@ -116,9 +120,10 @@ describe('CI workflow', () => {
             # npm ci --ignore-scripts   <- a comment, not a step
             - run: npm ci
     `;
-    expect(lying).toContain('--ignore-scripts');                       // text: fooled
+    expect(lying).toContain('--ignore-scripts'); // text: fooled
     const parsed = load(lying);
-    expect(runs('check', parsed).find((r) => r.startsWith('npm ci')))
-      .not.toContain('--ignore-scripts');                              // structure: not fooled
+    expect(runs('check', parsed).find((r) => r.startsWith('npm ci'))).not.toContain(
+      '--ignore-scripts',
+    ); // structure: not fooled
   });
 });

@@ -2,8 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { evaluateFreshness, majorOf } from './check-freshness.mjs';
 
-const stamp = { maxAgeDays: 45, runtime: { node: 26 }, pins: { next: { major: 16, verifiedOn: '2026-09-01' } } };
-const base = { stamp, declared: { next: 16 }, latest: { next: 16 }, today: '2026-09-07', nodeMajor: 26 };
+const stamp = {
+  maxAgeDays: 45,
+  runtime: { node: 26 },
+  pins: { next: { major: 16, verifiedOn: '2026-09-01' } },
+};
+const base = {
+  stamp,
+  declared: { next: 16 },
+  latest: { next: 16 },
+  today: '2026-09-07',
+  nodeMajor: 26,
+};
 const rules = (r: ReturnType<typeof evaluateFreshness>) => r.failures.map((f) => f.rule);
 
 describe('freshness gate', () => {
@@ -17,7 +27,9 @@ describe('freshness gate', () => {
     const all = { ...pkg.dependencies, ...pkg.devDependencies };
     for (const name of Object.keys(s.pins)) {
       expect(all[name], `${name} is stamped but not a dependency`).toBeDefined();
-      expect(majorOf(all[name]), `${name} stamp disagrees with package.json`).toBe(s.pins[name].major);
+      expect(majorOf(all[name]), `${name} stamp disagrees with package.json`).toBe(
+        s.pins[name].major,
+      );
     }
   });
 
@@ -41,11 +53,15 @@ describe('freshness gate', () => {
   });
 
   it('MUTATION: a stamp describing a version we no longer ship fails', () => {
-    expect(evaluateFreshness({ ...base, declared: { next: 15 } }).failures[0].msg).toMatch(/no longer ship/);
+    expect(evaluateFreshness({ ...base, declared: { next: 15 } }).failures[0].msg).toMatch(
+      /no longer ship/,
+    );
   });
 
   it('MUTATION: a stamp for something that is not a dependency fails', () => {
-    expect(evaluateFreshness({ ...base, declared: {} }).failures[0].msg).toMatch(/not a dependency/);
+    expect(evaluateFreshness({ ...base, declared: {} }).failures[0].msg).toMatch(
+      /not a dependency/,
+    );
   });
 
   it('MUTATION: a runtime mismatch fails — it invalidates every other result silently', () => {
@@ -65,6 +81,11 @@ describe('freshness gate', () => {
   });
 
   it('reads a major out of any range syntax', () => {
-    expect([majorOf('^16.3.4'), majorOf('~4'), majorOf('19.2.8'), majorOf(undefined)]).toEqual([16, 4, 19, null]);
+    expect([majorOf('^16.3.4'), majorOf('~4'), majorOf('19.2.8'), majorOf(undefined)]).toEqual([
+      16,
+      4,
+      19,
+      null,
+    ]);
   });
 });

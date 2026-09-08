@@ -9,35 +9,38 @@ nextacular chose `Workspace` and it appears in all 37 of its routes; changing it
 rename, it is a rewrite. This decision is made once and is expensive to revisit, so it is made first.
 
 Keel's claim is that isolation is enforced by the database. That means the tenancy model must be
-expressible as an RLS predicate that is *cheap* (it runs on every row of every query) and *total*
+expressible as an RLS predicate that is _cheap_ (it runs on every row of every query) and _total_
 (no table escapes it).
 
 ## Decision Drivers
 
 - The predicate must be indexable and evaluate without a recursive or unbounded join.
 - B2B language: buyers say "organisation" or "team", not "workspace" — and a workspace usually implies
-  *many per organisation*, a second level keel v1 does not want.
+  _many per organisation_, a second level keel v1 does not want.
 - Every tenant-scoped table must carry the tenant key directly, so no policy needs a join chain.
 - A user belongs to many organisations, with a different role in each.
 
 ## Options Considered
 
 ### Option A: `organization` + `organization_members`, `organization_id` on every scoped table
-| Pros | Cons |
-|------|------|
-| Predicate is a single indexed membership lookup | Denormalised `organization_id` must be kept correct on write |
-| Every table self-describes its tenant; no join chains in policies | |
-| Matches B2B vocabulary and Stripe's customer-per-org shape | |
+
+| Pros                                                              | Cons                                                         |
+| ----------------------------------------------------------------- | ------------------------------------------------------------ |
+| Predicate is a single indexed membership lookup                   | Denormalised `organization_id` must be kept correct on write |
+| Every table self-describes its tenant; no join chains in policies |                                                              |
+| Matches B2B vocabulary and Stripe's customer-per-org shape        |                                                              |
 
 ### Option B: `workspace` nested under an account (nextacular / MakerKit hybrid)
-| Pros | Cons |
-|------|------|
-| Supports personal + team accounts in one model | Two levels of scoping in every policy from day one |
-| Familiar to users of those kits | The second level is unused by most B2B products; it is bloat that cannot be removed (violates B-6) |
+
+| Pros                                           | Cons                                                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Supports personal + team accounts in one model | Two levels of scoping in every policy from day one                                                 |
+| Familiar to users of those kits                | The second level is unused by most B2B products; it is bloat that cannot be removed (violates B-6) |
 
 ### Option C: schema-per-tenant
-| Pros | Cons |
-|------|------|
+
+| Pros                                       | Cons                                                                                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | Hard isolation with no policy to get wrong | Migrations must run per tenant; breaks Supabase tooling, PostgREST and connection pooling at even modest tenant counts |
 
 ## Decision

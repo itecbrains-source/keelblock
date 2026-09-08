@@ -24,27 +24,30 @@ security fix that cannot reach the people who need it is not a fix — it is a c
 ## Options Considered
 
 ### Option A: keel core as an npm dependency
-| Pros | Cons |
-|------|------|
+
+| Pros                              | Cons                                                                                         |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
 | `npm update` and you have the fix | It becomes a framework you fight — the top-three complaint about kits, and a stated non-goal |
 
 ### Option B: `git remote upstream` + merge, documented
-| Pros | Cons |
-|------|------|
+
+| Pros                   | Cons                                                                   |
+| ---------------------- | ---------------------------------------------------------------------- |
 | Zero machinery; honest | Conflicts everywhere the user worked; in practice nobody does it twice |
 
 ### Option C: Structure so the security surface is the part users do not edit, plus codemods
-| Pros | Cons |
-|------|------|
+
+| Pros                                                                                        | Cons                                                              |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Fits "it's your code"; most security fixes land where conflicts are structurally impossible | Requires discipline about what lives where, from the first commit |
 
 ## Decision
 
-**Chosen: Option C**, resting on an observation about *where* security fixes actually land.
+**Chosen: Option C**, resting on an observation about _where_ security fixes actually land.
 
 Keel's security-critical surface is small, stable, and mostly **append-only by nature**:
 
-- **Policies are migrations.** A fixed policy ships as a *new* migration file. New files never
+- **Policies are migrations.** A fixed policy ships as a _new_ migration file. New files never
   conflict — a project pulls it in and applies it, however much it has diverged. The single most
   important class of fix is conflict-free by construction.
 - **The service-role boundary, auth helpers, webhook handler and gates** are files users rarely touch,
@@ -60,7 +63,7 @@ So keel is structured to keep those two sets apart, and ships:
 3. **GitHub Security Advisories** for the isolation-affecting class, so it arrives as a notification
    rather than requiring the user to be watching.
 4. **A CI job that proves the path** (B-10): scaffold at the previous tag, apply the upgrade, run the
-   *current* suite. If that job is red, the release does not ship.
+   _current_ suite. If that job is red, the release does not ship.
 
 ## Consequences
 

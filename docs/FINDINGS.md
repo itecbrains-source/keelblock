@@ -43,14 +43,14 @@ bad merge produces:
 Result: a user who belonged to one organisation could read both. The generated suite reported the
 affected table **clean**. Its own output explains why:
 
-> *"opaque policy function(s) were MOCKED to prove the policy delegates correctly (wiring) — the
-> function's own logic is NOT verified here"*
+> _"opaque policy function(s) were MOCKED to prove the policy delegates correctly (wiring) — the
+> function's own logic is NOT verified here"_
 
-An exhaustive generated suite verifies that a policy *delegates* to its helper. Every line inside
+An exhaustive generated suite verifies that a policy _delegates_ to its helper. Every line inside
 that helper is unverified by it. Since the membership predicate is exactly such a helper, a
 hand-written intent layer is not a nice-to-have — it is the only thing testing the predicate at all.
 
-**A syntactic defect (`with check (true)`) *is* caught.** Only the semantic one slips through, which
+**A syntactic defect (`with check (true)`) _is_ caught.** Only the semantic one slips through, which
 is why keel's proof of this uses a wrong helper rather than a suspicious-looking policy.
 
 ## F-3 · `FORCE ROW LEVEL SECURITY` does not stop the table owner on Supabase
@@ -67,7 +67,7 @@ Measured with FORCE enabled: `postgres` read every row across every organisation
 itself recommends.**
 
 Consequence: any `SECURITY DEFINER` function owned by `postgres` runs RLS-bypassed. keel's membership
-helper works *because of* this. One returning **rows** rather than a scalar would be a total isolation
+helper works _because of_ this. One returning **rows** rather than a scalar would be a total isolation
 bypass with no policy involved, invisible to every test layer.
 
 ## F-4 · A cross-tenant write is invisible to the attacker
@@ -79,7 +79,7 @@ still saw only their own row. The smuggled row is invisible to the person who wr
 
 **A suite that proves isolation by reading can never detect this.** Only one that attempts a
 cross-tenant write and asserts rejection does. Relatedly: presence of a `WITH CHECK` is not enough —
-the real defect *has* one, it is `true`.
+the real defect _has_ one, it is `true`.
 
 ## F-5 · A failing `USING` on `UPDATE` is a silent no-op
 
@@ -88,7 +88,7 @@ the real defect *has* one, it is `true`.
 A member attempting to promote themselves to owner gets `UPDATE 0` — **no error**. Security holds,
 silently.
 
-So the privilege-escalation case must be asserted on the *data*. A test expecting an exception fails;
+So the privilege-escalation case must be asserted on the _data_. A test expecting an exception fails;
 a test merely expecting "no error" passes while proving nothing.
 
 ## F-6 · Cache Components break every authenticated page in Next 16
@@ -110,7 +110,7 @@ cross-tenant cache leak is a build error rather than a review responsibility.
 On a real stack the membership helper was callable by **`anon`** — an unauthenticated oracle over an
 RLS-protected table. A bare Postgres container did not model this; the full Supabase stack did.
 
-*Method note: a spike environment that is nearly the target returns nearly the truth.*
+_Method note: a spike environment that is nearly the target returns nearly the truth._
 
 ## F-8 · An unconstrained INSERT policy made the access matrix cry wolf
 
@@ -149,7 +149,7 @@ update public.organization_member set role = 'member'
 The owner became a member. An admin could take over any organisation they administered. The `owner`
 role is meaningless if an admin can remove it.
 
-Fixed with a trigger: any row that *is* an owner, or is *becoming* one, may only be touched by an
+Fixed with a trigger: any row that _is_ an owner, or is _becoming_ one, may only be touched by an
 owner.
 
 ## F-10 · The last owner could orphan an organisation
@@ -209,7 +209,7 @@ can observe is indistinguishable from an absent one.**
 tick. Meanwhile `render()` — the pure function producing the access matrix, the artifact the whole
 claim rests on — had no test at all.
 
-keel's own rule is *every gate ships a proof it can fail*. The gate enforcing that rule did not
+keel's own rule is _every gate ships a proof it can fail_. The gate enforcing that rule did not
 have one. Fixed: `--passWithNoTests` removed, and nine tests added of which six are mutation proofs
 that restore a real defect and assert the matrix goes loud.
 
@@ -231,7 +231,7 @@ worse defect than an absent one**, because people build on it.
 
 # Found by reading the competition
 
-## F-15 · In an app-layer model, the other tenant's row is in memory *before* the check runs
+## F-15 · In an app-layer model, the other tenant's row is in memory _before_ the check runs
 
 **2026-09-07 · from `boxyhq/saas-starter-kit`, and the clearest illustration of why keel exists**
 
@@ -253,7 +253,7 @@ export const throwIfNoAccessToApiKey = async (apiKeyId: string, teamId: string) 
 That is disciplined, readable code. It is also **two steps**, and the order is the whole point:
 
 1. the row is fetched — **any tenant's row, by id alone**
-2. a *separate function* the route must remember to call compares the tenant
+2. a _separate function_ the route must remember to call compares the tenant
 
 So a foreign tenant's data is already in the process, in memory, in the log if anything logs the
 query, before anything decides you were not allowed to see it. **Under RLS the row is never selected
@@ -289,13 +289,13 @@ breaks the application is worse than a weak one, and it would have shipped.
 
 Measuring the alternatives established a genuine trilemma — you can have any two:
 
-| Approach | Strict | Prerenders | Hydrates |
-|---|---|---|---|
-| `'unsafe-inline'` | ✗ | ✓ | ✓ |
-| per-request **nonce** | ✓ | **✗** | ✓ |
-| **report-only** | reports | ✓ | ✓ |
+| Approach              | Strict  | Prerenders | Hydrates |
+| --------------------- | ------- | ---------- | -------- |
+| `'unsafe-inline'`     | ✗       | ✓          | ✓        |
+| per-request **nonce** | ✓       | **✗**      | ✓        |
+| **report-only**       | reports | ✓          | ✓        |
 
-The nonce row is the one worth proving rather than assuming: a nonce in the *response header* alone
+The nonce row is the one worth proving rather than assuming: a nonce in the _response header_ alone
 does nothing, because prerendered HTML was fixed at build time and carries no matching attribute. To
 use a nonce the HTML must be generated per request — so static prerendering is gone. Verified.
 
@@ -318,7 +318,7 @@ keel refuses at boot any `NEXT_PUBLIC_` variable matching a credential shape (`S
 The same file exists because of a bug worth recording, found in a competing kit:
 
 ```ts
-securityHeadersEnabled: process.env.SECURITY_HEADERS_ENABLED ?? false
+securityHeadersEnabled: process.env.SECURITY_HEADERS_ENABLED ?? false;
 ```
 
 Setting that to `"false"` **enables** it — `??` only catches `undefined`, and a non-empty string is
@@ -363,8 +363,8 @@ schema-guard: could not reach the database. Is the local stack running? `supabas
 The database was running. The query had a SQL syntax error, and the catch block assumed every
 failure was connectivity. That message sends a reader to check Docker for twenty minutes.
 
-It now distinguishes the two and says which: *"the query failed — this is a bug in the gate, not in
-your schema."* Being wrong is acceptable; **being confidently wrong about which layer is broken is
+It now distinguishes the two and says which: _"the query failed — this is a bug in the gate, not in
+your schema."_ Being wrong is acceptable; **being confidently wrong about which layer is broken is
 not**, and it is a failure of SPEC-002 REQ-8 (a failing proof must be legible).
 
 The same gate had a second, quieter defect: it counted **2** tenant-scoped tables where there are 3.
@@ -376,7 +376,7 @@ it.** Now covered, and pinned by a pgTAP case that disables RLS on the root and 
 
 **2026-09-07 · a pattern worth naming rather than a defect worth fixing**
 
-Three times in this project, a check matched text that merely *mentioned* the thing it was looking
+Three times in this project, a check matched text that merely _mentioned_ the thing it was looking
 for:
 
 1. **SPEC-003 rule 5** was written because a `toContain` over a CI workflow is satisfied by a comment.
@@ -384,7 +384,7 @@ for:
 2. **The audit verification script** then reported the `--passWithNoTests` gate as unfixed — matching
    the comment that explains why the flag was removed. Ten minutes after writing rule 5.
 3. **The portability test** reported that `check-locale.mjs` imports `next/link` — matching the
-   string inside the regex that *detects* that import. Written while adding a rule about it.
+   string inside the regex that _detects_ that import. Written while adding a rule about it.
 
 Each was caught by a test, none by review, and the third by a test written in the same commit as the
 rule it violated.
@@ -398,14 +398,14 @@ statement — or accept that the check reports its own bugs as the codebase's.
 
 **2026-09-07 · corrected in `research/05-SEO-2026.md` and SPEC-028 REQ-2**
 
-The SEO memo asserted: *"FAQ rich results were removed on 7 May 2026."* Precise, plausible, and
+The SEO memo asserted: _"FAQ rich results were removed on 7 May 2026."_ Precise, plausible, and
 sourced from a content-marketing post. Google's own Search Central blog says something materially
 different:
 
-> *HowTo* rich results are **deprecated** — no longer shown, documentation removed. *FAQ* rich
+> _HowTo_ rich results are **deprecated** — no longer shown, documentation removed. _FAQ_ rich
 > results **"will only be shown for well-known, authoritative government and health websites"** —
-> restricted, not removed. And: *"there's no need to proactively remove it. Structured data that's
-> not being used does not cause problems for Search, but also has no visible effects."*
+> restricted, not removed. And: _"there's no need to proactively remove it. Structured data that's
+> not being used does not cause problems for Search, but also has no visible effects."_
 
 **The date could not be verified against any primary source.** It had already reached a requirement.
 
@@ -426,7 +426,7 @@ the author to find the vendor's own documentation.
 SPEC-001 and SPEC-003 read **`done` in the spec index** and **`draft` in their own file headers**,
 for several commits. SPEC-002 read `partial` and `draft`.
 
-The new evidence rule — *a shipped spec's acceptance criteria must cite files that exist* — passed
+The new evidence rule — _a shipped spec's acceptance criteria must cite files that exist_ — passed
 cleanly, because it only inspects shipped specs and every spec file claimed to be a draft. **The
 drift concealed the check that would have caught the drift.**
 
@@ -475,15 +475,15 @@ including those that query the database. Inside a full `check` run it failed onc
 every retry.
 
 That is the worst possible failure mode for a gate suite. A flaky suite is a disabled suite, and the
-discipline goes with it. The cause was that a *unit* test had been coupled to state it does not own.
+discipline goes with it. The cause was that a _unit_ test had been coupled to state it does not own.
 
 Determinism is now asserted over gates that read only the working tree. The four that reach the
 network or the database are excluded **with the reason stated**, because their determinism is a
 property of that external state rather than of the gate — and it is checked where it belongs, by
 `check` running them against the real thing.
 
-The exclusion list is pinned and may only shrink. *An exclusion list is where a determinism guarantee
-goes to die.*
+The exclusion list is pinned and may only shrink. _An exclusion list is where a determinism guarantee
+goes to die._
 
 ## F-25 · Two tracked deferrals were silently deleted, and every gate said "ok"
 

@@ -11,8 +11,8 @@ isolation, which is B-2 and the reason keel exists.
 the policy catalog — per table, per command, per identity — plus an access matrix and a CI gate. It is
 excellent and should not be rebuilt. **Its own README states the limit that shapes this ADR:**
 
-> *"It proves your database enforces what your policies declare. It cannot know your intent: a wrong
-> policy will be faithfully (and greenly) confirmed."*
+> _"It proves your database enforces what your policies declare. It cannot know your intent: a wrong
+> policy will be faithfully (and greenly) confirmed."_
 
 An exhaustive generated suite over a confidently-wrong policy is a check that cannot fail.
 
@@ -20,12 +20,12 @@ An exhaustive generated suite over a confidently-wrong policy is a check that ca
 
 **Chosen: four layers**, each answering a different question.
 
-| Layer | Question | Tool |
-|---|---|---|
-| Unit | Is this pure logic correct? | Vitest |
-| **Generated policy** | Does the database enforce what the policies *declare*? | `rlsautotest` → pgTAP |
-| **Intent** | Are the policies *what we meant*? | Hand-written pgTAP, adversarial, small |
-| Journey | Does the real authed flow work end to end? | Playwright |
+| Layer                | Question                                               | Tool                                   |
+| -------------------- | ------------------------------------------------------ | -------------------------------------- |
+| Unit                 | Is this pure logic correct?                            | Vitest                                 |
+| **Generated policy** | Does the database enforce what the policies _declare_? | `rlsautotest` → pgTAP                  |
+| **Intent**           | Are the policies _what we meant_?                      | Hand-written pgTAP, adversarial, small |
+| Journey              | Does the real authed flow work end to end?             | Playwright                             |
 
 The two middle layers are not redundant and neither substitutes for the other. The generated layer is
 exhaustive and cannot judge; the intent layer judges and cannot be exhaustive. Isolation needs both.

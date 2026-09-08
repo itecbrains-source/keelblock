@@ -71,22 +71,40 @@ function main() {
     // misreports its own failure is worse than one that says nothing (SPEC-002 REQ-8).
     const stderr = String(err.stderr ?? '').trim();
     if (/could not connect|connection refused|does not exist/i.test(stderr) || !stderr) {
-      console.error('schema-guard: could not reach the database. Is the local stack running? `supabase start`');
+      console.error(
+        'schema-guard: could not reach the database. Is the local stack running? `supabase start`',
+      );
     } else {
-      console.error('schema-guard: the query failed — this is a bug in the gate, not in your schema:\n');
-      console.error(stderr.split('\n').slice(0, 5).map((l) => `  ${l}`).join('\n'));
+      console.error(
+        'schema-guard: the query failed — this is a bug in the gate, not in your schema:\n',
+      );
+      console.error(
+        stderr
+          .split('\n')
+          .slice(0, 5)
+          .map((l) => `  ${l}`)
+          .join('\n'),
+      );
     }
     process.exit(2);
   }
 
   const violations = findViolations(out.trim().split('\n'));
-  const scoped = execFileSync('psql', [DB, '-tAc', `
+  const scoped = execFileSync(
+    'psql',
+    [
+      DB,
+      '-tAc',
+      `
     select count(*) from pg_class c
       join pg_namespace n on n.oid = c.relnamespace
      where n.nspname = 'public' and c.relkind = 'r'
        and (c.relname = 'organization' or exists (
          select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'organization_id'
-           and a.attnum > 0 and not a.attisdropped));`], { encoding: 'utf8' }).trim();
+           and a.attnum > 0 and not a.attisdropped));`,
+    ],
+    { encoding: 'utf8' },
+  ).trim();
 
   if (!violations.length) {
     console.log(`schema-guard: ok — ${scoped} tenant-scoped table(s), every one protected`);
@@ -94,7 +112,9 @@ function main() {
   }
   console.error('schema-guard: FAILED\n');
   for (const v of violations) console.error(`  ${v.table}: ${v.violation}`);
-  console.error('\nA table carrying organization_id is tenant data. Every one needs RLS enabled and a');
+  console.error(
+    '\nA table carrying organization_id is tenant data. Every one needs RLS enabled and a',
+  );
   console.error('WITH CHECK that constrains the organisation — see CONTRIBUTING.md.');
   process.exit(1);
 }

@@ -13,7 +13,9 @@
     "test": "vitest run",
     "verify": "node scripts/verify.mjs",
     "generate": "node scripts/check-generated.mjs",
-    "status": "node scripts/status.mjs"
+    "status": "node scripts/status.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",
@@ -38,8 +40,10 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "eslint-config-prettier": "^10.1.8",
     "jsdom": "^30.0.1",
     "knip": "^6.34.0",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4",
     "typescript": "^6.0.3",
     "vitest": "^5.0.0",

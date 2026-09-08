@@ -18,18 +18,23 @@ describe('schema guard', () => {
     for (const violation of ['rls-disabled', 'no-policy', 'trivial-with-check']) {
       expect(sql, `${violation} has no planted case`).toContain(violation);
     }
-    expect(sql, 'the root table case is missing').toContain("organization: rls-disabled");
+    expect(sql, 'the root table case is missing').toContain('organization: rls-disabled');
   });
 
   it('parses a violation row into table and reason', () => {
-    expect(findViolations(['project\trow-level security is DISABLED']))
-      .toEqual([{ table: 'project', violation: 'row-level security is DISABLED' }]);
+    expect(findViolations(['project\trow-level security is DISABLED'])).toEqual([
+      { table: 'project', violation: 'row-level security is DISABLED' },
+    ]);
   });
 
   // ── mutation proofs ────────────────────────────────────────────────────────
 
   it('MUTATION: multiple violations are all reported, not collapsed to the first', () => {
-    const v = findViolations(['a\tno policy at all', 'b\trls disabled', 'c\ttrivially TRUE WITH CHECK']);
+    const v = findViolations([
+      'a\tno policy at all',
+      'b\trls disabled',
+      'c\ttrivially TRUE WITH CHECK',
+    ]);
     expect(v).toHaveLength(3);
   });
 

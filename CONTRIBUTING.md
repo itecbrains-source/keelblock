@@ -44,16 +44,16 @@ Three rules the gates enforce, each because of a measured defect:
   member write into another tenant, and the smuggled row is invisible to them ([F-4](docs/FINDINGS.md)).
   A `WITH CHECK (true)` is not a `WITH CHECK`.
 - **`(select auth.uid())`, not `auth.uid()`** — the subquery form is evaluated once rather than per
-  row. It is also *illegal* in a trigger `WHEN` clause, where the plain form belongs.
+  row. It is also _illegal_ in a trigger `WHEN` clause, where the plain form belongs.
 
 ## Testing a policy
 
 Two layers, deliberately:
 
 - **Generated** (`rlsautotest`) is exhaustive and cannot judge. It mocks opaque policy functions, so
-  everything *inside* a helper is unverified by it.
+  everything _inside_ a helper is unverified by it.
 - **Intent** (`supabase/tests/intent/`) judges and cannot be exhaustive. It is where you assert what
-  *should* be true.
+  _should_ be true.
 
 Assert a write rejection **as the writer**, never by reading afterwards — and remember that a failing
 `USING` on `UPDATE` is a silent no-op (`UPDATE 0`, no error), so those cases assert on the data.

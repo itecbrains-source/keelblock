@@ -25,7 +25,7 @@ export function flatten(obj, prefix = '') {
   return Object.entries(obj).flatMap(([k, v]) =>
     v && typeof v === 'object' && !Array.isArray(v)
       ? flatten(v, `${prefix}${k}.`)
-      : [`${prefix}${k}`]
+      : [`${prefix}${k}`],
   );
 }
 
@@ -35,7 +35,9 @@ export function flatten(obj, prefix = '') {
  * Exported for tests.
  */
 export function extractUsedKeys(source) {
-  const namespaces = [...source.matchAll(/(?:use|get)Translations\(\s*['"]([\w.]+)['"]/g)].map((m) => m[1]);
+  const namespaces = [...source.matchAll(/(?:use|get)Translations\(\s*['"]([\w.]+)['"]/g)].map(
+    (m) => m[1],
+  );
   const calls = [...source.matchAll(/\bt\(\s*['"]([\w.]+)['"]/g)].map((m) => m[1]);
   // With no declared namespace, a t('a.b') call is already fully qualified.
   if (namespaces.length === 0) return calls;
@@ -57,11 +59,15 @@ export function extractUsedKeys(source) {
 export function findRawLinkImports(files, read) {
   const bad = [];
   for (const file of files) {
-    read(file).split('\n').forEach((line, i) => {
-      if (/^\s*import\s+.*\bfrom\s+['"]next\/link['"]/.test(line)) {
-        bad.push(`${file}:${i + 1} — imports Link from 'next/link'; use '@/i18n/navigation' (ADR-010)`);
-      }
-    });
+    read(file)
+      .split('\n')
+      .forEach((line, i) => {
+        if (/^\s*import\s+.*\bfrom\s+['"]next\/link['"]/.test(line)) {
+          bad.push(
+            `${file}:${i + 1} — imports Link from 'next/link'; use '@/i18n/navigation' (ADR-010)`,
+          );
+        }
+      });
   }
   return bad;
 }
@@ -75,10 +81,14 @@ export function compare({ locales, usedKeys }) {
   for (const [locale, keys] of Object.entries(locales)) {
     if (locale === DEFAULT_LOCALE) continue;
     for (const k of base.filter((k) => !keys.includes(k))) {
-      problems.push(`${locale}: missing "${k}" — it will render as its own key name to a real user`);
+      problems.push(
+        `${locale}: missing "${k}" — it will render as its own key name to a real user`,
+      );
     }
     for (const k of keys.filter((k) => !base.includes(k))) {
-      problems.push(`${locale}: has "${k}", which ${DEFAULT_LOCALE} does not — a rename left behind`);
+      problems.push(
+        `${locale}: has "${k}", which ${DEFAULT_LOCALE} does not — a rename left behind`,
+      );
     }
   }
 
@@ -104,8 +114,12 @@ function walk(dir, out = []) {
 
 function main() {
   const locales = Object.fromEntries(
-    readdirSync(MESSAGES).filter((f) => f.endsWith('.json'))
-      .map((f) => [f.replace('.json', ''), flatten(JSON.parse(readFileSync(join(MESSAGES, f), 'utf8')))])
+    readdirSync(MESSAGES)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => [
+        f.replace('.json', ''),
+        flatten(JSON.parse(readFileSync(join(MESSAGES, f), 'utf8'))),
+      ]),
   );
   const files = walk(SRC);
   const usedKeys = [...new Set(files.flatMap((f) => extractUsedKeys(readFileSync(f, 'utf8'))))];
@@ -115,7 +129,9 @@ function main() {
   ];
 
   if (!problems.length) {
-    console.log(`locale: ok — ${Object.keys(locales).length} locale(s), ${locales[DEFAULT_LOCALE].length} keys, all used and all present`);
+    console.log(
+      `locale: ok — ${Object.keys(locales).length} locale(s), ${locales[DEFAULT_LOCALE].length} keys, all used and all present`,
+    );
     return;
   }
   console.error('locale: FAILED\n');

@@ -41,4 +41,4 @@ table is the one place to look when a customer says they paid and can't access a
 
 **Negative:** the local entitlement table can drift from Stripe if a webhook is missed. Mitigated by a
 scheduled reconciliation job that re-reads subscriptions and reports differences — and by treating an
-unreadable Stripe as *unknown*, never as *unentitled*, so an outage never locks paying customers out.
+unreadable Stripe as _unknown_, never as _unentitled_, so an outage never locks paying customers out.

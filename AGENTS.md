@@ -17,8 +17,8 @@ and lets the database refuse.
 The pattern this replaces, which is what every competing kit does:
 
 ```ts
-const row = await getById(id);                    // any tenant's row, by id alone
-if (row.teamId !== teamId) throw new Error(403);  // and now it is in memory
+const row = await getById(id); // any tenant's row, by id alone
+if (row.teamId !== teamId) throw new Error(403); // and now it is in memory
 ```
 
 Under RLS the row is never selected. There is no second step to forget.
@@ -38,16 +38,16 @@ with it, the document is wrong.
 restores the real defect and asserts the gate goes red — so a green run is evidence, not agreement.
 What it catches:
 
-| If you… | This says so |
-|---|---|
-| add a table and forget row-level security | `schema` |
-| write `with check (true)` because it compiles | `schema` |
+| If you…                                                | This says so                          |
+| ------------------------------------------------------ | ------------------------------------- |
+| add a table and forget row-level security              | `schema`                              |
+| write `with check (true)` because it compiles          | `schema`                              |
 | reach for the service-role client to make a query work | `boundaries` (walks the import graph) |
-| cache a tenant query | `boundaries` |
-| invent a translation key, or leave one unused | `locale` |
-| leave an unused export or dependency | `unused` |
-| claim something nothing implements | `promises` |
-| widen a permission | the `docs/ACCESS-MATRIX.md` diff |
+| cache a tenant query                                   | `boundaries`                          |
+| invent a translation key, or leave one unused          | `locale`                              |
+| leave an unused export or dependency                   | `unused`                              |
+| claim something nothing implements                     | `promises`                            |
+| widen a permission                                     | the `docs/ACCESS-MATRIX.md` diff      |
 
 If a gate fails, **read its message** — it names the file, the line, and the fix. If a gate seems
 wrong, it has been wrong before: say so rather than working around it.
@@ -70,13 +70,13 @@ in the change that broke it.
 
 ## Where the answers are
 
-| Question | File |
-|---|---|
-| What is keel for, and what is it deliberately not? | `docs/PRODUCT.md` |
-| Why is it built this way? | `docs/adr/` — eleven decisions, each with the rejected options |
-| What is true that we measured? | `docs/FINDINGS.md` — including our own mistakes |
-| What is built, and what is next? | `spec/README.md` |
-| What did we decide not to do yet? | `spec/DEFERRAL_REGISTRY.md` |
+| Question                                           | File                                                           |
+| -------------------------------------------------- | -------------------------------------------------------------- |
+| What is keel for, and what is it deliberately not? | `docs/PRODUCT.md`                                              |
+| Why is it built this way?                          | `docs/adr/` — eleven decisions, each with the rejected options |
+| What is true that we measured?                     | `docs/FINDINGS.md` — including our own mistakes                |
+| What is built, and what is next?                   | `spec/README.md`                                               |
+| What did we decide not to do yet?                  | `spec/DEFERRAL_REGISTRY.md`                                    |
 
 ## Before you author a spec
 
@@ -89,7 +89,7 @@ contested**, so the spec can ship the contested part honestly labelled rather th
 
 `research/05-SEO-2026.md` is the worked example. Written from memory it would have said "add FAQ
 schema for rich results" — a recommendation that has been wrong since 7 May 2026, when those results
-were removed. The memo also shows why the *opposite* conclusion is wrong: the markup still matters,
+were removed. The memo also shows why the _opposite_ conclusion is wrong: the markup still matters,
 for a different reason than it used to.
 
 ## Two habits that matter here

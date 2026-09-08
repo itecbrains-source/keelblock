@@ -15,22 +15,71 @@ import { spawnSync } from 'node:child_process';
 export const STEPS = [
   // Next generates route types (LayoutProps, PageProps) into .next/types. Without this, typecheck
   // fails on a clean checkout — a gate that cannot pass on a fresh clone is a broken gate.
-  { id: 'typegen',   why: 'route types are generated',              cmd: 'npx',  args: ['next', 'typegen'] },
-  { id: 'typecheck', why: 'types are sound',                        cmd: 'npx',  args: ['tsc', '--noEmit'] },
-  { id: 'lint',      why: 'no lint regressions',                    cmd: 'npx',  args: ['eslint', '.', '--max-warnings', '0'] },
+  { id: 'typegen', why: 'route types are generated', cmd: 'npx', args: ['next', 'typegen'] },
+  { id: 'typecheck', why: 'types are sound', cmd: 'npx', args: ['tsc', '--noEmit'] },
+  {
+    id: 'format',
+    why: 'one style, so review is about content',
+    cmd: 'npx',
+    args: ['prettier', '--check', '.'],
+  },
+  {
+    id: 'lint',
+    why: 'no lint regressions',
+    cmd: 'npx',
+    args: ['eslint', '.', '--max-warnings', '0'],
+  },
   // No --passWithNoTests: a suite that passes with zero tests is a check that cannot fail (F-13).
-  { id: 'unit',      why: 'pure logic is correct',                  cmd: 'npx',  args: ['vitest', 'run'] },
-  { id: 'locale',    why: 'translations are complete and all used',  cmd: 'node', args: ['scripts/check-locale.mjs'] },
-  { id: 'unused',    why: 'no dead code or unused dependencies',   cmd: 'npx', args: ['knip'] },
-  { id: 'freshness', why: 'nothing has quietly gone stale',       cmd: 'node', args: ['scripts/check-freshness.mjs'] },
-  { id: 'promises',  why: 'every claim is owned, researched, tracked', cmd: 'node', args: ['scripts/check-promises.mjs'] },
-  { id: 'boundaries', why: 'the app cannot route around RLS',        cmd: 'node', args: ['scripts/check-boundaries.mjs'] },
-  { id: 'schema',    why: 'every tenant table is protected',         cmd: 'node', args: ['scripts/check-schema-guard.mjs'], needsDb: true },
-  { id: 'policy',    why: 'the database enforces isolation',        cmd: 'node', args: ['scripts/check-policies.mjs'], needsDb: true },
+  { id: 'unit', why: 'pure logic is correct', cmd: 'npx', args: ['vitest', 'run'] },
+  {
+    id: 'locale',
+    why: 'translations are complete and all used',
+    cmd: 'node',
+    args: ['scripts/check-locale.mjs'],
+  },
+  { id: 'unused', why: 'no dead code or unused dependencies', cmd: 'npx', args: ['knip'] },
+  {
+    id: 'freshness',
+    why: 'nothing has quietly gone stale',
+    cmd: 'node',
+    args: ['scripts/check-freshness.mjs'],
+  },
+  {
+    id: 'promises',
+    why: 'every claim is owned, researched, tracked',
+    cmd: 'node',
+    args: ['scripts/check-promises.mjs'],
+  },
+  {
+    id: 'boundaries',
+    why: 'the app cannot route around RLS',
+    cmd: 'node',
+    args: ['scripts/check-boundaries.mjs'],
+  },
+  {
+    id: 'schema',
+    why: 'every tenant table is protected',
+    cmd: 'node',
+    args: ['scripts/check-schema-guard.mjs'],
+    needsDb: true,
+  },
+  {
+    id: 'policy',
+    why: 'the database enforces isolation',
+    cmd: 'node',
+    args: ['scripts/check-policies.mjs'],
+    needsDb: true,
+  },
   // One gate for every committed-and-derived artifact: the access matrix and the database types.
   // Kept as one because it is one promise -- nothing derived is stale -- and SPEC-003 sets nine gates
   // as a ceiling, not a floor.
-  { id: 'generated', why: 'no committed generated artifact is stale', cmd: 'node', args: ['scripts/check-generated.mjs', '--check'], needsDb: true },
+  {
+    id: 'generated',
+    why: 'no committed generated artifact is stale',
+    cmd: 'node',
+    args: ['scripts/check-generated.mjs', '--check'],
+    needsDb: true,
+  },
 ];
 
 /** Exit codes are a contract: 0 all green · 1 a gate failed · 2 the run could not be performed. */
@@ -57,7 +106,9 @@ export function summarize(results) {
     ok: failed.length === 0,
     failed: failed.map((f) => f.id),
     exit: failed.length === 0 ? EXIT.OK : EXIT.FAILED,
-    lines: results.map((r) => `  ${r.ok ? '✓' : '✗'} ${r.id.padEnd(pad)}  ${(r.ms / 1000).toFixed(1)}s  ${r.why}`),
+    lines: results.map(
+      (r) => `  ${r.ok ? '✓' : '✗'} ${r.id.padEnd(pad)}  ${(r.ms / 1000).toFixed(1)}s  ${r.why}`,
+    ),
   };
 }
 
@@ -66,8 +117,16 @@ export function summarize(results) {
  * their absence otherwise surfaces as an ENOENT stack trace three layers down.
  */
 export const REQUIRED_BINARIES = [
-  { bin: 'psql', why: 'the gates query the database directly', install: 'brew install libpq && brew link --force libpq' },
-  { bin: 'supabase', why: 'runs the local stack and the pgTAP suite', install: 'brew install supabase/tap/supabase' },
+  {
+    bin: 'psql',
+    why: 'the gates query the database directly',
+    install: 'brew install libpq && brew link --force libpq',
+  },
+  {
+    bin: 'supabase',
+    why: 'runs the local stack and the pgTAP suite',
+    install: 'brew install supabase/tap/supabase',
+  },
 ];
 
 /** Pure. Exported so "we name a missing prerequisite" is a tested claim, not a README promise. */
@@ -81,17 +140,19 @@ export function missingBinaries(required, has) {
  * database was in fact reachable — a false negative on the most important command in the repo.
  * A connection either opens or it does not, and that is the only thing these gates need.
  */
-function databaseReachable(url = process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres') {
+function databaseReachable(
+  url = process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres',
+) {
   return spawnSync('psql', [url, '-tAc', 'select 1'], { encoding: 'utf8' }).status === 0;
 }
 
 function main() {
   /**
- * Probe by running the binary, not by asking a shell. `spawnSync(..., { shell: true })` concatenates
- * arguments into a command string unescaped — Node warns about it, and it is a real injection seam
- * even when today's inputs are constants.
- */
-const has = (bin) => spawnSync(bin, ['--version'], { stdio: 'ignore' }).error?.code !== 'ENOENT';
+   * Probe by running the binary, not by asking a shell. `spawnSync(..., { shell: true })` concatenates
+   * arguments into a command string unescaped — Node warns about it, and it is a real injection seam
+   * even when today's inputs are constants.
+   */
+  const has = (bin) => spawnSync(bin, ['--version'], { stdio: 'ignore' }).error?.code !== 'ENOENT';
   const missing = missingBinaries(REQUIRED_BINARIES, has);
   if (missing.length) {
     console.error('\n  Missing prerequisites:\n');
@@ -120,7 +181,11 @@ const has = (bin) => spawnSync(bin, ['--version'], { stdio: 'ignore' }).error?.c
   const { ok, failed, exit, lines } = summarize(results);
   console.log('\n════ summary ════');
   for (const line of lines) console.log(line);
-  console.log(ok ? `\n  all ${results.length} green\n` : `\n  ${failed.length} failed: ${failed.join(', ')}\n`);
+  console.log(
+    ok
+      ? `\n  all ${results.length} green\n`
+      : `\n  ${failed.length} failed: ${failed.join(', ')}\n`,
+  );
   process.exit(exit);
 }
 

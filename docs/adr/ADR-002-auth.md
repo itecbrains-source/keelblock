@@ -22,21 +22,24 @@ Independent comparisons call this the strongest reason to choose it for B2B — 
 ## Options Considered
 
 ### Option A: Supabase Auth
-| Pros | Cons |
-|------|------|
-| `auth.uid()` works in policies with nothing in between | Organisations, members, invitations, RBAC are all keel's to build — a large share of v1 |
-| One vendor for auth + data + policies; local stack covers all of it | Tied to Supabase (which is already a stated premise, not a new cost) |
-| Magic link, OAuth, MFA already solved | |
+
+| Pros                                                                | Cons                                                                                    |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `auth.uid()` works in policies with nothing in between              | Organisations, members, invitations, RBAC are all keel's to build — a large share of v1 |
+| One vendor for auth + data + policies; local stack covers all of it | Tied to Supabase (which is already a stated premise, not a new cost)                    |
+| Magic link, OAuth, MFA already solved                               |                                                                                         |
 
 ### Option B: Better Auth
-| Pros | Cons |
-|------|------|
+
+| Pros                                                  | Cons                                                                                                            |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Organization plugin delivers a large slice of v1 free | Owns users in your Postgres and issues its own session — RLS integration is a bridge keel builds and must prove |
-| TypeScript-native, no vendor service | The bridge is exactly the surface where isolation quietly breaks, in the one area keel claims to be best at |
+| TypeScript-native, no vendor service                  | The bridge is exactly the surface where isolation quietly breaks, in the one area keel claims to be best at     |
 
 ### Option C: Supabase Auth behind a swap seam
-| Pros | Cons |
-|------|------|
+
+| Pros                        | Cons                                                                                          |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
 | Keeps Better Auth swappable | An unexercised seam rots; abstracting auth "just in case" reliably produces the worst of both |
 
 ## Decision

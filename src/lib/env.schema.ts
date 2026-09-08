@@ -45,11 +45,13 @@ const SECRET_SHAPED = /(SERVICE_ROLE|SECRET|PRIVATE_KEY|_TOKEN|PASSWORD|_DSN)/i;
 export function validateEnv(raw: Record<string, string | undefined>) {
   const problems: string[] = [];
 
-  const leaked = Object.keys(raw).filter((k) => k.startsWith('NEXT_PUBLIC_') && SECRET_SHAPED.test(k));
+  const leaked = Object.keys(raw).filter(
+    (k) => k.startsWith('NEXT_PUBLIC_') && SECRET_SHAPED.test(k),
+  );
   for (const k of leaked) {
     problems.push(
       `${k} looks like a credential and is prefixed NEXT_PUBLIC_, so it will be inlined into the ` +
-      `browser bundle and served to every visitor. Rename it without the prefix.`
+        `browser bundle and served to every visitor. Rename it without the prefix.`,
     );
   }
 
@@ -57,7 +59,8 @@ export function validateEnv(raw: Record<string, string | undefined>) {
   const client = clientSchema.safeParse(raw);
   for (const r of [server, client]) {
     if (!r.success) {
-      for (const issue of r.error.issues) problems.push(`${issue.path.join('.')}: ${issue.message}`);
+      for (const issue of r.error.issues)
+        problems.push(`${issue.path.join('.')}: ${issue.message}`);
     }
   }
 

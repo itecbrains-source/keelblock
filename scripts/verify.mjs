@@ -40,18 +40,39 @@ export const ACTION_HANDLERS = {
     const have = process.versions.node.split('.')[0];
     return want === have
       ? { state: 'asserted', detail: `local Node ${have} matches the pinned ${want}` }
-      : { state: 'failed', detail: `CI pins Node ${want}; this machine runs ${have}. Results will not match.` };
+      : {
+          state: 'failed',
+          detail: `CI pins Node ${want}; this machine runs ${have}. Results will not match.`,
+        };
   },
-  'actions/setup-python': () => has('python3')
-    ? { state: 'asserted', detail: 'python3 present' }
-    : { state: 'failed', detail: 'python3 missing — the policy prober cannot install' },
-  'supabase/setup-cli': () => has('supabase')
-    ? { state: 'asserted', detail: 'supabase CLI present' }
-    : { state: 'failed', detail: 'supabase CLI missing' },
-  'gitleaks/gitleaks-action': () => has('gitleaks')
-    // The real thing, over full history, exactly as CI does it.
-    ? { state: 'local', detail: 'scanning full history', cmd: ['gitleaks', 'detect', '--no-banner', '--redact'] }
-    : { state: 'skipped', detail: 'gitleaks not installed — `brew install gitleaks`' },
+  'actions/setup-python': () =>
+    has('python3')
+      ? { state: 'asserted', detail: 'python3 present' }
+      : { state: 'failed', detail: 'python3 missing — the policy prober cannot install' },
+  'supabase/setup-cli': () =>
+    has('supabase')
+      ? { state: 'asserted', detail: 'supabase CLI present' }
+      : { state: 'failed', detail: 'supabase CLI missing' },
+  // CodeQL needs the GitHub-hosted analysis runner; there is no laptop equivalent, so it reports
+  // NOT verified rather than being quietly skipped. That distinction is the whole point of this
+  // tool — a fidelity number that counts unrunnable steps as passing is a lie.
+  'github/codeql-action/init': () => ({
+    state: 'skipped',
+    detail: 'runs only on GitHub — NOT verified locally',
+  }),
+  'github/codeql-action/analyze': () => ({
+    state: 'skipped',
+    detail: 'runs only on GitHub — NOT verified locally',
+  }),
+  'gitleaks/gitleaks-action': () =>
+    has('gitleaks')
+      ? // The real thing, over full history, exactly as CI does it.
+        {
+          state: 'local',
+          detail: 'scanning full history',
+          cmd: ['gitleaks', 'detect', '--no-banner', '--redact'],
+        }
+      : { state: 'skipped', detail: 'gitleaks not installed — `brew install gitleaks`' },
   'actions/upload-artifact': (step) => {
     const path = String(step.with?.path ?? '').trim();
     return existsSync(path)
@@ -64,7 +85,13 @@ export const ACTION_HANDLERS = {
 export function planStep(step, { full = false, handlers = ACTION_HANDLERS } = {}) {
   if (typeof step.run === 'string') {
     const heavy = HEAVY.find((h) => h.match.test(step.run.trim()));
-    if (heavy && !full) return { kind: 'run', state: 'skipped', label: step.run, detail: `${heavy.why} — use --full` };
+    if (heavy && !full)
+      return {
+        kind: 'run',
+        state: 'skipped',
+        label: step.run,
+        detail: `${heavy.why} — use --full`,
+      };
     return { kind: 'run', state: 'ran', label: step.run, cmd: ['bash', '-lc', step.run] };
   }
   const uses = String(step.uses ?? '');
@@ -72,7 +99,12 @@ export function planStep(step, { full = false, handlers = ACTION_HANDLERS } = {}
   const handler = handlers[key];
   if (!handler) {
     // Never silently ignored: an unknown action is reported so the fidelity claim stays true.
-    return { kind: 'uses', state: 'skipped', label: uses, detail: 'no local equivalent — NOT verified' };
+    return {
+      kind: 'uses',
+      state: 'skipped',
+      label: uses,
+      detail: 'no local equivalent — NOT verified',
+    };
   }
   return { kind: 'uses', label: uses, ...handler(step) };
 }
@@ -83,7 +115,12 @@ export function summarize(results) {
   const failed = by('failed');
   return {
     ok: failed.length === 0,
-    counts: { ran: by('ran').length, local: by('local').length, asserted: by('asserted').length, skipped: by('skipped').length },
+    counts: {
+      ran: by('ran').length,
+      local: by('local').length,
+      asserted: by('asserted').length,
+      skipped: by('skipped').length,
+    },
     failed: failed.map((f) => f.label),
     // The fidelity claim: what fraction of CI was genuinely executed rather than inferred.
     fidelity: results.length ? (by('ran').length + by('local').length) / results.length : 0,
@@ -121,9 +158,14 @@ function main() {
   console.log(`\n  fidelity: ${Math.round(fidelity * 100)}% of steps genuinely executed`);
   if (counts.skipped) {
     console.log('\n  not verified here:');
-    for (const r of results.filter((x) => x.state === 'skipped')) console.log(`    ⊘ ${r.label.split('\n')[0]} — ${r.detail}`);
+    for (const r of results.filter((x) => x.state === 'skipped'))
+      console.log(`    ⊘ ${r.label.split('\n')[0]} — ${r.detail}`);
   }
-  console.log(ok ? '\n  no failures\n' : `\n  ${failed.length} failed: ${failed.map((f) => f.split('\n')[0]).join(', ')}\n`);
+  console.log(
+    ok
+      ? '\n  no failures\n'
+      : `\n  ${failed.length} failed: ${failed.map((f) => f.split('\n')[0]).join(', ')}\n`,
+  );
   if (!FULL) console.log('  `npm run verify -- --full` also runs the heavy steps.\n');
   process.exit(ok ? 0 : 1);
 }

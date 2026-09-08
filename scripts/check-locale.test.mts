@@ -5,15 +5,20 @@ const base = ['home.title', 'home.tagline', 'error.retry'];
 
 describe('locale gate', () => {
   it('flattens nested messages into dotted keys', () => {
-    expect(flatten({ home: { title: 'x', nested: { deep: 'y' } }, flat: 'z' }))
-      .toEqual(['home.title', 'home.nested.deep', 'flat']);
+    expect(flatten({ home: { title: 'x', nested: { deep: 'y' } }, flat: 'z' })).toEqual([
+      'home.title',
+      'home.nested.deep',
+      'flat',
+    ]);
   });
 
   it('composes namespace and key from real usage', () => {
-    expect(extractUsedKeys(`const t = useTranslations('home'); return <h1>{t('title')}</h1>;`))
-      .toEqual(['home.title']);
-    expect(extractUsedKeys(`const t = await getTranslations("error"); t('retry');`))
-      .toEqual(['error.retry']);
+    expect(
+      extractUsedKeys(`const t = useTranslations('home'); return <h1>{t('title')}</h1>;`),
+    ).toEqual(['home.title']);
+    expect(extractUsedKeys(`const t = await getTranslations("error"); t('retry');`)).toEqual([
+      'error.retry',
+    ]);
   });
 
   it('treats a call with no declared namespace as already qualified', () => {
@@ -50,7 +55,9 @@ describe('locale gate', () => {
   });
 
   it('MUTATION: a missing default locale is fatal, not a shrug', () => {
-    expect(compare({ locales: { fr: base }, usedKeys: base }).join()).toMatch(/default locale must exist/);
+    expect(compare({ locales: { fr: base }, usedKeys: base }).join()).toMatch(
+      /default locale must exist/,
+    );
   });
 
   it("MUTATION: importing Link from 'next/link' is caught", () => {
@@ -61,18 +68,26 @@ describe('locale gate', () => {
     expect(bad[0]).toMatch(/@\/i18n\/navigation/);
   });
 
-  it("the locale-aware import is allowed", () => {
-    expect(findRawLinkImports(['a.tsx'], () => "import { Link } from '@/i18n/navigation';")).toEqual([]);
+  it('the locale-aware import is allowed', () => {
+    expect(
+      findRawLinkImports(['a.tsx'], () => "import { Link } from '@/i18n/navigation';"),
+    ).toEqual([]);
   });
 
-  it("a mention in a comment is not an import", () => {
+  it('a mention in a comment is not an import', () => {
     expect(findRawLinkImports(['a.tsx'], () => "// never import from 'next/link'")).toEqual([]);
   });
 
   it('the real repository passes all three rules', async () => {
     const { readFileSync, readdirSync } = await import('node:fs');
-    const locales = Object.fromEntries(readdirSync('messages').filter((f) => f.endsWith('.json'))
-      .map((f) => [f.replace('.json', ''), flatten(JSON.parse(readFileSync(`messages/${f}`, 'utf8')))]));
+    const locales = Object.fromEntries(
+      readdirSync('messages')
+        .filter((f) => f.endsWith('.json'))
+        .map((f) => [
+          f.replace('.json', ''),
+          flatten(JSON.parse(readFileSync(`messages/${f}`, 'utf8'))),
+        ]),
+    );
     expect(Object.keys(locales)).toContain('en');
     expect(locales.en.length).toBeGreaterThan(0);
   });

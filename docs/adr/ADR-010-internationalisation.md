@@ -10,7 +10,7 @@ category error**, and it is the reason this ADR exists rather than a quiet edit.
 An admin panel is **additive**: bolt it on in month nine and nothing existing changes. i18n is
 **pervasive**. next-intl's own setup instructions say it plainly:
 
-> *"You'll move all existing layouts and pages into the `[locale]` segment."*
+> _"You'll move all existing layouts and pages into the `[locale]` segment."_
 
 Every route moves. Every internal `<Link>` becomes locale-aware. Every rendered string goes through a
 lookup. **The retrofit cost scales with the number of screens** — and keel has one page today. This
@@ -22,27 +22,30 @@ Two of the three serious kits in the field (Supastarter, BoxyHQ) treat i18n as t
 
 - The expensive-to-reverse part is the **route structure**, not the strings; strings can be extracted
   mechanically, moving every route and link cannot.
-- keel's thesis is doing the expensive things right up front. i18n is expensive *precisely because*
+- keel's thesis is doing the expensive things right up front. i18n is expensive _precisely because_
   it is normally retrofitted.
 - The stated non-goal about bloat still stands: keel should not ship five locales nobody asked for.
 
 ## Options Considered
 
 ### Option A: keep it a non-goal
-| Pros | Cons |
-|------|------|
+
+| Pros                                        | Cons                                                                                                                                   |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Nothing to learn, no `t()` in any component | The retrofit lands on whoever has 40 screens, and is invasive rather than additive — the exact "should have done it at the start" item |
 
 ### Option B: ship a `[locale]` segment with no library
-| Pros | Cons |
-|------|------|
+
+| Pros                               | Cons                                                                                                                                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | Structural benefit, near-zero cost | A segment that does nothing is a speculative abstraction, and an unexercised seam rots — the argument ADR-002 used to reject an auth seam |
 
 ### Option C: ship next-intl with one locale
-| Pros | Cons |
-|------|------|
+
+| Pros                                                           | Cons                                                                           |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | It actually works, so the seam is exercised on every page load | Every user-facing string goes through `t()` — a real, permanent ergonomic cost |
-| Adding a language becomes one message file and one array entry | One dependency |
+| Adding a language becomes one message file and one array entry | One dependency                                                                 |
 
 ## Decision
 

@@ -14,8 +14,8 @@ commit.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe. MIT.
 
 Every comparison of SaaS starters reaches the same conclusion, in their words:
 
-> *"Multi-tenancy, enterprise auth, and audit-grade security are not what these tools produce out of
-> the box — they produce a starting point, not a production enterprise system."*
+> _"Multi-tenancy, enterprise auth, and audit-grade security are not what these tools produce out of
+> the box — they produce a starting point, not a production enterprise system."_
 
 The field is priced $199–$1,499 and closed. The free options are a deliberately minimal reference
 kit that uses neither Supabase nor RLS, and one that is three Next majors behind. **None of them —
@@ -27,7 +27,7 @@ keel is the one that does, and it is free.
 
 Isolation is proven per table × command × identity, and the result is published as
 **[`docs/ACCESS-MATRIX.md`](docs/ACCESS-MATRIX.md)** — generated from the live policy catalog by
-probing the database as each identity, so it describes what the database *does*, not what anyone
+probing the database as each identity, so it describes what the database _does_, not what anyone
 believes it does. It is regenerated on every run and a stale copy fails the build, so a policy change
 that alters who can reach what shows up as a diff in review.
 
@@ -36,12 +36,12 @@ reaches a user.**
 
 Four test layers, each answering a different question:
 
-| Layer | Question | How |
-|---|---|---|
-| Unit | is this pure logic correct? | Vitest, with a mutation proof per gate |
+| Layer            | Question                                                 | How                                         |
+| ---------------- | -------------------------------------------------------- | ------------------------------------------- |
+| Unit             | is this pure logic correct?                              | Vitest, with a mutation proof per gate      |
 | Generated policy | does the database enforce what the policies **declare**? | `rlsautotest` → pgTAP, regenerated each run |
-| **Intent** | are the policies **what we meant**? | hand-written, adversarial pgTAP |
-| Journey | does the real authenticated flow work? | Playwright *(with auth, SPEC-004)* |
+| **Intent**       | are the policies **what we meant**?                      | hand-written, adversarial pgTAP             |
+| Journey          | does the real authenticated flow work?                   | Playwright _(with auth, SPEC-004)_          |
 
 The middle two are not redundant, and we measured why: a helper that dropped its `user_id` check
 produced a **total cross-tenant leak that the generated suite reported as clean** — because it mocks
@@ -78,7 +78,7 @@ with permanent maintenance.
 
 The last three in that list are the interesting ones. The field delegates audit logs, webhooks and
 SSO to third-party services — a buyer gets integration code and three vendor bills, and the audit
-trail lives *outside* the isolation boundary the product claims. keel builds the three that are
+trail lives _outside_ the isolation boundary the product claims. keel builds the three that are
 **tenant-isolation surfaces** natively and proves them; delivery infrastructure stays a seam.
 
 ## Starting a session
@@ -196,8 +196,8 @@ them to every visitor ([F-17](docs/FINDINGS.md)).
 
 The `[locale]` route segment ships from the first commit, with **one locale**. Not because keel needs
 five languages, but because i18n is the one concern that cannot be added later without touching
-everything: next-intl's own instructions are *"move all existing layouts and pages into the `[locale]`
-segment."* That cost scales with your screen count, so it is paid here at one page.
+everything: next-intl's own instructions are _"move all existing layouts and pages into the `[locale]`
+segment."_ That cost scales with your screen count, so it is paid here at one page.
 
 Adding a language is a message file and one array entry. A gate fails the build on a missing key, a
 misspelled `t('key')`, or a key nobody uses — all three of which otherwise fail silently, in a
@@ -207,31 +207,31 @@ language nobody on your team reads. See [ADR-010](docs/adr/ADR-010-international
 
 Deliberately not three names for one job — the cost of a wrong answer rises sharply down the list:
 
-| Command | Question | A wrong answer costs |
-|---|---|---|
-| `npm run check` | is this code correct? | a red build |
-| `npm run verify` | will CI pass? | a round trip, and real CI minutes on a private repo |
-| `npm run preflight` | **is this safe to release?** | **an outage, or a tenant leak in production** |
+| Command             | Question                     | A wrong answer costs                                |
+| ------------------- | ---------------------------- | --------------------------------------------------- |
+| `npm run check`     | is this code correct?        | a red build                                         |
+| `npm run verify`    | will CI pass?                | a round trip, and real CI minutes on a private repo |
+| `npm run preflight` | **is this safe to release?** | **an outage, or a tenant leak in production**       |
 
 The third matters most to a team shipping a commercial product on a private repo, and it is the one
-no starter ships: *is this migration safe with the old code still running · has the target's schema
+no starter ships: _is this migration safe with the old code still running · has the target's schema
 drifted from the repository, in either direction · does the access matrix in production still match
-the committed one · are the required secrets actually set.* Specified in
+the committed one · are the required secrets actually set._ Specified in
 [SPEC-016](spec/SPEC-016-release-preflight.md) — **not yet built.**
 
 ## How it is built
 
-| Decision | Where |
-|---|---|
-| `organization` as the tenant root; membership as the boundary | [ADR-001](docs/adr/ADR-001-tenancy-model.md) |
-| Supabase Auth, so policies key off `auth.uid()` with no bridge | [ADR-002](docs/adr/ADR-002-auth.md) |
-| `supabase-js` for queries, hand-written SQL for policies | [ADR-003](docs/adr/ADR-003-data-access.md) |
-| Cache Components, tenant-scoped keys | [ADR-004](docs/adr/ADR-004-rendering-and-cache.md) |
-| Four test layers; the generated suite cannot judge intent | [ADR-005](docs/adr/ADR-005-testing.md) |
-| Stripe bills, the database entitles | [ADR-006](docs/adr/ADR-006-billing.md) |
-| Freshness gate — staleness fails the build | [ADR-007](docs/adr/ADR-007-supply-chain-and-freshness.md) |
-| Upgradability — a security fix must be able to reach you | [ADR-008](docs/adr/ADR-008-upgradability.md) |
-| Open core — proof is free, audit evidence is paid | [ADR-009](docs/adr/ADR-009-open-core-boundary.md) |
+| Decision                                                       | Where                                                     |
+| -------------------------------------------------------------- | --------------------------------------------------------- |
+| `organization` as the tenant root; membership as the boundary  | [ADR-001](docs/adr/ADR-001-tenancy-model.md)              |
+| Supabase Auth, so policies key off `auth.uid()` with no bridge | [ADR-002](docs/adr/ADR-002-auth.md)                       |
+| `supabase-js` for queries, hand-written SQL for policies       | [ADR-003](docs/adr/ADR-003-data-access.md)                |
+| Cache Components, tenant-scoped keys                           | [ADR-004](docs/adr/ADR-004-rendering-and-cache.md)        |
+| Four test layers; the generated suite cannot judge intent      | [ADR-005](docs/adr/ADR-005-testing.md)                    |
+| Stripe bills, the database entitles                            | [ADR-006](docs/adr/ADR-006-billing.md)                    |
+| Freshness gate — staleness fails the build                     | [ADR-007](docs/adr/ADR-007-supply-chain-and-freshness.md) |
+| Upgradability — a security fix must be able to reach you       | [ADR-008](docs/adr/ADR-008-upgradability.md)              |
+| Open core — proof is free, audit evidence is paid              | [ADR-009](docs/adr/ADR-009-open-core-boundary.md)         |
 
 Scope, non-goals and the ten acceptance bars: [`docs/PRODUCT.md`](docs/PRODUCT.md).
 

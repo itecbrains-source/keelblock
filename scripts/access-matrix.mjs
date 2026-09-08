@@ -18,7 +18,11 @@ const CMDS = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
 /** Ordered least-privileged first, so the eye lands on `anon` before `service_role`. */
 const IDENTITIES = [
   ['anon', 'Unauthenticated', 'a visitor with only the publishable key'],
-  ['other', 'Authenticated · different organisation', '**the row that matters** — a real user of another tenant'],
+  [
+    'other',
+    'Authenticated · different organisation',
+    '**the row that matters** — a real user of another tenant',
+  ],
   ['authorized', 'Authenticated · member', 'a member of the organisation that owns the row'],
   ['service_role', 'Service role', 'bypasses RLS by design; server-only, never in a browser'],
 ];
@@ -33,7 +37,7 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   L.push('> Derived from the live policy catalog by probing each table as each identity, so it');
   L.push('> describes what the database *does*, not what anyone believes it does.');
   L.push('');
-  L.push('Legend: `✓` permitted · `·` denied · `⚠` **behaviour differs from the policy\'s intent**');
+  L.push("Legend: `✓` permitted · `·` denied · `⚠` **behaviour differs from the policy's intent**");
   L.push('');
   for (const [, label, note] of IDENTITIES) L.push(`- **${label}** — ${note}`);
   L.push('');
@@ -42,8 +46,12 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   for (const t of tables) {
     L.push(`## \`${t.table}\``);
     L.push('');
-    L.push(`Row-level security: **${t.rls_enabled ? 'enabled' : '⚠ DISABLED'}**` +
-      (t.policied?.length ? ` · policies for ${[...t.policied].sort().join(', ')}` : ' · **no policies**'));
+    L.push(
+      `Row-level security: **${t.rls_enabled ? 'enabled' : '⚠ DISABLED'}**` +
+        (t.policied?.length
+          ? ` · policies for ${[...t.policied].sort().join(', ')}`
+          : ' · **no policies**'),
+    );
     L.push('');
     L.push('| Identity | ' + CMDS.join(' | ') + ' |');
     L.push('|---|' + CMDS.map(() => '---').join('|') + '|');
@@ -51,7 +59,10 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
       const cells = CMDS.map((c) => {
         const g = t.idgrid?.[c]?.[key];
         if (!g) return '–';
-        if (g.pass === false) { anomalies++; return `⚠ ${g.exp ? 'blocked but should be allowed' : '**REACHABLE**'}`; }
+        if (g.pass === false) {
+          anomalies++;
+          return `⚠ ${g.exp ? 'blocked but should be allowed' : '**REACHABLE**'}`;
+        }
         return g.exp ? '✓' : '·';
       });
       L.push(`| ${label} | ${cells.join(' | ')} |`);
@@ -62,7 +73,9 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   const bypass = report.bypass_surfaces ?? [];
   L.push('## Bypass surfaces');
   L.push('');
-  L.push('Objects and roles that can sidestep RLS **even when every policy above is correct.** Listed');
+  L.push(
+    'Objects and roles that can sidestep RLS **even when every policy above is correct.** Listed',
+  );
   L.push('for review, not as failures — each is either sanctioned or a finding.');
   L.push('');
   if (!bypass.length) {
@@ -70,36 +83,51 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   } else {
     L.push('| Severity | Object | Why it is listed |');
     L.push('|---|---|---|');
-    for (const b of [...bypass].sort((a, b2) => String(a.object).localeCompare(String(b2.object)))) {
-      const why = String(b.reason ?? b.detail ?? b.why ?? '').replace(/\s+/g, ' ').trim();
+    for (const b of [...bypass].sort((a, b2) =>
+      String(a.object).localeCompare(String(b2.object)),
+    )) {
+      const why = String(b.reason ?? b.detail ?? b.why ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
       L.push(`| ${b.severity ?? '—'} | \`${b.object ?? '—'}\` | ${why} |`);
     }
   }
   L.push('');
   L.push('---');
   L.push('');
-  L.push(anomalies === 0
-    ? '**No anomalies.** Every identity reached exactly what its policies intend, on every table and command.'
-    : `**⚠ ${anomalies} anomal${anomalies === 1 ? 'y' : 'ies'}** — behaviour differs from intent. Each is a defect until explained.`);
+  L.push(
+    anomalies === 0
+      ? '**No anomalies.** Every identity reached exactly what its policies intend, on every table and command.'
+      : `**⚠ ${anomalies} anomal${anomalies === 1 ? 'y' : 'ies'}** — behaviour differs from intent. Each is a defect until explained.`,
+  );
   L.push('');
   return L.join('\n');
 }
 
 function main() {
   const check = process.argv.includes('--check');
-  const dbUrl = process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
+  const dbUrl =
+    process.env.KEEL_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
   const tmp = join(process.cwd(), '.rls-report.json');
 
   try {
     // Not piped: a gate whose exit status is swallowed by a pipe is a check that cannot fail.
-    execFileSync('./.venv/bin/rlsautotest',
+    execFileSync(
+      './.venv/bin/rlsautotest',
       // `--report-json` only writes when `--report` is also passed; stdout is discarded.
       ['--db-url', dbUrl, '--supabase', '--report', '--report-json', tmp, '--no-fail'],
-      { stdio: ['ignore', 'ignore', 'pipe'] });
+      { stdio: ['ignore', 'ignore', 'pipe'] },
+    );
   } catch (err) {
     console.error('access-matrix: could not probe the database.');
     console.error('  Is the local stack running? `supabase start`');
-    console.error(String(err.stderr ?? err.message).trim().split('\n').slice(-3).join('\n'));
+    console.error(
+      String(err.stderr ?? err.message)
+        .trim()
+        .split('\n')
+        .slice(-3)
+        .join('\n'),
+    );
     process.exit(2);
   }
 
@@ -112,9 +140,14 @@ function main() {
     return;
   }
   const committed = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
-  if (committed === rendered) { console.log('access-matrix: up to date'); return; }
+  if (committed === rendered) {
+    console.log('access-matrix: up to date');
+    return;
+  }
   console.error(`access-matrix: ${OUT} is STALE.\n`);
-  console.error('The policies no longer match the committed matrix. Regenerate it and read the diff —');
+  console.error(
+    'The policies no longer match the committed matrix. Regenerate it and read the diff —',
+  );
   console.error('a new ✓ in the "different organisation" column is a tenant leak.\n');
   console.error('  npm run access-matrix');
   process.exit(1);

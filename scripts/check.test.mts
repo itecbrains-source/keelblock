@@ -22,7 +22,12 @@ describe('check runner', () => {
 
   it('MUTATION: every failure is reported, not just the first', () => {
     // The behaviour the runner exists for: a developer fixes all three in one pass.
-    const s = summarize([r('typecheck', false), r('lint', false), r('unit', true), r('matrix', false)]);
+    const s = summarize([
+      r('typecheck', false),
+      r('lint', false),
+      r('unit', true),
+      r('matrix', false),
+    ]);
     expect(s.failed).toEqual(['typecheck', 'lint', 'matrix']);
     expect(s.lines.filter((l: string) => l.includes('✗'))).toHaveLength(3);
   });
@@ -74,11 +79,18 @@ describe('check runner', () => {
     // An exemption with no recorded reason is how dead code becomes permanent while looking supervised.
     const cfg = JSON.parse(readFileSync('knip.json', 'utf8'));
     const reasons = readFileSync('knip.reasons.md', 'utf8');
-    const exemptions = [...(cfg.ignore ?? []), ...(cfg.ignoreDependencies ?? []), ...(cfg.ignoreBinaries ?? [])];
+    const exemptions = [
+      ...(cfg.ignore ?? []),
+      ...(cfg.ignoreDependencies ?? []),
+      ...(cfg.ignoreBinaries ?? []),
+    ];
     for (const e of exemptions) {
-      expect(reasons, `${e} is exempted in knip.json but not justified in knip.reasons.md`).toContain(e);
+      expect(
+        reasons,
+        `${e} is exempted in knip.json but not justified in knip.reasons.md`,
+      ).toContain(e);
     }
-    expect(exemptions.length).toBeLessThanOrEqual(13);   // shrink-only ratchet
+    expect(exemptions.length).toBeLessThanOrEqual(13); // shrink-only ratchet
   });
 
   it('the isolation gates are marked as needing the database', () => {

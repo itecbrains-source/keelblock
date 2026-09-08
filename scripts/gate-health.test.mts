@@ -23,7 +23,10 @@ describe('gate health (the suite is dependable)', () => {
 
   it.each(GATES)('%s has a test file', (gate) => {
     const test = gate.replace('.mjs', '.test.mts');
-    expect(existsSync(`scripts/${test}`), `scripts/${test} is missing — an untested gate is unproven`).toBe(true);
+    expect(
+      existsSync(`scripts/${test}`),
+      `scripts/${test} is missing — an untested gate is unproven`,
+    ).toBe(true);
   });
 
   it.each(GATES)('%s has been shown to FAIL, not just to pass', (gate) => {
@@ -34,15 +37,21 @@ describe('gate health (the suite is dependable)', () => {
 
   it.each(GATES)('%s exports pure logic that can be tested without running it', (gate) => {
     const src = readFileSync(`scripts/${gate}`, 'utf8');
-    expect(/^export (function|const)/m.test(src), `${gate} exports nothing — its rules cannot be tested in isolation`).toBe(true);
+    expect(
+      /^export (function|const)/m.test(src),
+      `${gate} exports nothing — its rules cannot be tested in isolation`,
+    ).toBe(true);
   });
 
-  it.each(GATES)('%s only runs main() when invoked directly, so importing it is side-effect free', (gate) => {
-    // Without this guard, importing a gate in a test would execute it — and a test suite that
-    // silently runs every gate as a side effect is neither fast nor debuggable.
-    const src = readFileSync(`scripts/${gate}`, 'utf8');
-    expect(src).toMatch(/import\.meta\.url === `file:\/\/\$\{process\.argv\[1\]\}`/);
-  });
+  it.each(GATES)(
+    '%s only runs main() when invoked directly, so importing it is side-effect free',
+    (gate) => {
+      // Without this guard, importing a gate in a test would execute it — and a test suite that
+      // silently runs every gate as a side effect is neither fast nor debuggable.
+      const src = readFileSync(`scripts/${gate}`, 'utf8');
+      expect(src).toMatch(/import\.meta\.url === `file:\/\/\$\{process\.argv\[1\]\}`/);
+    },
+  );
 
   /**
    * Two exclusion lists, both named with reasons rather than quietly skipped:
@@ -64,14 +73,23 @@ describe('gate health (the suite is dependable)', () => {
    * Their determinism is covered where it belongs: `check` runs them against the live database and
    * fails loudly if they disagree with reality.
    */
-  const EXTERNAL = ['check-freshness.mjs', 'check-policies.mjs', 'check-generated.mjs', 'check-schema-guard.mjs'];
+  const EXTERNAL = [
+    'check-freshness.mjs',
+    'check-policies.mjs',
+    'check-generated.mjs',
+    'check-schema-guard.mjs',
+  ];
 
   it('every self-contained gate reaches the same verdict, and prints the same thing, twice', () => {
     const local = GATES.filter((g) => !EXTERNAL.includes(g));
-    expect(local.length, 'nothing left to check — the exclusion list has eaten the test').toBeGreaterThanOrEqual(5);
+    expect(
+      local.length,
+      'nothing left to check — the exclusion list has eaten the test',
+    ).toBeGreaterThanOrEqual(5);
     for (const gate of local) {
       const run = () => spawnSync('node', [`scripts/${gate}`], { encoding: 'utf8' });
-      const a = run(), b = run();
+      const a = run(),
+        b = run();
       expect(a.status, `${gate} gave different verdicts on identical input`).toBe(b.status);
       expect(a.stdout, `${gate} produced different output on identical input`).toBe(b.stdout);
     }
@@ -86,10 +104,12 @@ describe('gate health (the suite is dependable)', () => {
   it('a gate that cannot run reports it, rather than crashing with a stack trace', () => {
     // Exit 2 means "could not run"; exit 1 means "found a problem". Conflating them sends a reader
     // to debug their code when the real problem is a missing dependency (F-19).
-    const r = spawnSync('node', ['scripts/check-schema-guard.mjs'],
-      { encoding: 'utf8', env: { ...process.env, KEEL_DB_URL: 'postgresql://nobody@127.0.0.1:1/none' } });
+    const r = spawnSync('node', ['scripts/check-schema-guard.mjs'], {
+      encoding: 'utf8',
+      env: { ...process.env, KEEL_DB_URL: 'postgresql://nobody@127.0.0.1:1/none' },
+    });
     expect(r.status).toBe(2);
-    expect(r.stderr).not.toMatch(/at Object\.|at Module\./);   // no raw stack trace
+    expect(r.stderr).not.toMatch(/at Object\.|at Module\./); // no raw stack trace
     expect(r.stderr.toLowerCase()).toMatch(/could not reach|is not running/);
   }, 30_000);
 });

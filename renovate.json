@@ -1,0 +1,36 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "timezone": "Etc/UTC",
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "description": "Group the framework so Next and React move together — they are not independently upgradable in practice.",
+      "matchPackageNames": [
+        "next",
+        "react",
+        "react-dom",
+        "@types/react",
+        "@types/react-dom",
+        "eslint-config-next"
+      ],
+      "groupName": "framework"
+    },
+    {
+      "description": "Patch and minor updates to devDependencies are noise individually and signal in aggregate.",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "groupName": "dev dependencies",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "A major bump needs the freshness stamp moved deliberately, so it never merges on its own.",
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["needs-freshness-stamp"],
+      "automerge": false
+    }
+  ],
+  "vulnerabilityAlerts": { "labels": ["security"], "automerge": false },
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 6am on monday"] }
+}

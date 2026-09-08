@@ -4,8 +4,8 @@
 
 ## Context
 
-Two separable questions get conflated into "which ORM": *how the app reads data* and *how schema and
-policies are authored*. They have different right answers, and the first one decides whether RLS is
+Two separable questions get conflated into "which ORM": _how the app reads data_ and _how schema and
+policies are authored_. They have different right answers, and the first one decides whether RLS is
 enforced at all.
 
 A client on a **direct Postgres connection** connects as a privileged role and **bypasses RLS unless
@@ -14,7 +14,7 @@ starter whose claim is database-enforced isolation cannot have its default query
 silently sidesteps the enforcement.
 
 Drizzle can now declare RLS policies in TypeScript with Supabase-specific roles and generate the
-migrations — which removes the *capability* objection but raises an *authority* one.
+migrations — which removes the _capability_ objection but raises an _authority_ one.
 
 ## Decision Drivers
 
@@ -26,21 +26,24 @@ migrations — which removes the *capability* objection but raises an *authority
 ## Options Considered
 
 ### Option A: `supabase-js` + hand-written SQL migrations
-| Pros | Cons |
-|------|------|
-| Queries carry the user's JWT — RLS applies by construction | More verbose than an ORM query builder |
-| Policies are reviewed as the exact SQL that runs | Types come from generation, not inference |
-| One source of truth: the migration files | |
+
+| Pros                                                       | Cons                                      |
+| ---------------------------------------------------------- | ----------------------------------------- |
+| Queries carry the user's JWT — RLS applies by construction | More verbose than an ORM query builder    |
+| Policies are reviewed as the exact SQL that runs           | Types come from generation, not inference |
+| One source of truth: the migration files                   |                                           |
 
 ### Option B: Drizzle for queries + Drizzle-declared policies
-| Pros | Cons |
-|------|------|
+
+| Pros                                                   | Cons                                                                                          |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
 | One TypeScript source for schema, policies and queries | The reviewed artifact becomes generated SQL — a diff in a security boundary you did not write |
-| Excellent inferred types | Direct-connection default bypasses RLS unless configured; the failure is silent |
+| Excellent inferred types                               | Direct-connection default bypasses RLS unless configured; the failure is silent               |
 
 ### Option C: Hybrid — Drizzle for queries, SQL for policies
-| Pros | Cons |
-|------|------|
+
+| Pros                                  | Cons                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Ergonomic queries, auditable policies | Two schema sources that must be kept in step; drift between them is a silent isolation bug |
 
 ## Decision

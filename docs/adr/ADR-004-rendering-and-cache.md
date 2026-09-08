@@ -8,8 +8,8 @@ Next.js 16 replaces implicit App Router caching with **Cache Components**: every
 request unless explicitly marked `use cache`, paired with tag-based invalidation and PPR. Guidance is
 to establish a central cache-tag registry early.
 
-For a multi-tenant product this is not a performance topic, it is a **security** one. *A cached value
-whose key omits the tenant is a cross-tenant data leak that RLS cannot prevent* — the response is
+For a multi-tenant product this is not a performance topic, it is a **security** one. _A cached value
+whose key omits the tenant is a cross-tenant data leak that RLS cannot prevent_ — the response is
 served from cache and never reaches the database, so every policy keel is proud of is bypassed. This
 is the one way to leak data that the entire B-2 apparatus would confirm as green.
 
@@ -29,7 +29,7 @@ Cache Components is not free: it forces a decision on **every authenticated rout
 
 - **`<Suspense>` around the tenant read is the default.** It builds, and the route becomes partially
   prerendered — static shell, streamed tenant data. A **standard authenticated page shell with a real
-  fallback is therefore an architectural default**, not a style choice, and it makes *loading* a state
+  fallback is therefore an architectural default**, not a style choice, and it makes _loading_ a state
   the framework forces you to design rather than an afterthought.
 - `export const instant = false` is acceptable where nothing meaningful can be prerendered.
 - **`"use cache"` over a session-dependent read is refused by Next itself** — `cookies()` inside a cache

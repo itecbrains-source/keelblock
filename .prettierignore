@@ -1,0 +1,9 @@
+# Generated. Formatting these fights the tool that writes them, and the diff comes back next build.
+.next
+node_modules
+.venv
+next-env.d.ts
+src/lib/db/database.types.ts
+docs/ACCESS-MATRIX.md
+supabase/tests/rls
+package-lock.json

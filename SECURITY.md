@@ -21,7 +21,7 @@ In rough order of severity:
    claim; a hole in it is critical even if it needs unusual conditions.
 2. **Privilege escalation** — a member gaining rights they were not granted.
 3. **A gate that cannot fail** — a check that reports green while the defect it exists to catch is
-   present. This is a vulnerability in the *evidence*, and evidence is what keel sells.
+   present. This is a vulnerability in the _evidence_, and evidence is what keel sells.
 4. Anything reaching a secret, or a service-role client reachable from a rendered page.
 
 ## What we will do
@@ -36,5 +36,5 @@ ones we caused ourselves. A project claiming rigour that publishes only its wins
 ## Scope
 
 This repository. Supabase, Next.js and Postgres themselves have their own disclosure processes — but
-if a *default* in one of them makes keel-shaped projects unsafe, tell us: F-1 in our findings is
+if a _default_ in one of them makes keel-shaped projects unsafe, tell us: F-1 in our findings is
 exactly that, and it affects every project inheriting the same default.

@@ -48,7 +48,15 @@ export const SECURITY_HEADERS = {
  * `connectSrc` must include the Supabase URL: the browser client talks to it directly, so omitting
  * it breaks every authenticated request with a console error most people misread as a CORS problem.
  */
-export function buildCsp({ nonce, supabaseUrl, isDev }: { nonce?: string; supabaseUrl: string; isDev: boolean }) {
+export function buildCsp({
+  nonce,
+  supabaseUrl,
+  isDev,
+}: {
+  nonce?: string;
+  supabaseUrl: string;
+  isDev: boolean;
+}) {
   const scriptSrc = ["'self'"];
   if (nonce) scriptSrc.push(`'nonce-${nonce}'`, "'strict-dynamic'");
   // React refresh and the dev overlay evaluate injected code. Never in production.
@@ -80,6 +88,7 @@ export function headersFor(mode: HeaderMode, csp: string): Record<string, string
   if (mode === 'off') return {};
   return {
     ...SECURITY_HEADERS,
-    [mode === 'report-only' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy']: csp,
+    [mode === 'report-only' ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy']:
+      csp,
   };
 }

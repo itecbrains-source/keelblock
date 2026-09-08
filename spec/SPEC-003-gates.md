@@ -16,7 +16,7 @@ runs them.
   pre-commit wiring · the supply-chain baseline.
 - **Out of scope:** the policy tests (SPEC-002) · accessibility and performance budgets (SPEC-015,
   which will add gates obeying the rules defined here) · anything that belongs to an existing tool
-  (see *Not reinvented* below).
+  (see _Not reinvented_ below).
 
 ## Sources of truth
 
@@ -39,53 +39,62 @@ runs them.
    observed in the spike, where a tool that had exited 1 appeared to exit 0. Check `PIPESTATUS`, or do
    not pipe. A CI gate whose failure cannot reach CI is a check that cannot fail.
 7. **Its remediation advice is tested, not repeated.** `rlsautotest` prints "add `FORCE ROW LEVEL
-   SECURITY`" for owner-bypass; the spike measured that this does *not* work on Supabase, where the
+SECURITY`" for owner-bypass; the spike measured that this does _not_ work on Supabase, where the
    owner bypasses via `BYPASSRLS` (F-2). Advice keel passes on is advice keel has run.
 
 ## Requirements
 
 ### REQ-1 — freshness gate
+
 The anti-rot mechanism (ADR-007). Dated verification stamps that expire (45 days); a dependency more
 than one major behind fails; the declared Node major must match the stamp. **The stamp rule is offline
 and deterministic**, so no-network cannot become the standing excuse; offline degrades only the drift
 rule, and only while the stamp rule is green.
 
 ### REQ-2 — new-table guard
+
 A tenant-scoped table (carrying `organization_id`, per SPEC-001 REQ-8) with RLS disabled, no policy, or
 a write policy lacking `WITH CHECK` fails the build. This is the gate that keeps B-2 true as the schema
 grows, which is when isolation claims usually decay.
 
 ### REQ-3 — service-role boundary gate
+
 The service-role client is importable only from named server-only modules and never from anything
 reachable by a rendered page (SPEC-001 REQ-9). Resolved through the import graph, not a filename
 convention — a rule that can be defeated by moving a file is not a boundary.
 
 ### REQ-4 — tenant-scoped cache gate
+
 A `use cache` in a tenant-scoped module whose cache key or tag omits the organisation fails
 (ADR-004). This is the one cross-tenant leak RLS cannot prevent — the response is served from cache
 and never reaches the database — so the whole SPEC-002 apparatus would confirm it green.
 
 ### REQ-5 — supply-chain baseline
-`npm ci --ignore-scripts` in CI · **gitleaks** pre-commit *and over full history* · Renovate proposing
+
+`npm ci --ignore-scripts` in CI · **gitleaks** pre-commit _and over full history_ · Renovate proposing
 bumps · a **weekly clean-clone build** that installs from scratch on a current runtime and runs the
 full check. That weekly job is the substitute for having users: a template nobody exercises rots in
 ways no dependency check can see.
 
 ### REQ-6 — bar coverage gate
+
 Every acceptance bar in `PRODUCT.md` maps to an owning spec, and every spec's REQs map to ACs with
 evidence paths that exist. A bar with no owner is an unkept promise, and the promise most likely to be
 quietly dropped is the one nothing checks.
 
 ### REQ-7 — traceability and deferral lint
+
 Adopted from the playbook's `check-traceability.mjs` and `check-deferrals.mjs`: no REQ without an AC,
 no AC verifying a non-existent REQ, no source-of-truth path that does not exist, no `TODO`/`FIXME`/
 `@defer` without a registry entry, no registry entry without a machine-evaluable trigger.
 
 ### REQ-8 — one command
+
 `npm run check` runs every gate plus the cheap test layers, in a deterministic order, and reports all
 failures rather than stopping at the first. A developer who must run six commands runs four.
 
 ### REQ-9 — a deferral is scope, never a defect
+
 The registry accepts work deliberately not built, with a reason and a trigger. **It does not accept a
 defect.** If you broke it, you fix it in the change that broke it — filing your own breakage as debt
 and merging as done is the single behaviour this rule exists to stop. The gate refuses a new entry
@@ -99,17 +108,17 @@ Named so the set stays small and nobody rebuilds a solved thing: **secret scanni
 
 ## Acceptance criteria
 
-| AC | Verifies | Method | Evidence | Status |
-|----|----------|--------|----------|--------|
-| AC-1 | REQ-1 | test | `scripts/check-freshness.test.mts` — incl. proofs that an expired stamp, a two-major drift, and an offline run with a stale stamp all fail | **done** |
-| AC-2 | REQ-2 | test | `supabase/tests/intent/004-schema-guard.test.sql` — adding a scoped table with no policy, and a write policy without `WITH CHECK`, each fail | **done** |
-| AC-3 | REQ-3 | test | `scripts/check-boundaries.test.mts` — an import chain from a page to the service-role client fails | **done** |
-| AC-4 | REQ-4 | test | `scripts/check-boundaries.test.mts` — a tenant-scoped `use cache` without the organisation in its key fails | **done** |
-| AC-5 | REQ-5 | inspection | `.github/workflows/check.yml` — `--ignore-scripts`, gitleaks over full history, weekly clean-clone build | **done** |
-| AC-6 | REQ-6 | test | `scripts/check-promises.test.mts` — removing a spec's ownership of a bar fails | **done** |
-| AC-7 | REQ-7 | test | Playbook gates wired, with a proof for each: an orphan `@defer`, a REQ with no AC, a dead source path | **done** |
-| AC-8 | REQ-8 | demonstration | Timed `npm run check` recorded in `scripts/check.test.mts`; all failures reported in one pass | **done** |
-| AC-9 | REQ-9 | test | `scripts/check-deferrals.test.mts` — an entry whose blocker is not external, and one whose title reports breakage, are both refused | **done** |
+| AC   | Verifies | Method        | Evidence                                                                                                                                     | Status   |
+| ---- | -------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| AC-1 | REQ-1    | test          | `scripts/check-freshness.test.mts` — incl. proofs that an expired stamp, a two-major drift, and an offline run with a stale stamp all fail   | **done** |
+| AC-2 | REQ-2    | test          | `supabase/tests/intent/004-schema-guard.test.sql` — adding a scoped table with no policy, and a write policy without `WITH CHECK`, each fail | **done** |
+| AC-3 | REQ-3    | test          | `scripts/check-boundaries.test.mts` — an import chain from a page to the service-role client fails                                           | **done** |
+| AC-4 | REQ-4    | test          | `scripts/check-boundaries.test.mts` — a tenant-scoped `use cache` without the organisation in its key fails                                  | **done** |
+| AC-5 | REQ-5    | inspection    | `.github/workflows/check.yml` — `--ignore-scripts`, gitleaks over full history, weekly clean-clone build                                     | **done** |
+| AC-6 | REQ-6    | test          | `scripts/check-promises.test.mts` — removing a spec's ownership of a bar fails                                                               | **done** |
+| AC-7 | REQ-7    | test          | Playbook gates wired, with a proof for each: an orphan `@defer`, a REQ with no AC, a dead source path                                        | **done** |
+| AC-8 | REQ-8    | demonstration | Timed `npm run check` recorded in `scripts/check.test.mts`; all failures reported in one pass                                                | **done** |
+| AC-9 | REQ-9    | test          | `scripts/check-deferrals.test.mts` — an entry whose blocker is not external, and one whose title reports breakage, are both refused          | **done** |
 
 ## Definition of Done
 

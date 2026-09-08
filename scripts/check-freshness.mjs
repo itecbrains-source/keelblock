@@ -35,28 +35,44 @@ export function evaluateFreshness({ stamp, declared, latest, today, nodeMajor })
     if (Number.isNaN(ageDays)) {
       failures.push({ rule: 'stamp', name, msg: `unparseable verifiedOn "${pin.verifiedOn}"` });
     } else if (ageDays > maxAge) {
-      failures.push({ rule: 'stamp', name,
-        msg: `last verified ${ageDays}d ago (limit ${maxAge}d) — check it against current, then move the date` });
+      failures.push({
+        rule: 'stamp',
+        name,
+        msg: `last verified ${ageDays}d ago (limit ${maxAge}d) — check it against current, then move the date`,
+      });
     }
 
     const declaredMajor = declared[name];
     if (declaredMajor === null || declaredMajor === undefined) {
-      failures.push({ rule: 'stamp', name, msg: 'pinned here but not a dependency — a stamp for something we do not ship' });
+      failures.push({
+        rule: 'stamp',
+        name,
+        msg: 'pinned here but not a dependency — a stamp for something we do not ship',
+      });
     } else if (declaredMajor !== pin.major) {
-      failures.push({ rule: 'stamp', name,
-        msg: `package.json has major ${declaredMajor}, stamp claims ${pin.major} — the stamp describes a version you no longer ship` });
+      failures.push({
+        rule: 'stamp',
+        name,
+        msg: `package.json has major ${declaredMajor}, stamp claims ${pin.major} — the stamp describes a version you no longer ship`,
+      });
     }
 
     const latestMajor = latest?.[name];
     if (latestMajor != null && latestMajor - pin.major > 1) {
-      failures.push({ rule: 'drift', name,
-        msg: `pinned at ${pin.major}, current is ${latestMajor} — ${latestMajor - pin.major} majors behind (limit 1)` });
+      failures.push({
+        rule: 'drift',
+        name,
+        msg: `pinned at ${pin.major}, current is ${latestMajor} — ${latestMajor - pin.major} majors behind (limit 1)`,
+      });
     }
   }
 
   if (nodeMajor != null && stamp.runtime?.node != null && nodeMajor !== stamp.runtime.node) {
-    failures.push({ rule: 'runtime', name: 'node',
-      msg: `running Node ${nodeMajor}, stamp verified against ${stamp.runtime.node}` });
+    failures.push({
+      rule: 'runtime',
+      name: 'node',
+      msg: `running Node ${nodeMajor}, stamp verified against ${stamp.runtime.node}`,
+    });
   }
   return { ok: failures.length === 0, failures };
 }
@@ -68,13 +84,18 @@ export const majorOf = (range) => {
 
 async function fetchLatestMajors(names) {
   const out = {};
-  await Promise.all(names.map(async (name) => {
-    try {
-      const res = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/latest`,
-        { signal: AbortSignal.timeout(8000) });
-      if (res.ok) out[name] = majorOf((await res.json()).version);
-    } catch { /* offline — rule 2 degrades, rule 1 still bites */ }
-  }));
+  await Promise.all(
+    names.map(async (name) => {
+      try {
+        const res = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}/latest`, {
+          signal: AbortSignal.timeout(8000),
+        });
+        if (res.ok) out[name] = majorOf((await res.json()).version);
+      } catch {
+        /* offline — rule 2 degrades, rule 1 still bites */
+      }
+    }),
+  );
   return out;
 }
 
@@ -89,22 +110,30 @@ async function main() {
   const offline = process.argv.includes('--offline');
   const latest = offline ? {} : await fetchLatestMajors(Object.keys(stamp.pins));
   if (!offline && Object.keys(latest).length === 0) {
-    console.warn('freshness: registry unreachable — the drift rule is skipped, the stamp rule is not');
+    console.warn(
+      'freshness: registry unreachable — the drift rule is skipped, the stamp rule is not',
+    );
   }
 
   const { ok, failures } = evaluateFreshness({
-    stamp, declared, latest,
+    stamp,
+    declared,
+    latest,
     today: new Date().toISOString().slice(0, 10),
     nodeMajor: Number(process.versions.node.split('.')[0]),
   });
 
   if (ok) {
-    console.log(`freshness: ok — ${Object.keys(stamp.pins).length} pins verified within ${stamp.maxAgeDays}d`);
+    console.log(
+      `freshness: ok — ${Object.keys(stamp.pins).length} pins verified within ${stamp.maxAgeDays}d`,
+    );
     return;
   }
   console.error('freshness: FAILED\n');
   for (const f of failures) console.error(`  [${f.rule}] ${f.name}: ${f.msg}`);
-  console.error('\nThis is the gate that keeps keel from becoming another three-majors-behind starter.');
+  console.error(
+    '\nThis is the gate that keeps keel from becoming another three-majors-behind starter.',
+  );
   console.error('Moving a date is a claim that you looked. Do not move one without looking.');
   process.exit(1);
 }

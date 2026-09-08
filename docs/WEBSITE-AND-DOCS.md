@@ -14,20 +14,20 @@ keel has neither yet. Copying that order would lead with our weakest cards and b
 is actually differentiated — **evidence a stranger can check without trusting us.** So the structure
 inverts: proof first, features after the argument rather than as the argument.
 
-The bar to match is their *finish*: clear writing, a real demo, honest changelog, working search,
+The bar to match is their _finish_: clear writing, a real demo, honest changelog, working search,
 no dead links.
 
 ## Landing page — seven sections, not ten
 
-| # | Section | Content |
-|---|---|---|
-| 1 | **Hero** | The claim and how to check it. *Tenant isolation enforced by the database and proven on every commit.* One command to try it. |
-| 2 | **The proof** | The live access matrix, rendered. The "different organisation" column is the whole pitch. Link to the CI run that produced it. |
-| 3 | **What we found** | `FINDINGS.md`, with repros — `anon` could truncate your tables; the leading generated RLS suite confirms a leaking table green. **Nobody else can write this page**, because nobody else did the measurement. |
-| 4 | **Get started** | Install → running app with auth and an organisation, under five minutes (B-1). |
-| 5 | **It won't rot** | The freshness gate, the weekly clean build, the upgrade path. Aimed squarely at anyone who has cloned a starter and found it three majors behind. |
-| 6 | **What's in it** | The feature surface. *After* the argument, stated plainly, no grid of fifteen icons. |
-| 7 | **Free, MIT** | Against a $199–1,499 field. One line on the paid compliance tier (ADR-009), no upsell pressure. |
+| #   | Section           | Content                                                                                                                                                                                                       |
+| --- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Hero**          | The claim and how to check it. _Tenant isolation enforced by the database and proven on every commit._ One command to try it.                                                                                 |
+| 2   | **The proof**     | The live access matrix, rendered. The "different organisation" column is the whole pitch. Link to the CI run that produced it.                                                                                |
+| 3   | **What we found** | `FINDINGS.md`, with repros — `anon` could truncate your tables; the leading generated RLS suite confirms a leaking table green. **Nobody else can write this page**, because nobody else did the measurement. |
+| 4   | **Get started**   | Install → running app with auth and an organisation, under five minutes (B-1).                                                                                                                                |
+| 5   | **It won't rot**  | The freshness gate, the weekly clean build, the upgrade path. Aimed squarely at anyone who has cloned a starter and found it three majors behind.                                                             |
+| 6   | **What's in it**  | The feature surface. _After_ the argument, stated plainly, no grid of fifteen icons.                                                                                                                          |
+| 7   | **Free, MIT**     | Against a $199–1,499 field. One line on the paid compliance tier (ADR-009), no upsell pressure.                                                                                                               |
 
 Testimonials and a showcase go in when they are real. **An empty testimonial section is worse than
 none**, and inventing one would break the honesty rule keel is built on.
@@ -63,13 +63,13 @@ usually is not.
 
 Current inventory, all routed:
 
-| Destination | Count | Status |
-|---|---|---|
-| **blog** | 13 posts | Each is a measured finding with a reproduction. **No competitor can publish these**, because none of them did the measuring. |
-| **docs** | 17 pages | The technical documentation writes itself from the same material. |
-| **landing** | 5 sections | F-1, F-13, F-15, F-18 and the access matrix carry sections 2 and 3 of the seven. |
-| **faq** | 5 | Already written — [`docs/FAQ.md`](FAQ.md), 11 questions, **every answer citing something you can open**. |
-| **internal** | 1 | Deliberately unpublished, with a reason. |
+| Destination  | Count      | Status                                                                                                                       |
+| ------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **blog**     | 13 posts   | Each is a measured finding with a reproduction. **No competitor can publish these**, because none of them did the measuring. |
+| **docs**     | 17 pages   | The technical documentation writes itself from the same material.                                                            |
+| **landing**  | 5 sections | F-1, F-13, F-15, F-18 and the access matrix carry sections 2 and 3 of the seven.                                             |
+| **faq**      | 5          | Already written — [`docs/FAQ.md`](FAQ.md), 11 questions, **every answer citing something you can open**.                     |
+| **internal** | 1          | Deliberately unpublished, with a reason.                                                                                     |
 
 Three of the thirteen blog posts are **our own defects** (F-8, F-9/F-10, F-13). Publishing those is
 what makes the other ten believable, and a project claiming rigour that publishes only its wins is

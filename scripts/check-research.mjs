@@ -39,14 +39,19 @@ const DAY_MS = 86_400_000;
  * @param {{ today: string, onDisk: string[], specStatus: (id: string) => string | null, authoredSpecs?: string[], readSource?: (f: string) => string | null }} ctx
  * @returns {{ problems: string[], expiring: string[] }}
  */
-export function checkResearch(manifest, { today, onDisk, specStatus, authoredSpecs = [], readSource = () => null }) {
+export function checkResearch(
+  manifest,
+  { today, onDisk, specStatus, authoredSpecs = [], readSource = () => null },
+) {
   /** @type {string[]} */ const problems = [];
   /** @type {string[]} */ const expiring = [];
 
   const listed = new Set(manifest.memos.map((m) => m.file));
   for (const file of onDisk) {
     if (!listed.has(file)) {
-      problems.push(`${file} exists but is not in the manifest — an unlisted memo is never re-verified`);
+      problems.push(
+        `${file} exists but is not in the manifest — an unlisted memo is never re-verified`,
+      );
     }
   }
 
@@ -57,7 +62,9 @@ export function checkResearch(manifest, { today, onDisk, specStatus, authoredSpe
     }
     const window = manifest.volatility[memo.volatility];
     if (!window) {
-      problems.push(`${memo.file}: unknown volatility "${memo.volatility}" — one of ${Object.keys(manifest.volatility).join(', ')}`);
+      problems.push(
+        `${memo.file}: unknown volatility "${memo.volatility}" — one of ${Object.keys(manifest.volatility).join(', ')}`,
+      );
       continue;
     }
     const age = Math.floor((Date.parse(today) - Date.parse(memo.verifiedOn)) / DAY_MS);
@@ -68,12 +75,14 @@ export function checkResearch(manifest, { today, onDisk, specStatus, authoredSpe
     if (age > window.maxAgeDays) {
       problems.push(
         `${memo.file} (${memo.area}) was verified ${age}d ago; "${memo.volatility}" subjects expire at ` +
-        `${window.maxAgeDays}d. Re-read the sources and move the date, or downgrade the volatility with a reason.`
+          `${window.maxAgeDays}d. Re-read the sources and move the date, or downgrade the volatility with a reason.`,
       );
       // A lapsed memo poisons every spec citing it, and a done spec is the dangerous case.
       for (const spec of memo.specs ?? []) {
         if (specStatus(spec) === 'done') {
-          problems.push(`  └ ${spec} is marked done on this lapsed memo — its conclusions are unverified`);
+          problems.push(
+            `  └ ${spec} is marked done on this lapsed memo — its conclusions are unverified`,
+          );
         }
       }
     } else if (age > window.maxAgeDays * 0.8) {
@@ -92,19 +101,23 @@ export function checkResearch(manifest, { today, onDisk, specStatus, authoredSpe
 
     if (memo.kind === 'measured') {
       if (!/```/.test(text)) {
-        problems.push(`${memo.file} is a measurement with no reproduction — that is an anecdote, not evidence`);
+        problems.push(
+          `${memo.file} is a measurement with no reproduction — that is an anecdote, not evidence`,
+        );
       }
       continue;
     }
     if (memo.kind !== 'sourced') {
-      problems.push(`${memo.file}: kind must be "sourced" or "measured", not "${memo.kind ?? 'unset'}"`);
+      problems.push(
+        `${memo.file}: kind must be "sourced" or "measured", not "${memo.kind ?? 'unset'}"`,
+      );
       continue;
     }
     if (!/^\*\*Primary\*\*/m.test(text)) {
       problems.push(
         `${memo.file} has no "**Primary**" sources section. A memo that never classified its sources ` +
-        `has not been asked where its claims came from — which is how an agency blog's date ended up ` +
-        `in a spec (F-21).`
+          `has not been asked where its claims came from — which is how an agency blog's date ended up ` +
+          `in a spec (F-21).`,
       );
       continue;
     }
@@ -120,8 +133,8 @@ export function checkResearch(manifest, { today, onDisk, specStatus, authoredSpe
     if (!covered.has(spec)) {
       problems.push(
         `${spec} is authored but no research memo covers it. A spec written from recollection ` +
-        `encodes what its author last believed, and nothing downstream can tell that apart from a ` +
-        `researched one. Add a memo to research/ and list the spec in the manifest.`
+          `encodes what its author last believed, and nothing downstream can tell that apart from a ` +
+          `researched one. Add a memo to research/ and list the spec in the manifest.`,
       );
     }
   }
@@ -130,7 +143,10 @@ export function checkResearch(manifest, { today, onDisk, specStatus, authoredSpe
 }
 
 function main() {
-  if (!existsSync(MANIFEST)) { console.error(`research: ${MANIFEST} is missing`); process.exit(2); }
+  if (!existsSync(MANIFEST)) {
+    console.error(`research: ${MANIFEST} is missing`);
+    process.exit(2);
+  }
   const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
   const onDisk = readdirSync('research').filter((f) => f.endsWith('.md'));
 
@@ -147,14 +163,25 @@ function main() {
     .map((f) => f.slice(0, 8));
 
   const { problems, expiring } = checkResearch(manifest, {
-    today: new Date().toISOString().slice(0, 10), onDisk, specStatus, authoredSpecs,
-    readSource: (f) => { try { return readFileSync(`research/${f}`, 'utf8'); } catch { return null; } },
+    today: new Date().toISOString().slice(0, 10),
+    onDisk,
+    specStatus,
+    authoredSpecs,
+    readSource: (f) => {
+      try {
+        return readFileSync(`research/${f}`, 'utf8');
+      } catch {
+        return null;
+      }
+    },
   });
 
   if (problems.length) {
     console.error('research: FAILED\n');
     for (const p of problems) console.error(`  ${p}`);
-    console.error('\nMoving a date is a claim that you re-read the sources. Do not move one without reading.');
+    console.error(
+      '\nMoving a date is a claim that you re-read the sources. Do not move one without reading.',
+    );
     process.exit(1);
   }
   console.log(`research: ok — ${manifest.memos.length} memo(s), all within their window`);

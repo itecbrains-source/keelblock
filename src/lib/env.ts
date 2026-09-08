@@ -14,7 +14,7 @@ function load() {
     throw new Error(
       `Environment is not valid — ${result.problems.length} problem(s):\n\n` +
         result.problems.map((p) => `  · ${p}`).join('\n') +
-        `\n\nSee .env.example. Every problem is listed above; fix them together.\n`
+        `\n\nSee .env.example. Every problem is listed above; fix them together.\n`,
     );
   }
   return result.env;

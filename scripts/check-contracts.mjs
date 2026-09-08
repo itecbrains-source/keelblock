@@ -31,9 +31,11 @@ export function parseSpec(id, text) {
   // the difference between a useful rule and a nagging one: a `partial` spec legitimately has
   // `planned` criteria whose files do not exist yet, and demanding them would train people to
   // ignore the gate.
-  const evidence = [...text.matchAll(
-    /^\|\s*(AC-[\w.]+)\s*\|[^|]*\|[^|]*\|\s*`([^`]+)`[^|]*\|\s*\*{0,2}([\w ]+?)\*{0,2}\s*\|/gm
-  )].map((m) => ({ ac: m[1], path: m[2], status: m[3].trim() }));
+  const evidence = [
+    ...text.matchAll(
+      /^\|\s*(AC-[\w.]+)\s*\|[^|]*\|[^|]*\|\s*`([^`]+)`[^|]*\|\s*\*{0,2}([\w ]+?)\*{0,2}\s*\|/gm,
+    ),
+  ].map((m) => ({ ac: m[1], path: m[2], status: m[3].trim() }));
   return { id, status, contracts, evidence };
 }
 
@@ -53,11 +55,13 @@ export function checkContracts(specs, exists) {
       if (status !== 'done') continue;
       // A glob is a description, not a path — and cannot be verified, so it is refused outright.
       if (/[*?]/.test(path)) {
-        problems.push(`${spec.id} ${ac} cites a glob \`${path}\` — name the file, or the claim cannot be checked`);
+        problems.push(
+          `${spec.id} ${ac} cites a glob \`${path}\` — name the file, or the claim cannot be checked`,
+        );
       } else if (!exists(path)) {
         problems.push(
           `${spec.id} ${ac} is marked done and cites \`${path}\`, which does not exist. ` +
-          `A criterion that names evidence nobody can open is a claim, not a record.`
+            `A criterion that names evidence nobody can open is a claim, not a record.`,
         );
       }
     }
@@ -72,8 +76,8 @@ export function checkContracts(specs, exists) {
       if (open.length) {
         problems.push(
           `${spec.id} is marked done with ${open.length} criteri${open.length === 1 ? 'on' : 'a'} ` +
-          `not closed (${open.map((o) => `${o.ac}: ${o.status}`).join(', ')}). ` +
-          `Close them, defer them with a DEF, or the spec is not done.`
+            `not closed (${open.map((o) => `${o.ac}: ${o.status}`).join(', ')}). ` +
+            `Close them, defer them with a DEF, or the spec is not done.`,
         );
       }
     }
@@ -89,7 +93,7 @@ export function checkContracts(specs, exists) {
       if (!target.contracts.includes(spec.id)) {
         problems.push(
           `${spec.id} contracts ${other}, but ${other} does not name ${spec.id} back. ` +
-          `A one-way dependency is invisible from the side that would break — add it to ${other}'s Contracts line.`
+            `A one-way dependency is invisible from the side that would break — add it to ${other}'s Contracts line.`,
         );
       }
     }
@@ -116,7 +120,7 @@ export function checkStatusAgreement(specs, index) {
     if (claimed && claimed !== spec.status) {
       problems.push(
         `${spec.id}: the index says "${claimed}", the spec file says "${spec.status}". ` +
-        `Two records of one fact, disagreeing — and the one people read is not the one gates check.`
+          `Two records of one fact, disagreeing — and the one people read is not the one gates check.`,
       );
     }
   }
@@ -125,7 +129,9 @@ export function checkStatusAgreement(specs, index) {
 
 function main() {
   const files = readdirSync(SPEC_DIR).filter((f) => /^SPEC-\d+/.test(f));
-  const specs = files.map((f) => parseSpec(f.slice(0, 8), readFileSync(`${SPEC_DIR}/${f}`, 'utf8')));
+  const specs = files.map((f) =>
+    parseSpec(f.slice(0, 8), readFileSync(`${SPEC_DIR}/${f}`, 'utf8')),
+  );
   const problems = [
     ...checkContracts(specs, (p) => existsSync(p)),
     ...checkStatusAgreement(specs, readFileSync(`${SPEC_DIR}/README.md`, 'utf8')),
@@ -137,7 +143,9 @@ function main() {
     process.exit(1);
   }
   const pairs = specs.reduce((n, s) => n + s.contracts.length, 0);
-  console.log(`contracts: ok — ${specs.length} spec(s), ${pairs} reciprocal contract(s), all evidence present`);
+  console.log(
+    `contracts: ok — ${specs.length} spec(s), ${pairs} reciprocal contract(s), all evidence present`,
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

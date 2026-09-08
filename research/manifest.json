@@ -28,10 +28,7 @@
       "area": "stack decisions",
       "volatility": "fast",
       "verifiedOn": "2026-09-07",
-      "specs": [
-        "SPEC-002",
-        "SPEC-003"
-      ],
+      "specs": ["SPEC-002", "SPEC-003"],
       "kind": "sourced"
     },
     {
@@ -39,10 +36,7 @@
       "area": "RLS behaviour, measured",
       "volatility": "stable",
       "verifiedOn": "2026-09-07",
-      "specs": [
-        "SPEC-001",
-        "SPEC-002"
-      ],
+      "specs": ["SPEC-001", "SPEC-002"],
       "kind": "measured"
     },
     {
@@ -50,10 +44,7 @@
       "area": "framework integration, measured",
       "volatility": "moderate",
       "verifiedOn": "2026-09-07",
-      "specs": [
-        "SPEC-001",
-        "SPEC-002"
-      ],
+      "specs": ["SPEC-001", "SPEC-002"],
       "kind": "measured"
     },
     {
@@ -61,9 +52,7 @@
       "area": "SEO and AI search",
       "volatility": "fast",
       "verifiedOn": "2026-09-07",
-      "specs": [
-        "SPEC-028"
-      ],
+      "specs": ["SPEC-028"],
       "kind": "sourced"
     },
     {
@@ -71,9 +60,7 @@
       "area": "migration and release safety",
       "volatility": "stable",
       "verifiedOn": "2026-09-07",
-      "specs": [
-        "SPEC-016"
-      ],
+      "specs": ["SPEC-016"],
       "kind": "sourced"
     }
   ],

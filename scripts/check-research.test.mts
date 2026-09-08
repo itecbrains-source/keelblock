@@ -12,11 +12,25 @@ const base = {
 };
 const one = (over = {}) => ({
   volatility: { fast: { maxAgeDays: 90 } },
-  memos: [{ file: 'x.md', area: 'x', volatility: 'fast', verifiedOn: '2026-09-01', kind: 'sourced', specs: ['SPEC-001'], ...over }],
+  memos: [
+    {
+      file: 'x.md',
+      area: 'x',
+      volatility: 'fast',
+      verifiedOn: '2026-09-01',
+      kind: 'sourced',
+      specs: ['SPEC-001'],
+      ...over,
+    },
+  ],
 });
 const ctx = (over = {}) => ({
-  today: '2026-09-07', onDisk: ['x.md'], specStatus: () => 'draft', authoredSpecs: [],
-  readSource: () => '**Primary**\n- [a](https://example.com/doc)\n**Secondary**\n', ...over,
+  today: '2026-09-07',
+  onDisk: ['x.md'],
+  specStatus: () => 'draft',
+  authoredSpecs: [],
+  readSource: () => '**Primary**\n- [a](https://example.com/doc)\n**Secondary**\n',
+  ...over,
 });
 
 describe('research gate', () => {
@@ -48,22 +62,34 @@ describe('research gate', () => {
   });
 
   it('MUTATION: a sourced memo with no Primary section fails — this is how F-21 happened', () => {
-    const p = checkResearch(one(), ctx({ readSource: () => '## Sources\n- [blog](https://blog.example)' })).problems;
+    const p = checkResearch(
+      one(),
+      ctx({ readSource: () => '## Sources\n- [blog](https://blog.example)' }),
+    ).problems;
     expect(p[0]).toMatch(/no "\*\*Primary\*\*" sources section/);
   });
 
   it('MUTATION: a Primary section citing nothing fails', () => {
-    const p = checkResearch(one(), ctx({ readSource: () => '**Primary**\n\n**Secondary**\n- [b](https://x)' })).problems;
+    const p = checkResearch(
+      one(),
+      ctx({ readSource: () => '**Primary**\n\n**Secondary**\n- [b](https://x)' }),
+    ).problems;
     expect(p[0]).toMatch(/cites no source/);
   });
 
   it('MUTATION: a measurement with no reproduction is an anecdote', () => {
-    const p = checkResearch(one({ kind: 'measured' }), ctx({ readSource: () => 'we ran it and it was fine' })).problems;
+    const p = checkResearch(
+      one({ kind: 'measured' }),
+      ctx({ readSource: () => 'we ran it and it was fine' }),
+    ).problems;
     expect(p[0]).toMatch(/anecdote/);
   });
 
   it('a measurement WITH a reproduction passes, and is not asked for sources', () => {
-    expect(checkResearch(one({ kind: 'measured' }), ctx({ readSource: () => '```sql\nselect 1;\n```' })).problems).toEqual([]);
+    expect(
+      checkResearch(one({ kind: 'measured' }), ctx({ readSource: () => '```sql\nselect 1;\n```' }))
+        .problems,
+    ).toEqual([]);
   });
 
   it('MUTATION: an unlisted memo on disk fails — it would never be re-verified', () => {
@@ -78,7 +104,7 @@ describe('research gate', () => {
   });
 
   it('warns before expiry rather than only at it', () => {
-    const r = checkResearch(one(), ctx({ today: '2026-11-15' }));   // 75 of 90 days
+    const r = checkResearch(one(), ctx({ today: '2026-11-15' })); // 75 of 90 days
     expect(r.problems).toEqual([]);
     expect(r.expiring[0]).toMatch(/d left/);
   });

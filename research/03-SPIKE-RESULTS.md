@@ -8,7 +8,7 @@ Supabase stacks were left untouched). Schema: SPEC-001's shape — `organization
 
 ---
 
-## F-1 — The generated suite confirms a total cross-tenant leak as green ✅ *(validates SPEC-002)*
+## F-1 — The generated suite confirms a total cross-tenant leak as green ✅ _(validates SPEC-002)_
 
 Planted a **semantic** defect: `is_org_member(org)` drops its `user_id` check, so every authenticated
 user is a "member" of every organisation. Syntactically unremarkable — a plausible typo or a bad merge.
@@ -23,18 +23,18 @@ layer, demonstrated rather than argued**, and it is reproducible.
 
 The mechanism is stated by the tool itself:
 
-> *"opaque policy function(s) were MOCKED to prove the policy delegates correctly (wiring) — the
-> function's own logic is NOT verified here"*
+> _"opaque policy function(s) were MOCKED to prove the policy delegates correctly (wiring) — the
+> function's own logic is NOT verified here"_
 
 So the boundary is sharper than ADR-005 stated it: **the generated layer verifies the policy's
 delegation; every line of logic inside a helper is unverified by it.** Since keel's whole model puts
 the membership predicate in exactly such a helper, the intent layer is not a nice-to-have — it is the
-*only* thing testing the predicate at all.
+_only_ thing testing the predicate at all.
 
-**Correction to SPEC-002 AC-4:** the planted defect must be semantic. A *syntactic* one is caught —
+**Correction to SPEC-002 AC-4:** the planted defect must be semantic. A _syntactic_ one is caught —
 `with check (true)` was flagged as a footgun. AC-4 as drafted would have failed for the wrong reason.
 
-## F-2 — `postgres` has `BYPASSRLS`, and `FORCE ROW LEVEL SECURITY` does not stop it 🔴 *(new REQs)*
+## F-2 — `postgres` has `BYPASSRLS`, and `FORCE ROW LEVEL SECURITY` does not stop it 🔴 _(new REQs)_
 
 ```
 rolname   | rolsuper | rolbypassrls
@@ -45,32 +45,32 @@ Measured with FORCE enabled on `project`: **postgres read all 2 rows across both
 
 Two consequences, neither of which is in any spec:
 
-1. **`FORCE` is not the mitigation it appears to be.** rlsautotest's own advice — *"the owner is not a
-   superuser, so the owner bypasses this table's RLS. Add: ALTER TABLE … FORCE ROW LEVEL SECURITY"* —
+1. **`FORCE` is not the mitigation it appears to be.** rlsautotest's own advice — _"the owner is not a
+   superuser, so the owner bypasses this table's RLS. Add: ALTER TABLE … FORCE ROW LEVEL SECURITY"_ —
    is **incomplete on Supabase**, where the owner bypasses via `BYPASSRLS` rather than ownership.
-   Adding FORCE changes nothing. *Do not adopt a tool's remediation advice without testing it.*
+   Adding FORCE changes nothing. _Do not adopt a tool's remediation advice without testing it._
 2. **Any `SECURITY DEFINER` function owned by `postgres` runs with RLS bypassed.** The membership
-   helper works *because of* this, not despite it. Which means such a function returning rows rather
+   helper works _because of_ this, not despite it. Which means such a function returning rows rather
    than a boolean is a total isolation bypass with no policy involved — and it would be invisible to
    every layer of SPEC-002.
 
 → SPEC-001 needs: definer helpers return scalars only, never rows; a gate over definer functions
 reachable by `authenticated`; and the `BYPASSRLS` role inventory as a reviewed artifact.
 
-## F-3 — A cross-tenant write is invisible to the attacker 🔴 *(strengthens SPEC-001 REQ-4)*
+## F-3 — A cross-tenant write is invisible to the attacker 🔴 _(strengthens SPEC-001 REQ-4)_
 
 With `with check (true)`, user A inserted a row into Org B — and then still saw only their own row.
 The smuggled row is invisible to the person who wrote it.
 
 **A suite that proves isolation by reading can never detect this.** Only a test that attempts a
-cross-tenant *write* and asserts rejection does. This is why REQ-4 is its own requirement.
+cross-tenant _write_ and asserts rejection does. This is why REQ-4 is its own requirement.
 
-## F-4 — `WITH CHECK` detection must catch trivially-true, not just NULL 🔴 *(corrects SPEC-001 REQ-4)*
+## F-4 — `WITH CHECK` detection must catch trivially-true, not just NULL 🔴 _(corrects SPEC-001 REQ-4)_
 
 The defect's policy **has** a `WITH CHECK` — it is `true`. `polwithcheck IS NULL` misses it entirely.
 SPEC-001 REQ-4 as written ("every write policy has a `WITH CHECK` clause") passes this defect.
 
-## F-5 — Catalog derivation works cleanly ✅ *(validates SPEC-001 REQ-8, SPEC-003 REQ-2)*
+## F-5 — Catalog derivation works cleanly ✅ _(validates SPEC-001 REQ-8, SPEC-003 REQ-2)_
 
 One query over `pg_class`/`pg_attribute`/`pg_policy` derived the scoped set and every violation:
 
@@ -85,7 +85,7 @@ No false positive on the global table. **It caught an unplanted bug**: I had for
 membership table — the worst possible hole, since anyone could grant themselves membership anywhere.
 The gate caught its own author's mistake within minutes of existing.
 
-## F-6 — `supabase_etl_admin` is `BYPASSRLS` and flagged client-reachable ⚠️ *(needs verification)*
+## F-6 — `supabase_etl_admin` is `BYPASSRLS` and flagged client-reachable ⚠️ _(needs verification)_
 
 rlsautotest rated this CRITICAL. Whether it is client-reachable on **hosted** Supabase, or an artifact
 of this bare container, is **unverified** — and the difference matters. Recorded as an open question,

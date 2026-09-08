@@ -7,7 +7,9 @@ export default function NotFound() {
     <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-4 px-6">
       <h1 className="text-lg font-semibold">{t('title')}</h1>
       <p className="text-sm text-black/60 dark:text-white/60">{t('body')}</p>
-      <Link href="/" className="w-fit text-sm underline underline-offset-4">{t('back')}</Link>
+      <Link href="/" className="w-fit text-sm underline underline-offset-4">
+        {t('back')}
+      </Link>
     </main>
   );
 }
