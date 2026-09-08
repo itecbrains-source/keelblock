@@ -81,22 +81,23 @@ Two deliberate choices:
 
 The site is an assembly job, not an archaeology dig — **provided material is routed the day it is
 produced.** `docs/content/MANIFEST.json` maps every finding to where it will be used, and a gate
-(`npm run check` → `promises`) fails when a new one is routed nowhere. The reasoning behind a finding
+(`npm run check` → `promises` → `content`) fails when a new one is routed nowhere.
+
+**It covers specs as well as findings**, and that half was missing until SPEC-004 shipped the
+strongest competitive artifact in the repository and routed nowhere — because the pipeline keyed on
+`F-*` ids, and a shipped capability produces none by itself. A spec that is `done` or `partial` now
+declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a
+[battlecard](content/BATTLECARD.md) section that exists — or is excused with a reason. Naming a
+destination is a promise; the gate checks the artifact. The reasoning behind a finding
 is never fresher than the day it is discovered; six months later it has to be reconstructed, and
 usually is not.
 
-Current inventory, all routed:
+**For the current inventory, run `npm run check` — the content gate prints it.** A table of counts
+here would be stale by the next finding, and the gate is the thing that actually knows.
 
-| Destination  | Count      | Status                                                                                                                       |
-| ------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **blog**     | 13 posts   | Each is a measured finding with a reproduction. **No competitor can publish these**, because none of them did the measuring. |
-| **docs**     | 17 pages   | The technical documentation writes itself from the same material.                                                            |
-| **landing**  | 5 sections | F-1, F-13, F-15, F-18 and the access matrix carry sections 2 and 3 of the seven.                                             |
-| **faq**      | 5          | Already written — [`docs/FAQ.md`](FAQ.md), 11 questions, **every answer citing something you can open**.                     |
-| **internal** | 1          | Deliberately unpublished, with a reason.                                                                                     |
-
-Three of the thirteen blog posts are **our own defects** (F-8, F-9/F-10, F-13). Publishing those is
-what makes the other ten believable, and a project claiming rigor that publishes only its wins is
+The mix is deliberate: measured findings with reproductions go to the blog, because **no competitor
+can publish them** — none of them did the measuring. Some of them are our own defects, and
+publishing those (F-8, F-9/F-10, F-13) is what makes the rest believable, and a project claiming rigor that publishes only its wins is
 doing marketing.
 
 ## Sequencing

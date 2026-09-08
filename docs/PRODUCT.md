@@ -260,3 +260,5 @@ It is the feature where keelblock's thesis produces a **visibly better answer ra
 - [ ] A published access matrix showing who can read and write what, per role, per table.
 - [ ] Validation note: a developer with no context scaffolded, built something, and deployed it —
       recorded, with what confused them.
+- [ ] Every shipped spec has a differentiator written up, or a recorded reason it has none — the
+      `content` gate holds this, so the marketing surface cannot lag the product by a release.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { findingIds, parseFaq, checkContent } from './check-content.mjs';
+import { findingIds, parseFaq, checkContent, checkDifferentiators } from './check-content.mjs';
 
 const manifest = JSON.parse(readFileSync('docs/content/MANIFEST.json', 'utf8'));
 const findings = findingIds(readFileSync('docs/FINDINGS.md', 'utf8'));
@@ -69,5 +69,103 @@ describe('content gate', () => {
     expect(
       parseFaq('### Q\n\nSee [docs](https://example.com/x) and [real](FINDINGS.md).')[0].cites,
     ).toEqual(['FINDINGS.md']);
+  });
+});
+
+describe('differentiators are written up as they ship', () => {
+  const battlecard = readFileSync('docs/content/BATTLECARD.md', 'utf8');
+  const specs = [
+    { id: 'SPEC-001', status: 'done' },
+    { id: 'SPEC-004', status: 'partial' },
+    { id: 'SPEC-016', status: 'draft' },
+  ];
+  const good = {
+    differentiators: [
+      {
+        spec: 'SPEC-001',
+        claim: 'Isolation is enforced by the database rather than remembered by the app.',
+        rivals: 'The field compares ids in application code after fetching the row.',
+        evidence: ['F-15'],
+        battlecard: 'Isolation is a database property, not an application convention',
+      },
+      {
+        spec: 'SPEC-004',
+        claim: 'Every exported Server Action reaches an authorization call or is declared public.',
+        rivals: 'Nothing in the category checks this, and Next documents the exposure itself.',
+        evidence: ['F-15'],
+        battlecard: 'Every Server Action authorizes, and the build refuses one that does not',
+      },
+    ],
+  };
+  const run = (m: unknown, sp = specs) =>
+    checkDifferentiators(m as never, sp, battlecard, ['F-15'], yes);
+
+  it('the real manifest passes', () => {
+    expect(
+      checkDifferentiators(manifest, specs, battlecard, findings, (p: string) => existsSync(p)),
+    ).toEqual([]);
+  });
+
+  it('MUTATION: a shipped spec with no differentiator fails', () => {
+    // The gap that made this rule necessary: SPEC-004 shipped the strongest competitive artifact in
+    // the repository and routed nowhere, because the material pipeline keys on F-* ids and a
+    // capability produces none by itself.
+    const p = run({ differentiators: [good.differentiators[0]] });
+    expect(p[0]).toMatch(/SPEC-004 is partial and declares no differentiator/);
+  });
+
+  it('a draft spec is not asked for one — it has shipped nothing to claim', () => {
+    expect(run(good, [{ id: 'SPEC-016', status: 'draft' }])).toEqual([]);
+  });
+
+  it('MUTATION: a claim with no comparison fails — that is a feature, not a differentiator', () => {
+    const d = { ...good.differentiators[1], rivals: '' };
+    const p = run({ differentiators: [good.differentiators[0], d] });
+    expect(p[0]).toMatch(/no statement of what the field does instead/);
+  });
+
+  it('MUTATION: evidence that does not resolve fails', () => {
+    const d = { ...good.differentiators[1], evidence: ['F-999'] };
+    const p = run({ differentiators: [good.differentiators[0], d] });
+    expect(p[0]).toMatch(/evidence `F-999` does not resolve/);
+  });
+
+  it('MUTATION: naming a battlecard section that was never written fails', () => {
+    // Routing is a promise; the gate checks the artifact. This is the difference between the old
+    // pipeline and this one.
+    const d = { ...good.differentiators[1], battlecard: 'A section nobody wrote' };
+    const p = run({ differentiators: [good.differentiators[0], d] });
+    expect(p[0]).toMatch(/battlecard section "A section nobody wrote" is not in/);
+  });
+
+  it('MUTATION: an artifact named but absent fails', () => {
+    const d = { ...good.differentiators[1], artifacts: ['docs/content/blog/nope.md'] };
+    const p = checkDifferentiators(
+      { differentiators: [good.differentiators[0], d] } as never,
+      specs,
+      battlecard,
+      ['F-15'],
+      (path: string) => existsSync(path),
+    );
+    expect(p[0]).toMatch(/artifact `docs\/content\/blog\/nope\.md` does not exist/);
+  });
+
+  it('an excused spec passes, and cannot be excused and declared at once', () => {
+    expect(
+      run({ differentiators: [good.differentiators[1]], $noDifferentiator: { 'SPEC-001': 'why' } }),
+    ).toEqual([]);
+    const both = run({
+      differentiators: good.differentiators,
+      $noDifferentiator: { 'SPEC-001': 'why' },
+    });
+    expect(both[0]).toMatch(/both declared and excused/);
+  });
+
+  it('MUTATION: a duplicate finding id fails — membership was checked, uniqueness was not', () => {
+    // Introduced for real while writing this: a second `## F-33` was appended, and the gate reported
+    // every finding routed, because it asked whether each id was in the manifest and never whether
+    // it appeared twice.
+    const p = checkContent(manifest, [...findings, findings[0]], [], yes);
+    expect(p.some((x: string) => /appears twice in FINDINGS.md/.test(x))).toBe(true);
   });
 });

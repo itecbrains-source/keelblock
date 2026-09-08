@@ -77,9 +77,23 @@ function main() {
     problems.push((matrix.stderr ?? 'docs/ACCESS-MATRIX.md is stale').trim());
   }
 
+  // ── 3 · battlecard ───────────────────────────────────────────────────────────
+  // The competitive document is derived from the specs it describes, so it cannot quietly describe
+  // a product that has moved on. The argument in it is hand-written; the status, the criteria counts
+  // and every evidence link are not.
+  const battlecard = spawnSync('node', ['scripts/battlecard.mjs', ...(check ? ['--check'] : [])], {
+    stdio: check ? ['ignore', 'ignore', 'pipe'] : 'inherit',
+    encoding: 'utf8',
+  });
+  if (battlecard.status !== 0) {
+    problems.push((battlecard.stderr ?? 'docs/content/BATTLECARD.md is stale').trim());
+  }
+
   if (!problems.length) {
     console.log(
-      check ? 'generated: ok — types and access matrix are both current' : 'generated: done',
+      check
+        ? 'generated: ok — types, access matrix and battlecard are all current'
+        : 'generated: done',
     );
     process.exit(0);
   }
