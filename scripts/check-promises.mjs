@@ -204,6 +204,10 @@ function main() {
     const recordProblems = checkRecords(records, {
       commitExists: (sha) => git(['cat-file', '-e', `${sha}^{commit}`]).status === 0,
       isAncestor: (a, b) => git(['merge-base', '--is-ancestor', a, b]).status === 0,
+      // CI's checkout fetches one commit, so every older sha is absent and the rule would report
+      // eight fabricated records — which is what it did on run 34261942642. The distinction is the
+      // whole point: a truncated history and an invented sha look identical to `cat-file`.
+      shallow: git(['rev-parse', '--is-shallow-repository']).stdout?.trim() === 'true',
     });
 
     // Rule 5 scans every document EXCEPT the records themselves: inside a dated record any score may

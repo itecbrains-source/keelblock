@@ -119,3 +119,45 @@ describe('review records — the score is a live claim outside them', () => {
     expect(checkScoreClaims({ 'README.md': '36/100' }, null)).toEqual([]);
   });
 });
+
+describe('shallow history', () => {
+  const records = [
+    { file: 'docs/review/00-VERDICT.md', record: '00', commit: 'abc1234', date: '2026-09-08' },
+  ];
+
+  it('MUTATION: a shallow clone reports the real cause, not a fabricated sha', () => {
+    // CI run 34261942642 failed with "a record citing a sha nobody made" for all eight records.
+    // Every sha was real; the checkout had fetched one commit. A misleading gate message sends the
+    // reader hunting for a forged record, which is worse than the failure it is reporting.
+    const p = checkRecords(records as never, {
+      commitExists: () => false,
+      isAncestor: () => true,
+      shallow: true,
+    });
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatch(/history is shallow/);
+    expect(p[0]).toMatch(/fetch-depth: 0/);
+    expect(p[0]).not.toMatch(/nobody made/);
+  });
+
+  it('still FAILS on a shallow clone — it does not skip', () => {
+    // The tempting fix is to pass when history is unavailable. That turns the rule off precisely
+    // where it runs unattended.
+    expect(
+      checkRecords(records as never, {
+        commitExists: () => true,
+        isAncestor: () => true,
+        shallow: true,
+      }),
+    ).toHaveLength(1);
+  });
+
+  it('with full history, a genuinely absent commit still reads as fabricated', () => {
+    const p = checkRecords(records as never, {
+      commitExists: () => false,
+      isAncestor: () => true,
+      shallow: false,
+    });
+    expect(p[0]).toMatch(/not in this repository's history/);
+  });
+});

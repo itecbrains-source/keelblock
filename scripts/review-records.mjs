@@ -68,12 +68,25 @@ export const isRecordFile = (name) => /^\d\d-.+\.md$/.test(name);
 /**
  * Rules 1-4. Pure: history questions arrive as predicates so each rule carries a mutation proof.
  * @param {Array<ReturnType<typeof parseRecord> & {file: string}>} records ordered by filename
- * @param {{commitExists: (sha: string) => boolean, isAncestor: (a: string, b: string) => boolean}} history
+ * @param {{commitExists: (sha: string) => boolean, isAncestor: (a: string, b: string) => boolean, shallow?: boolean}} history
  * @returns {string[]}
  */
-export function checkRecords(records, { commitExists, isAncestor }) {
+export function checkRecords(records, { commitExists, isAncestor, shallow = false }) {
   const problems = [];
   const seen = new Map();
+
+  // A shallow clone has one commit, so every older sha is legitimately absent. Saying "a sha nobody
+  // made" there is false and sends the reader looking for a fabricated record — measured on CI run
+  // 34261942642, where this rule reported all eight records as citing invented commits. The rule
+  // still fails, because a check that silently skips where it matters most is not a check; it fails
+  // with the actual cause and the actual fix.
+  if (shallow) {
+    return [
+      "the repository history is shallow, so no record's commit can be verified. " +
+        'This runs in CI by default: actions/checkout fetches one commit. ' +
+        'Set `fetch-depth: 0` on the checkout step for any job that runs this gate.',
+    ];
+  }
 
   for (const r of records) {
     if (!r || !r.commit || !r.date) {
