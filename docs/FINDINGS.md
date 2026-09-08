@@ -512,3 +512,139 @@ that moment.
 The general shape is worth keeping: **a register whose entries nothing else references cannot detect
 its own losses.** Every such register needs a completeness check that is independent of its contents —
 here, the sequence itself.
+
+## F-26 · The gate protecting the evidence was indifferent to what the evidence said
+
+**2026-09-08 · `scripts/access-matrix.mjs`**
+
+`docs/ACCESS-MATRIX.md` is the artifact the central claim rests on — the thing `PRODUCT.md` offers as
+what makes B-2 checkable by a stranger. It was generated, committed, and guarded by `--check`, which
+re-renders it and fails if the committed copy is stale.
+
+**That is a check on the document, not on the database.** `render()` counted anomalies in a local
+variable, printed the count into the markdown, and returned a string. The number never reached a
+caller. It was never compared to zero, and the prober was invoked with `--no-fail`.
+
+So the committed matrix could have reported a cross-tenant read in the "different organization"
+column and `npm run check` would have printed `generated: ok`, provided the committed copy already
+contained it. The only thing that could go red was disagreement between the file and the renderer.
+
+It was not hypothetical. The committed copy carried, unanswered:
+
+```bash
+grep -n "⚠" docs/ACCESS-MATRIX.md
+#   **⚠ 2 anomalies** — behavior differs from intent. Each is a defect until explained.
+grep -rn "anomal" --include=*.md . | grep -v node_modules
+#   docs/ACCESS-MATRIX.md, and nothing else
+```
+
+Two anomalies and three rows the tool itself labelled CRITICAL, published for weeks, explained
+nowhere, and incapable of failing anything.
+
+**The fix is not a threshold.** A count that must be zero would have been silenced the first time
+something legitimate appeared — and something legitimate did: five of the eight concerns are the
+tenancy model working as designed. What the artifact needed was **adjudication**: every concern must
+be absent or answered, an answer is a written reason in `keelblock.access-allowances.json`, and the
+reason is **published in the matrix itself**, so the person the document exists for can read the
+argument instead of taking it on trust.
+
+Three details carry the weight, and each is a mutation proof:
+
+- **A reason under 24 characters is refused.** Otherwise `"ok"` retires a cross-tenant leak, and the
+  mechanism becomes a switch with extra steps.
+- **An allowance matching nothing fails.** A stale entry is a check already silenced for whatever
+  reoccupies its key later.
+- **`render()` and `evaluate()` share one anomaly predicate.** The recurring defect in this
+  repository is one question answered by two resolvers that drift; building the second one here would
+  have meant the published count and the enforced count could disagree.
+
+The general shape: **freshness and content are different properties, and a generated artifact needs
+both.** Guarding only freshness proves the document keeps up with the database. It says nothing about
+whether what the database is doing is acceptable, which is the only reason anyone reads it.
+
+## F-27 · Both anomalies were false positives, and "REACHABLE" was doing work the data could not support
+
+**2026-09-08 · adjudicated in `keelblock.access-allowances.json`**
+
+With F-26's rule in place, the two anomalies had to be answered. Neither is a defect.
+
+```sql
+-- as anon, against the live local stack
+set role anon;  update public.organization_member set role='owner';
+-- ERROR:  permission denied for table organization_member
+set role service_role;  select count(*) from public.organization_member;
+-- ERROR:  permission denied for table organization_member
+```
+
+Both cells are denied **at the privilege layer, before RLS is consulted**. `anon` holds no grant on
+that table at all; `service_role` holds `REFERENCES, TRIGGER, TRUNCATE` and no DML (see F-28).
+
+So why did the matrix say `⚠ REACHABLE`? Two mechanisms, and the second is the more interesting.
+
+**The prober infers identity and expectation by matching words in a test's description.** In
+`rlsautotest/report.py`, the fallback classifier reads the pgTAP label: a label containing `"anon"`
+is the anon identity, and the expectation is derived from whether the wording contains `"denied"`,
+`"blocked"`, `"row(s)"`, `"can"`. That is the same grep-versus-parse trap as F-20, in a third-party
+tool, deciding what our flagship artifact says.
+
+**And `render()` promoted a failed assertion to a claim about the database.** The report records
+`pass: false` — _this assertion did not pass_. It does not record why. The renderer mapped
+`pass:false, exp:false` to the word **REACHABLE**, which asserts that a tenant boundary is open. A
+test can fail because data leaked; it can also fail because the statement errored, which is what
+happened here.
+
+The word was deliberately **not** softened. For a genuine leak, `REACHABLE` is exactly right, and
+weakening it to make two false positives read better would blunt the only signal that matters. The
+answer is adjudication: the cells stay loud, and the artifact now carries the reason each was
+dismissed, with the reproduction. F-8 already wrote the rule this serves — _a matrix with a false
+positive in it teaches people to ignore the true ones_ — and the way to honor it is to explain the
+false ones in public, not to hide them.
+
+Also dismissed, with the same treatment: `supabase_etl_admin`, flagged CRITICAL as a
+"client-reachable" bypass role. It is a Supabase platform role, no role is a member of it, and
+`set role anon; set role supabase_etl_admin` fails with `permission denied to set role`. The tool's
+own sanctioned list names five platform roles and predates this one.
+
+## F-28 · A role that can destroy a table it cannot read
+
+**2026-09-08 · fixed in `20260908120000_close_execute_and_truncate_gaps.sql`**
+
+F-1 found `anon` holding TRUNCATE on every tenant table through Supabase's default ACLs, and
+`20260907130000` revoked it. **From `anon` and `authenticated`.** `service_role` was not in the
+statement.
+
+Measured on the live stack, before the fix:
+
+```sql
+select table_name, string_agg(privilege_type, ',' order by privilege_type)
+from information_schema.role_table_grants
+where table_schema='public' and grantee='service_role'
+group by table_name;
+--  organization         REFERENCES,TRIGGER,TRUNCATE
+--  organization_member  REFERENCES,TRIGGER,TRUNCATE
+--  project              REFERENCES,TRIGGER,TRUNCATE
+```
+
+No `SELECT`, no `INSERT`, no `UPDATE`, no `DELETE`, and `TRUNCATE` on all three — so the sanctioned
+bypass role could destroy every tenant's rows and could not read one of them. RLS does not apply to
+TRUNCATE at all, so no policy in this repository limits it.
+
+Stated honestly, because the severity matters: `service_role` is server-only and never reaches a
+browser, so this is not remotely exploitable. It is **blast radius**. A leaked service key currently
+meant total data loss rather than a scoped read, which is the wrong way round, and the grant bought
+nothing because nothing holds the DML that would make the role useful.
+
+Two things came out of it.
+
+**The same statement missed the same class twice.** `20260907150000` added two SECURITY DEFINER
+trigger functions and kept Postgres's default EXECUTE-to-PUBLIC, three migrations after REQ-11 wrote
+down that exact rule and applied it to the helper functions. Neither omission was visible to any
+gate. A hardening rule applied to the objects that existed when it was written is a rule that decays
+silently; the `alter default privileges` half is what makes it stick, and it now covers all three
+roles.
+
+**Nothing can currently use the admin client.** `service_role` holds no DML on any tenant table, so
+the first thing to wire `src/lib/supabase/server-only/admin.ts` — the Stripe webhook in SPEC-007 is
+the canonical candidate — will fail with `permission denied for table`. That is arguably the correct
+default (grant it when something needs it, deliberately, rather than in advance), and it is recorded
+here so it is discovered by reading rather than by debugging.

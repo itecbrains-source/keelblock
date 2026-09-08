@@ -1,10 +1,10 @@
 {
-  "$comment": "Where each piece of material goes. Written as it is produced, not mined later \u2014 the reasoning is freshest the day it is discovered, and a finding nobody routed is a finding nobody uses.",
+  "$comment": "Where each piece of material goes. Written as it is produced, not mined later — the reasoning is freshest the day it is discovered, and a finding nobody routed is a finding nobody uses.",
   "$destinations": {
     "landing": "A section of the marketing site (docs/WEBSITE-AND-DOCS.md defines the seven).",
     "faq": "A question a buyer or developer actually asks.",
     "docs": "A page in the technical documentation.",
-    "blog": "Worth a post of its own \u2014 a measured finding with a reproduction that nobody else can publish.",
+    "blog": "Worth a post of its own — a measured finding with a reproduction that nobody else can publish.",
     "internal": "Deliberately not published. Needs a reason."
   },
   "material": [
@@ -100,7 +100,7 @@
     },
     {
       "id": "F-16",
-      "what": "strict CSP, static prerendering, working hydration \u2014 pick two",
+      "what": "strict CSP, static prerendering, working hydration — pick two",
       "to": ["blog", "docs", "faq"],
       "angle": "Explains keelblock's report-only default, and is genuinely useful to anyone shipping a CSP on Next."
     },
@@ -157,6 +157,24 @@
       "what": "two tracked deferrals silently deleted while every gate said ok",
       "to": ["blog", "docs"],
       "angle": "A register whose entries nothing references cannot detect its own losses. Generalises to any tracking system, and the failure is invisible by construction."
+    },
+    {
+      "id": "F-26",
+      "what": "the gate protecting keelblock's flagship evidence was indifferent to what the evidence said",
+      "to": ["blog", "docs"],
+      "angle": "The strongest self-criticism keelblock has published. A generated artifact needs two guarantees, freshness and content, and guarding only the first proves the document keeps up with the database while saying nothing about whether the database is acceptable. The fix generalizes: adjudication with a published reason, a reason floor so a token cannot retire a leak, and a stale allowance failing so the list cannot rot."
+    },
+    {
+      "id": "F-27",
+      "what": "both anomalies in the published access matrix were false positives, and REACHABLE was a claim the data could not support",
+      "to": ["blog", "docs"],
+      "angle": "Grep-versus-parse (F-20) inside a third-party tool, deciding what our own artifact says — plus the distinction between 'this assertion failed' and 'this boundary is open'. The lesson is that the word was kept loud and the dismissals were published with their reproductions, because softening a true signal to accommodate two false ones is how a matrix stops being read."
+    },
+    {
+      "id": "F-28",
+      "what": "a role that could destroy a table it could not read",
+      "to": ["blog", "faq", "docs"],
+      "angle": "The sequel to F-1 and a sharper version of it: the revoke covered two roles out of three, so service_role kept TRUNCATE on every tenant table and held no DML. Affects every project that copied the F-1 fix. Also the general rule — a hardening statement applied to the objects that existed when it was written decays silently unless ALTER DEFAULT PRIVILEGES carries it forward."
     }
   ]
 }

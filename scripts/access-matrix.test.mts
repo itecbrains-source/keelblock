@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render } from './access-matrix.mjs';
+import { evaluate, render } from './access-matrix.mjs';
 
 /** A clean two-identity report: a member reaches the row, an outsider does not. */
 const clean = {
@@ -103,5 +103,83 @@ describe('access matrix', () => {
     const tight = clone(clean);
     tight.tables[0].idgrid.SELECT.authorized = { exp: true, pass: false };
     expect(render(tight)).toContain('blocked but should be allowed');
+  });
+});
+
+// ── the artifact's CONTENT must be able to fail the build ──────────────────────
+// Before this, `render()` counted anomalies, printed the count and returned a string: the number
+// never reached a caller, was never thresholded, and `--check` compared text. So a matrix reporting a
+// cross-tenant leak passed the gate, provided the committed copy already contained the leak. The
+// gate protected the freshness of the evidence and was indifferent to what it said.
+
+const leak = () => {
+  const r = clone(clean);
+  r.tables[0].idgrid.SELECT.other = { exp: false, pass: false };
+  return r;
+};
+const critical = () => {
+  const r = clone(clean);
+  r.bypass_surfaces = [{ severity: 'CRITICAL', object: 'etl_admin', reason: 'bypasses RLS' }];
+  return r;
+};
+const REASON = 'adjudicated 2026-09-08: denied at the privilege layer, reproduced';
+
+describe('access matrix · adjudication', () => {
+  it('a clean report with no allowances has nothing to answer', () => {
+    expect(evaluate(clean, []).problems).toEqual([]);
+  });
+
+  it('MUTATION: an unexplained anomaly fails, and names the exact cell', () => {
+    const { problems } = evaluate(leak(), []);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('project');
+    expect(problems[0]).toContain('SELECT');
+    expect(problems[0]).toContain('other');
+  });
+
+  it('MUTATION: an unexplained CRITICAL bypass surface fails', () => {
+    const { problems } = evaluate(critical(), []);
+    expect(problems.join(' ')).toContain('etl_admin');
+  });
+
+  it('an allowance with a real reason answers its concern', () => {
+    const key = evaluate(leak(), []).concerns[0].key;
+    const { problems, adjudicated } = evaluate(leak(), [{ key, reason: REASON }]);
+    expect(problems).toEqual([]);
+    expect(adjudicated).toHaveLength(1);
+  });
+
+  it('MUTATION: an allowance with a token reason silences nothing', () => {
+    // "ok" must not be able to retire a cross-tenant leak.
+    const key = evaluate(leak(), []).concerns[0].key;
+    const { problems } = evaluate(leak(), [{ key, reason: 'ok' }]);
+    expect(problems.join(' ')).toContain('reason');
+    expect(problems.join(' ')).toContain(key);
+  });
+
+  it('MUTATION: an allowance that matches nothing fails, so the list cannot rot', () => {
+    const { problems } = evaluate(clean, [{ key: 'anomaly:project.SELECT.other', reason: REASON }]);
+    expect(problems.join(' ')).toContain('matches nothing');
+  });
+
+  it('the reason is published in the artifact, not only in a config file', () => {
+    const key = evaluate(leak(), []).concerns[0].key;
+    const out = render(leak(), { allowances: [{ key, reason: REASON }] });
+    expect(out).toContain('Adjudicated');
+    expect(out).toContain(REASON);
+  });
+
+  it('the summary separates what was answered from what was not', () => {
+    expect(render(leak(), { allowances: [] })).toContain('1 unexplained');
+    const key = evaluate(leak(), []).concerns[0].key;
+    expect(render(leak(), { allowances: [{ key, reason: REASON }] })).toContain('0 unexplained');
+  });
+
+  it('render and evaluate agree on what an anomaly is — one predicate, not two', () => {
+    // The recurring defect in this repository is one question answered by two resolvers that drift.
+    const r = leak();
+    const cells = (render(r).match(/⚠ (\*\*REACHABLE\*\*|blocked but should be allowed)/g) ?? [])
+      .length;
+    expect(cells).toBe(evaluate(r, []).concerns.filter((c) => c.kind === 'anomaly').length);
   });
 });

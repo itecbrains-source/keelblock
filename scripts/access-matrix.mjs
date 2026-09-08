@@ -3,17 +3,33 @@
  * Generates docs/ACCESS-MATRIX.md — the artifact that makes keelblock's central claim checkable by a
  * stranger in thirty seconds, without trusting anyone (SPEC-002 REQ-4, bar B-2).
  *
- * `--check` re-renders and fails if the committed copy is stale, so a policy change that alters who
- * can reach what cannot merge without the matrix diff appearing in review. That diff is the point:
- * a reviewer who sees a new ✓ in the "different organization" column has caught a tenant leak in a
- * document, before it reaches a user.
+ * Two rules, and the second was missing until 2026-09-08 (F-26):
+ *
+ *   · **Freshness.** `--check` re-renders and fails if the committed copy is stale, so a policy change
+ *     that alters who can reach what cannot merge without the matrix diff appearing in review. That
+ *     diff is the point: a reviewer who sees a new ✓ in the "different organization" column has
+ *     caught a tenant leak in a document, before it reaches a user.
+ *
+ *   · **Content.** An anomaly or a bypass surface that nobody has answered FAILS, in both modes. The
+ *     count used to be computed inside `render()`, printed, and dropped on the floor — never returned,
+ *     never thresholded — so a matrix reporting a cross-tenant leak passed the gate as long as the
+ *     committed copy already contained it. Freshness without content is a check on the document, not
+ *     on the database.
+ *
+ * An accepted concern is a WRITTEN decision: a row in `keelblock.access-allowances.json` carrying a
+ * reason, published in the artifact itself so the person the matrix is for can read the reasoning
+ * rather than take it on trust.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 const OUT = 'docs/ACCESS-MATRIX.md';
+const ALLOWANCES = 'keelblock.access-allowances.json';
 const CMDS = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
+
+/** Long enough that "ok" cannot retire a cross-tenant leak. */
+const MIN_REASON = 24;
 
 /** Ordered least-privileged first, so the eye lands on `anon` before `service_role`. */
 const IDENTITIES = [
@@ -27,8 +43,110 @@ const IDENTITIES = [
   ['service_role', 'Service role', 'bypasses RLS by design; server-only, never in a browser'],
 ];
 
-export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
-  const tables = [...report.tables].sort((a, b) => a.table.localeCompare(b.table));
+/**
+ * ONE predicate. `render()` and `evaluate()` must never disagree about what a ⚠ is — the recurring
+ * defect in this repository is one question answered by two resolvers that quietly drift apart.
+ * @param {{exp?: boolean, pass?: boolean} | undefined} cell
+ */
+const isAnomaly = (cell) => Boolean(cell) && cell.pass === false;
+
+const sortedTables = (report) =>
+  [...(report.tables ?? [])].sort((a, b) => String(a.table).localeCompare(String(b.table)));
+const sortedBypass = (report) =>
+  [...(report.bypass_surfaces ?? [])].sort((a, b) =>
+    String(a.object).localeCompare(String(b.object)),
+  );
+
+/**
+ * Everything in this report that a human must answer for, as stable keys an allowance can name.
+ * @typedef {{kind: 'anomaly'|'bypass', key: string, severity?: string, detail: string}} Concern
+ * @param {any} report @returns {Concern[]}
+ */
+export function concernsOf(report) {
+  /** @type {Concern[]} */
+  const concerns = [];
+  for (const t of sortedTables(report)) {
+    for (const cmd of CMDS) {
+      for (const [id] of IDENTITIES) {
+        const cell = t.idgrid?.[cmd]?.[id];
+        if (!isAnomaly(cell)) continue;
+        concerns.push({
+          kind: 'anomaly',
+          key: `anomaly:${t.table}.${cmd}.${id}`,
+          detail: cell.exp
+            ? `\`${id}\` is blocked on ${cmd} on \`${t.table}\` and the policy intends to allow it`
+            : `\`${id}\` reached \`${t.table}\` on ${cmd} and the policy intends to deny it`,
+        });
+      }
+    }
+  }
+  for (const b of sortedBypass(report)) {
+    const why = String(b.reason ?? b.detail ?? b.why ?? '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    concerns.push({
+      kind: 'bypass',
+      key: `bypass:${b.object}`,
+      severity: String(b.severity ?? '—'),
+      detail: `\`${b.object}\` can sidestep RLS (${b.severity ?? '—'}): ${why}`,
+    });
+  }
+  return concerns;
+}
+
+/**
+ * Pure, and the reason the artifact can fail. Every concern must be absent or answered.
+ * @param {any} report
+ * @param {Array<{key: string, reason: string}>} allowances
+ * @returns {{concerns: Concern[], adjudicated: Array<Concern & {reason: string}>, problems: string[]}}
+ */
+export function evaluate(report, allowances = []) {
+  const concerns = concernsOf(report);
+  const byKey = new Map(concerns.map((c) => [c.key, c]));
+  const problems = [];
+  const adjudicated = [];
+  const answered = new Set();
+
+  for (const a of allowances ?? []) {
+    const key = String(a?.key ?? '');
+    const reason = String(a?.reason ?? '').trim();
+    const concern = byKey.get(key);
+    if (!concern) {
+      problems.push(
+        `allowance \`${key}\` matches nothing in this report. A stale allowance is a check that has ` +
+          `already been silenced for whatever reoccupies its key — remove it from ${ALLOWANCES}.`,
+      );
+      continue;
+    }
+    if (reason.length < MIN_REASON) {
+      problems.push(
+        `allowance \`${key}\` carries no reason of substance ("${reason}"). An accepted risk is a ` +
+          `written decision someone can disagree with later, not a token that switches a check off.`,
+      );
+      continue;
+    }
+    answered.add(key);
+    adjudicated.push({ ...concern, reason });
+  }
+
+  for (const c of concerns) {
+    if (answered.has(c.key)) continue;
+    problems.push(
+      `${c.detail} — and nothing in the repository explains it. Fix it, or record it in ` +
+        `${ALLOWANCES} with a reason.  [${c.key}]`,
+    );
+  }
+  return { concerns, adjudicated, problems };
+}
+
+/**
+ * @param {any} report
+ * @param {{generatedBy?: string, allowances?: Array<{key: string, reason: string}>}} [opts]
+ */
+export function render(report, { generatedBy = 'npm run access-matrix', allowances = [] } = {}) {
+  const { concerns, adjudicated } = evaluate(report, allowances);
+  const answeredKeys = new Set(adjudicated.map((a) => a.key));
+  const tables = sortedTables(report);
   const L = [];
 
   L.push('# Access matrix');
@@ -42,7 +160,6 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   for (const [, label, note] of IDENTITIES) L.push(`- **${label}** — ${note}`);
   L.push('');
 
-  let anomalies = 0;
   for (const t of tables) {
     L.push(`## \`${t.table}\``);
     L.push('');
@@ -59,10 +176,7 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
       const cells = CMDS.map((c) => {
         const g = t.idgrid?.[c]?.[key];
         if (!g) return '–';
-        if (g.pass === false) {
-          anomalies++;
-          return `⚠ ${g.exp ? 'blocked but should be allowed' : '**REACHABLE**'}`;
-        }
+        if (isAnomaly(g)) return `⚠ ${g.exp ? 'blocked but should be allowed' : '**REACHABLE**'}`;
         return g.exp ? '✓' : '·';
       });
       L.push(`| ${label} | ${cells.join(' | ')} |`);
@@ -83,9 +197,7 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
   } else {
     L.push('| Severity | Object | Why it is listed |');
     L.push('|---|---|---|');
-    for (const b of [...bypass].sort((a, b2) =>
-      String(a.object).localeCompare(String(b2.object)),
-    )) {
+    for (const b of sortedBypass(report)) {
       const why = String(b.reason ?? b.detail ?? b.why ?? '')
         .replace(/\s+/g, ' ')
         .trim();
@@ -93,15 +205,53 @@ export function render(report, { generatedBy = 'npm run access-matrix' } = {}) {
     }
   }
   L.push('');
+  if (adjudicated.length) {
+    L.push('## Adjudicated');
+    L.push('');
+    L.push(
+      'Concerns above that were **examined and accepted**, each with the reason and the date it',
+    );
+    L.push(
+      'was decided. Anything not listed here is unexplained, and unexplained fails the build.',
+    );
+    L.push('');
+    L.push('| Concern | Reason |');
+    L.push('|---|---|');
+    for (const a of adjudicated) L.push(`| \`${a.key}\` | ${a.reason} |`);
+    L.push('');
+  }
   L.push('---');
   L.push('');
+
+  const anomalies = concerns.filter((c) => c.kind === 'anomaly');
+  const openAnomalies = anomalies.filter((c) => !answeredKeys.has(c.key)).length;
+  const openAll = concerns.filter((c) => !answeredKeys.has(c.key)).length;
   L.push(
-    anomalies === 0
+    anomalies.length === 0
       ? '**No anomalies.** Every identity reached exactly what its policies intend, on every table and command.'
-      : `**⚠ ${anomalies} anomal${anomalies === 1 ? 'y' : 'ies'}** — behavior differs from intent. Each is a defect until explained.`,
+      : `**⚠ ${anomalies.length} anomal${anomalies.length === 1 ? 'y' : 'ies'}** — ` +
+          `${anomalies.length - openAnomalies} adjudicated, ${openAnomalies} unexplained. ` +
+          `Behavior differs from intent; each is a defect until explained.`,
   );
+  if (openAll) {
+    L.push('');
+    L.push(
+      `> **This matrix does not pass its own gate.** ${openAll} concern(s) are unanswered — see the ` +
+        `failure from \`${generatedBy}\` for the list.`,
+    );
+  }
   L.push('');
   return L.join('\n');
+}
+
+/** @returns {Array<{key: string, reason: string}>} */
+export function loadAllowances(read = readFileSync, path = ALLOWANCES) {
+  try {
+    const parsed = JSON.parse(read(path, 'utf8'));
+    return Array.isArray(parsed?.allow) ? parsed.allow : [];
+  } catch {
+    return []; // no file is the honest default: nothing is accepted
+  }
 }
 
 function main() {
@@ -131,26 +281,49 @@ function main() {
     process.exit(2);
   }
 
-  const rendered = render(JSON.parse(readFileSync(tmp, 'utf8')));
+  const report = JSON.parse(readFileSync(tmp, 'utf8'));
   rmSync(tmp, { force: true });
 
+  const allowances = loadAllowances();
+  const { problems, adjudicated } = evaluate(report, allowances);
+  const rendered = render(report, { allowances });
+
+  // Generate mode still WRITES before failing: you cannot adjudicate a matrix you cannot read.
+  let stale = false;
   if (!check) {
     writeFileSync(OUT, rendered);
     console.log(`access-matrix: wrote ${OUT}`);
-    return;
+  } else {
+    const committed = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
+    stale = committed !== rendered;
+    if (!stale) console.log('access-matrix: up to date');
   }
-  const committed = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
-  if (committed === rendered) {
-    console.log('access-matrix: up to date');
-    return;
+
+  if (stale) {
+    console.error(`access-matrix: ${OUT} is STALE.\n`);
+    console.error(
+      'The policies no longer match the committed matrix. Regenerate it and read the diff —',
+    );
+    console.error('a new ✓ in the "different organization" column is a tenant leak.\n');
+    console.error('  npm run access-matrix');
   }
-  console.error(`access-matrix: ${OUT} is STALE.\n`);
-  console.error(
-    'The policies no longer match the committed matrix. Regenerate it and read the diff —',
-  );
-  console.error('a new ✓ in the "different organization" column is a tenant leak.\n');
-  console.error('  npm run access-matrix');
-  process.exit(1);
+
+  // The content rule. Freshness alone only proves the document keeps up with the database; it says
+  // nothing about whether what the database is doing is acceptable.
+  if (problems.length) {
+    console.error(`\naccess-matrix: ${problems.length} unanswered concern(s) in ${OUT}.\n`);
+    for (const p of problems) console.error(`  ${p}`);
+    console.error(
+      `\nEach must be fixed, or accepted deliberately with a reason in ${ALLOWANCES}:\n` +
+        `  { "allow": [{ "key": "<the key above>", "reason": "why this is acceptable, and when it was decided" }] }`,
+    );
+  } else if (adjudicated.length) {
+    console.log(
+      `access-matrix: ${adjudicated.length} concern(s) accepted with a written reason, ${'0'} unexplained`,
+    );
+  }
+
+  if (stale || problems.length) process.exit(1);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();

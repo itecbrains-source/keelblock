@@ -1,0 +1,26 @@
+-- The INSERT grant that outlived its policy.
+--
+-- 20260907140000 moved organization creation from an INSERT policy to the create_organization() RPC,
+-- and dropped the policy. It did not drop the GRANT, so `authenticated` still holds INSERT on
+-- public.organization with no policy that could ever permit it.
+--
+-- Today that is harmless: with no INSERT policy, RLS denies the write. The access matrix flags it as
+-- a dual write path anyway, and it is right to -- the grant is a loaded affordance. Anyone who later
+-- adds an INSERT policy to this table, for any reason, silently reopens the direct-write path that
+-- the RPC exists to be the only version of. The validation lives in the RPC; the client would skip
+-- it and every RLS assertion would still pass.
+--
+-- Removing the grant makes the denial a PRIVILEGE fact rather than a policy fact, which is the
+-- stronger of the two: a policy can be added by anyone editing this schema, a grant cannot be
+-- re-granted by accident.
+--
+-- Behavior-preserving, and checked rather than assumed:
+--   · the RPC is SECURITY DEFINER, so it runs as its owner and is unaffected;
+--   · the intent suite asserts the direct insert throws SQLSTATE 42501, which covers BOTH
+--     "new row violates row-level security policy" and "permission denied for table" -- verified by
+--     running supabase/tests/intent/002 before and after this migration (10/10 both times).
+--
+-- UPDATE and DELETE on organization, and every command on organization_member, are deliberately NOT
+-- revoked: those have real policies behind them and are how a member administers their own tenant.
+
+revoke insert on public.organization from authenticated;
