@@ -181,6 +181,12 @@
       "what": "the committed database types could not be regenerated from the repository",
       "to": ["blog", "docs"],
       "angle": "A generated artifact is only evidence if it reproduces from the inputs in the repository; this one had recorded a property of one machine — pgTAP's own views, typed as part of the application schema. The failure lands on the newcomer, who is told an artifact is stale through nothing they did. Only a clean rebuild could have found it, because the gate compares the file to whatever the current stack produces."
+    },
+    {
+      "id": "F-30",
+      "what": "the check that certifies every other check was a substring search",
+      "to": ["blog", "docs"],
+      "angle": "The sharpest instance of grep-versus-parse this project has: the meta-gate enforcing 'every gate has been shown to fail' did so by looking for a word, which a TODO comment satisfies. Publishable precisely because every proof it guarded turned out to be real — the defect was that nothing could have told us otherwise."
     }
   ]
 }

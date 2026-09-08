@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { gateImports, mutationProof } from './gate-health.mjs';
 
 /**
  * The meta-gate: **every gate is well-behaved.**
@@ -31,8 +32,64 @@ describe('gate health (the suite is dependable)', () => {
 
   it.each(GATES)('%s has been shown to FAIL, not just to pass', (gate) => {
     // A gate that has only ever printed a tick has not been shown to be looking at anything.
-    const test = readFileSync(`scripts/${gate.replace('.mjs', '.test.mts')}`, 'utf8');
-    expect(/MUTATION/.test(test), `${gate}'s tests contain no mutation proof`).toBe(true);
+    //
+    // This used to be `/MUTATION/.test(fileContents)`, which any comment mentioning the word
+    // satisfied — including one saying a proof still needed writing. It now asks the PARSED test
+    // file whether a case NAMED as a mutation proof actually calls something the gate exports.
+    const source = readFileSync(`scripts/${gate.replace('.mjs', '.test.mts')}`, 'utf8');
+    const { ok, reason } = mutationProof(source, gate);
+    expect(ok, `${gate}'s test file ${reason}`).toBe(true);
+  });
+
+  // ── proofs of THIS rule, because the meta-gate needs one more than anything else ──────────────
+
+  it('MUTATION: a comment mentioning the word is not a proof', () => {
+    const source = [
+      "import { rule } from './check-x.mjs';",
+      '// NOTE: add a MUTATION proof for the empty case',
+      "it('catches the empty case', () => expect(rule([])).toHaveLength(1));",
+    ].join('\n');
+    expect(mutationProof(source, 'check-x.mjs').ok).toBe(false);
+  });
+
+  it('MUTATION: a case named as a proof that never calls the gate is not a proof', () => {
+    // The realistic decay: the rule is renamed or inlined, the case keeps its name, and nothing
+    // notices that it stopped exercising anything.
+    const source = [
+      "import { rule } from './check-x.mjs';",
+      "it('MUTATION: a bad input is rejected', () => expect(true).toBe(true));",
+    ].join('\n');
+    const { ok, reason } = mutationProof(source, 'check-x.mjs');
+    expect(ok).toBe(false);
+    expect(reason).toContain('none calls anything exported');
+  });
+
+  it('MUTATION: a test file that imports nothing from its gate cannot prove anything about it', () => {
+    const source = "it('MUTATION: something', () => expect(1).toBe(1));";
+    expect(mutationProof(source, 'check-x.mjs').ok).toBe(false);
+  });
+
+  it('a real mutation case passes, including through it.each', () => {
+    const direct = [
+      "import { rule } from './check-x.mjs';",
+      "it('MUTATION: a bad input is rejected', () => { expect(rule(['bad'])).toHaveLength(1); });",
+    ].join('\n');
+    expect(mutationProof(direct, 'check-x.mjs').ok).toBe(true);
+
+    const each = [
+      "import { rule } from './check-x.mjs';",
+      "it.each(['a'])('MUTATION: %s is rejected', (x) => { expect(rule([x])).toHaveLength(1); });",
+    ].join('\n');
+    expect(mutationProof(each, 'check-x.mjs').ok).toBe(true);
+  });
+
+  it('the import reader sees named and default imports, and ignores other modules', () => {
+    const source = [
+      "import { a, b } from './check-x.mjs';",
+      "import other from './check-y.mjs';",
+    ].join('\n');
+    expect([...gateImports(source, 'check-x.mjs')].sort()).toEqual(['a', 'b']);
+    expect([...gateImports(source, 'check-y.mjs')]).toEqual(['other']);
   });
 
   it.each(GATES)('%s exports pure logic that can be tested without running it', (gate) => {
@@ -92,12 +149,22 @@ describe('gate health (the suite is dependable)', () => {
         b = run();
       expect(a.status, `${gate} gave different verdicts on identical input`).toBe(b.status);
       expect(a.stdout, `${gate} produced different output on identical input`).toBe(b.stdout);
+      // stderr matters MORE than stdout here: every gate writes its failures there, so comparing
+      // only stdout compares the channel that is empty exactly when the gate has something to say.
+      expect(a.stderr, `${gate} reported different problems on identical input`).toBe(b.stderr);
     }
   }, 120_000);
 
-  it('the exclusion list is minimal, reasoned, and may only shrink', () => {
-    // An exclusion list is where a determinism guarantee goes to die.
-    expect(EXTERNAL.length).toBeLessThanOrEqual(4);
+  it('the exclusion list is FROZEN by value, not merely capped in length', () => {
+    // An exclusion list is where a determinism guarantee goes to die. A length cap says "may only
+    // shrink" and does not mean it: at exactly four entries it permits swapping any member for any
+    // other, which is how a gate quietly leaves the determinism guarantee without the list growing.
+    expect(EXTERNAL).toEqual([
+      'check-freshness.mjs',
+      'check-policies.mjs',
+      'check-generated.mjs',
+      'check-schema-guard.mjs',
+    ]);
     for (const g of EXTERNAL) expect(GATES).toContain(g);
   });
 

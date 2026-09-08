@@ -688,3 +688,51 @@ the machine that happened to run `npm run generate`.
 Found because a rename forced a clean rebuild. Nothing else would have caught it — the gate compares
 the committed file to whatever the current stack produces, so on the machine that produced it, it
 agreed with itself indefinitely.
+
+## F-30 · The check that certifies every other check was a substring search
+
+**2026-09-08 · `scripts/gate-health.test.mts`, rule extracted to `scripts/gate-health.mjs`**
+
+Every gate in this repository ships a mutation proof — a test that restores the real defect and
+asserts the gate goes red. That rule is what makes a green run evidence rather than agreement, and
+`gate-health.test.mts` is what enforced it, for every gate, like this:
+
+```js
+const test = readFileSync(`scripts/${gate.replace('.mjs', '.test.mts')}`, 'utf8');
+expect(/MUTATION/.test(test)).toBe(true);
+```
+
+A comment reading `// TODO: add a MUTATION proof` satisfies that. So does a doc block that happens to
+use the word. **The mechanism that certifies every other mechanism could not tell the difference
+between a proof and a mention of one.**
+
+This is F-20 — _a check that matches text will eventually match the wrong text_ — for the fourth
+time, in the place where it costs most.
+
+Worth stating plainly: **every current mutation proof is real.** They were read, and then parsed. The
+defect was never that a gate was faking it; it was that nothing could have told us if one were.
+
+It now asks the question structurally, through the TypeScript AST: is there a test case **named** as
+a mutation proof whose body **calls something the gate exports**? A comment cannot satisfy that, and
+neither can the realistic decay — a rule gets renamed or inlined, the case keeps its name, and
+nothing notices it stopped exercising anything.
+
+The new rule carries three mutation proofs of its own, which is the only defensible way to ship it:
+a comment mentioning the word is rejected, a case named as a proof that calls nothing is rejected
+with a reason naming what it should have called, and a test file that imports nothing from its gate
+is rejected outright.
+
+Two smaller holes in the same file, found while there:
+
+- **Determinism compared `stdout` and exit status, not `stderr`.** Every gate writes its failures to
+  stderr, so the comparison covered the channel that is empty exactly when a gate has something to
+  say. A gate that reported different problems on identical input would have compared equal.
+- **The exclusion list was capped, not frozen.** `expect(EXTERNAL.length).toBeLessThanOrEqual(4)`
+  described itself as "may only shrink" and did not mean it: at exactly four entries it permits
+  swapping any member for any other, which is how a gate leaves the determinism guarantee without
+  the list ever growing. It is now compared by value.
+
+The general shape, and it is the one worth keeping from this whole pass: **a rule about evidence must
+be enforced by something that reads structure.** TypeScript, the YAML parser and `JSON.parse` are
+already dependencies here; the remaining string matches are this project's largest single source of
+self-deception, and they are all in the layer whose job is to prevent it.
