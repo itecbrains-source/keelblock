@@ -92,11 +92,43 @@ describe('contracts gate', () => {
   it('MUTATION: index and spec file disagreeing about status fails', () => {
     // This happened: SPEC-001 and SPEC-003 read done in the index and draft in their own headers
     // for several commits, and the evidence rule silently passed because of it.
+    //
+    // The row is PADDED, as prettier writes it. The version of this fixture with single spaces
+    // passed for months against a matcher that could not find a single row in the real file.
     const p = checkStatusAgreement(
       [spec({ status: 'draft' })],
-      '| SPEC-001 | Tenancy | B-2 | 001 | **done** |',
+      '| SPEC-001                               | Tenancy | B-2           | 001           | **done** |',
     );
     expect(p[0]).toMatch(/index says "done", the spec file says "draft"/);
+  });
+
+  it('MUTATION: the disagreement is caught in the REAL index, not just a fixture', () => {
+    // The rule that matters is the one that runs on spec/README.md. Asserting only that the real
+    // set PASSES is satisfied by finding nothing, which is exactly how the matcher bug survived —
+    // including in the test on line 1 of this block. So mutate the real file and require a catch.
+    const index = readFileSync('spec/README.md', 'utf8');
+    const target = real.find((s) => s.status === 'draft')!;
+    const mutated = index
+      .split('\n')
+      .map((l) =>
+        new RegExp(`^\\|\\s*${target.id}\\s*\\|`).test(l)
+          ? l.replace(/\*{0,2}draft\*{0,2}/, '**done**')
+          : l,
+      )
+      .join('\n');
+    expect(checkStatusAgreement(real, mutated)[0]).toMatch(
+      new RegExp(`${target.id}: the index says "done"`),
+    );
+  });
+
+  it('MUTATION: an authored spec with no row in the index fails, rather than being skipped', () => {
+    // A not-found row used to be a silent `continue`. That is what turned a broken matcher into a
+    // gate that reported success while reading nothing.
+    const index = readFileSync('spec/README.md', 'utf8')
+      .split('\n')
+      .filter((l) => !l.startsWith('| SPEC-001'))
+      .join('\n');
+    expect(checkStatusAgreement(real, index)[0]).toMatch(/SPEC-001 is authored but has no row/);
   });
 
   it('agreeing statuses pass', () => {

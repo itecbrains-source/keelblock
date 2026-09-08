@@ -156,8 +156,23 @@ export function checkContracts(specs, exists) {
 export function checkStatusAgreement(specs, index) {
   const problems = [];
   for (const spec of specs) {
-    const row = index.split('\n').find((l) => l.includes(`| ${spec.id} |`));
-    if (!row) continue;
+    // Padding-tolerant, and it has to be: prettier aligns the index table, so the real row reads
+    // `| SPEC-004                               |`. Matching `| SPEC-004 |` with single spaces —
+    // which this did — found NO row for ANY spec, and a not-found row was a silent `continue`. The
+    // rule reported success for its whole life by looking at nothing, including in its own test
+    // against the real file, which passed vacuously. `check-promises.mjs` asks the same question
+    // one file away and gets it right; one question with two resolvers, and the wrong one here.
+    const rowRe = new RegExp(`^\\|\\s*\\*{0,2}${spec.id}\\*{0,2}\\s*\\|`);
+    const row = index.split('\n').find((l) => rowRe.test(l));
+    // No longer a silent skip. An authored spec absent from the index is its own defect, and
+    // treating it as "nothing to check" is what let the matcher bug hide.
+    if (!row) {
+      problems.push(
+        `${spec.id} is authored but has no row in the spec index. A spec nobody can find from ` +
+          `spec/README.md is invisible to every reader who starts where the workflow says to start.`,
+      );
+      continue;
+    }
     const claimed = (row.match(/\*{0,2}(draft|partial|done|planned)\*{0,2}\s*(?:\(|\|)/) ?? [])[1];
     if (claimed && claimed !== spec.status) {
       problems.push(
