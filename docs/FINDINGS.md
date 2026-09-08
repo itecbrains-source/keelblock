@@ -922,3 +922,79 @@ cookie is not cacheable, and the parameter is one way to fail it. So the gate re
 that declares the second parameter and never reads it as well — a correct signature is not the
 point, and a rule that only counted parameters would pass the version of this defect that keeps
 them.
+
+## F-35 · The property was written down, pinned by a test, and not in effect
+
+**2026-09-08 · found by smoke-testing SPEC-004 rather than by any gate**
+
+SPEC-004 REQ-6 states the auth configuration rather than inheriting it — F-31's rule applied to the
+place it bites hardest. Sessions gained a `timebox` and an `inactivity_timeout` where Supabase leaves
+both unset, and the password floor moved from 6 to 8, the value the generated file's own comment
+recommends. A test pins every value, including the ones nobody proposed to change.
+
+All of that was true of the FILE. None of it was true of the running project:
+
+```
+docker inspect supabase_auth_keelblock --format '{{.State.StartedAt}}'
+#   2026-09-08T03:33:15Z          -- the auth container
+stat -f %Sm supabase/config.toml
+#   11:29                          -- eight hours later
+```
+
+The container predates the change, so the stack was still enforcing a floor of 6 while a green suite
+asserted 8. **The gate proved the declaration; the property was not in effect.** That is F-31 one
+level up: there, a security property was true because of a default nobody set; here, one was written
+down and never applied, which reads identically from inside the repository.
+
+Confirmed both ways after restarting the stack — a 7-character password is now refused
+`weak_password: "Password should be at least 8 characters"`, and 8 is accepted.
+
+**The blast radius is smaller than it first looks, and worth stating precisely rather than
+alarmingly.** CI runs `supabase start` on a fresh checkout every time, so there the file and the
+running project agree by construction. The drift is local, and it affects the developer who edits
+config and keeps a long-running stack — which is everyone, eventually.
+
+Two things follow.
+
+**The test now says what it proves.** It verifies the declaration, and its doc comment carries the
+one-line curl that settles whether the value is live. A test whose scope is misread is worse than a
+missing one, because the misreading is confident.
+
+**Proving it against a DEPLOYED project needs a project.** That is not a gap anyone can close by
+writing more machinery here: SPEC-004 AC-10 already defers the `[remotes]` block to DEF-001 because
+keelblock has no environments of its own. The honest position is that the declaration is checked,
+the local application is one command away, and the deployed application is checkable the day there is
+something to deploy to.
+
+## F-36 · The session cookie had no `Secure`, and the obvious fix breaks sign-in locally
+
+**2026-09-08 · fixed in `src/lib/supabase/public-config.ts`**
+
+`@supabase/ssr` ships `DEFAULT_COOKIE_OPTIONS`:
+
+```js
+{ path: '/', sameSite: 'lax', httpOnly: false, maxAge: 400 * 24 * 60 * 60 }
+```
+
+`secure` is not in it at all. So over HTTPS in production the session cookie would be set without
+it, and the browser would also send that cookie over plain http to the same host. Inherited from a
+library default rather than a platform one, which makes it the third instance of F-31's rule in a
+single day.
+
+`httpOnly: false` is deliberate on their part and is NOT overridden here — `createBrowserClient`
+reads the session from these cookies, so making them server-only breaks client-side auth outright.
+The consequence is stated in the code rather than left to be discovered: an XSS on this origin can
+read the session token, and the mitigation is the CSP, not the cookie.
+
+**The obvious fix is a trap.** `secure: process.env.NODE_ENV === 'production'` is the version
+everyone writes, and `next start` sets `NODE_ENV=production` — so a locally served http build would
+set `Secure`, the browser would silently drop every auth cookie, and sign-in would present as doing
+nothing, with no error in any log. `secure` is therefore derived from the request's own protocol
+(`x-forwarded-proto`, then the request URL), which is exact and needs no configuration.
+
+Measured after the change, both directions:
+
+```
+http (local)                      Secure present: false   sign-in still works: true
+x-forwarded-proto: https          Secure present: true
+```

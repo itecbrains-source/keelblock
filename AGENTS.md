@@ -6,7 +6,7 @@ short on purpose.**
 ## What this is
 
 A multi-tenant SaaS starter where **tenant isolation is enforced by the database, not by application
-code, and proven on every commit.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe.
+code, and proven on every push.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe.
 
 ## The one rule
 

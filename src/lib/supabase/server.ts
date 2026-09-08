@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import type { Database } from '@/lib/db/database.types';
-import { publicSupabaseConfig } from './public-config';
+import { authCookieOptions, publicSupabaseConfig, requestIsHttps } from './public-config';
 
 /**
  * Server client for Server Components, Server Actions and Route Handlers. Carries the user's
@@ -13,8 +13,10 @@ import { publicSupabaseConfig } from './public-config';
  */
 export async function createClient() {
   const store = await cookies();
+  const secure = requestIsHttps(await headers());
   const { url, key } = publicSupabaseConfig();
   return createServerClient<Database>(url, key, {
+    cookieOptions: authCookieOptions(secure),
     cookies: {
       getAll: () => store.getAll(),
       // Takes only the cookies, and that is a recorded exemption in the boundaries gate rather

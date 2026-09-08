@@ -23,6 +23,7 @@ import {
   parseFindings,
   summarize as summarizeReview,
 } from './review-register.mjs';
+import { isRecordFile, parseRecord, summarizeRecords } from './review-records.mjs';
 
 /** Everything countable, computed from the repository. Exported for tests. */
 export function census(fs = { readFileSync, readdirSync, existsSync }) {
@@ -62,6 +63,7 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
     ).length,
     bars: (read('docs/PRODUCT.md').match(/^\| B-\d+/gm) ?? []).length,
     review: reviewState(),
+    records: recordsState(),
     openDefs,
     closedDefs,
   };
@@ -79,6 +81,39 @@ function reviewState() {
     parseFindings(readFileSync(audit, 'utf8')),
     parseDispositions(readFileSync(register, 'utf8')),
   );
+}
+
+/**
+ * Which review record is current, and how far behind HEAD it is. Computed for the same reason the
+ * rest of this file is: a "current as of" line written into a document is the first sentence to go
+ * stale, and a frozen record that cannot be told from a live one is worse than no record.
+ *
+ * Being behind HEAD is reported, never a failure — every commit after a review would otherwise break
+ * the build, and a review that punishes committing does not get done twice.
+ */
+function recordsState() {
+  const dir = 'docs/review';
+  if (!existsSync(dir)) return null;
+  const records = readdirSync(dir)
+    .filter(isRecordFile)
+    .sort()
+    .map((f) => parseRecord(`${dir}/${f}`, readFileSync(`${dir}/${f}`, 'utf8')))
+    .filter(Boolean);
+  if (!records.length) return null;
+  const newest = records.at(-1);
+  let head = '';
+  let distance = null;
+  try {
+    head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    distance = Number(
+      execFileSync('git', ['rev-list', '--count', `${newest.commit}..HEAD`], {
+        encoding: 'utf8',
+      }).trim(),
+    );
+  } catch {
+    /* not a repo, or the commit is unknown here — the gate says so, this line does not guess */
+  }
+  return summarizeRecords(records, { head, distance });
 }
 
 /** Every `page.tsx` under the app directory. Exported for tests. */
@@ -345,6 +380,12 @@ function main() {
       ? `
   REVIEW     ${c.review.total} findings · ${c.review.implemented} implemented · ${c.review.refuted} refuted · ${c.review.deferred} deferred — ${
     c.review.closed ? 'CLOSED' : `OPEN (${c.review.open.join(', ')})`
+  }${
+    c.records
+      ? `\n  RECORDS    ${c.records.total} dated · newest ${c.records.newest.file.replace('docs/review/', '')} at ${c.records.newest.commit}` +
+        `${c.records.score === null ? '' : `, scoring ${c.records.score}`} — ` +
+        `${c.records.current ? 'describes HEAD' : `HEAD is ${c.records.distance ?? '?'} commit(s) ahead`}`
+      : ''
   }`
       : ''
   }

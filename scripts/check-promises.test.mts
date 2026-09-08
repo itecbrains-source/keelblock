@@ -57,3 +57,38 @@ describe('promises gate', () => {
     expect(parseCoverage('| B-1 | tbd |')['B-1']).toEqual([]);
   });
 });
+
+describe('registration is read from the spec index, not from the file', () => {
+  // The rule shipped circular: it asked whether `| SPEC-nnn |` appeared anywhere in
+  // spec/README.md, and the COVERAGE row doing the naming satisfied that. Measured on the real
+  // file — B-3 pointed at SPEC-999, which has never existed, and the gate reported
+  // "B-3 → SPEC-999 (registered, not yet authored)" and stayed green.
+  const isRegistered = (id: string, index: string) =>
+    index.split('\n').some((line) => {
+      const cells = line.split('|').map((c) => c.replace(/\*/g, '').trim());
+      return cells.length >= 6 && cells[1] === id;
+    });
+
+  const indexRow = '| SPEC-003 | Gates — freshness | B-3 | 004, 007 | **done** |';
+  const coverageRow = '| B-3  | SPEC-999 |';
+
+  it('MUTATION: a coverage row alone does NOT register the spec it names', () => {
+    expect(isRegistered('SPEC-999', coverageRow)).toBe(false);
+  });
+
+  it('an index row does register it', () => {
+    expect(isRegistered('SPEC-003', indexRow)).toBe(true);
+  });
+
+  it('and the real index registers every spec that has a file', async () => {
+    // Non-vacuous: if the cell-count heuristic stopped matching the real table, this catches it
+    // rather than silently reporting everything unregistered.
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const index = readFileSync('spec/README.md', 'utf8');
+    const authored = readdirSync('spec')
+      .filter((f) => /^SPEC-\d+/.test(f))
+      .map((f) => f.slice(0, 8));
+    expect(authored.length).toBeGreaterThan(3);
+    for (const id of authored) expect(isRegistered(id, index)).toBe(true);
+  });
+});

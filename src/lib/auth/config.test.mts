@@ -13,6 +13,20 @@ import { describe, expect, it } from 'vitest';
  * proposing to change — `enable_refresh_token_rotation` is correct because Supabase chose well, not
  * because keelblock did. A test that pins a value it agrees with is the only kind that would have
  * caught F-31.
+ *
+ * **What this proves, exactly: the DECLARATION.** It reads the committed file. It does not prove the
+ * value is in effect anywhere, and that distinction was not idle — measured 2026-09-08, this suite
+ * was green while the running local stack still enforced the previous password floor, because the
+ * auth container had started eight hours before the file changed (F-35).
+ *
+ * CI is unaffected: it runs `supabase start` on a fresh checkout, so the file and the running project
+ * agree by construction. The drift is local and bounded, and one line settles it:
+ *
+ *   curl -s -X POST "$SUPABASE_URL/auth/v1/signup" -H "apikey: $ANON" \
+ *     -H 'Content-Type: application/json' -d '{"email":"x@example.com","password":"abc1234"}'
+ *
+ * A `weak_password` refusal means the floor is live. Proving it against a DEPLOYED project needs a
+ * project to exist — SPEC-004 AC-10, deferred to DEF-001 for exactly that reason.
  */
 
 /** Minimal reader for the keys this file cares about: `[section]` headers and `key = value`. */

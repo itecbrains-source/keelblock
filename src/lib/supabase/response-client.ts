@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import type { NextRequest, NextResponse } from 'next/server';
 import type { Database } from '@/lib/db/database.types';
+import { authCookieOptions } from './public-config';
 
 /**
  * A Supabase client bound to a response it can write to — SPEC-004 REQ-4.
@@ -38,7 +39,10 @@ export type SetAll = (cookies: CookieToSet[], headers?: Record<string, string>) 
 export type ClientFactory<Auth> = (
   url: string,
   key: string,
-  opts: { cookies: { getAll: () => { name: string; value: string }[]; setAll: SetAll } },
+  opts: {
+    cookieOptions: { secure: boolean };
+    cookies: { getAll: () => { name: string; value: string }[]; setAll: SetAll };
+  },
 ) => { auth: Auth };
 
 /**
@@ -55,6 +59,7 @@ export function createResponseClient<Auth>(
 ): { auth: Auth } {
   const factory = createClient ?? (createServerClient<Database> as unknown as ClientFactory<Auth>);
   return factory(url, key, {
+    cookieOptions: authCookieOptions(request.nextUrl.protocol === 'https:'),
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (cookiesToSet, headers) => {

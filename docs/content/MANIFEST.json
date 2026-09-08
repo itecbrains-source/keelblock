@@ -211,6 +211,18 @@
       "what": "an auth cookie is written with cache headers the context cannot apply, and the obvious fix breaks sign-in",
       "to": ["blog", "docs"],
       "angle": "A cross-USER leak class — one user's session token served to another — in a line of code that looks correct, plus the measurement that stopped us shipping a fix that would have broken sign-in. The reproduction is three lines of output."
+    },
+    {
+      "id": "F-35",
+      "what": "a security property was written down, pinned by a passing test, and not in effect on the running stack",
+      "to": ["blog", "docs"],
+      "angle": "The sharpest version of the F-31 lesson, because it is one level up and the test was GREEN. Everyone who edits config and keeps a long-running local stack has this. The reproduction is two shell commands comparing a container start time to a file mtime."
+    },
+    {
+      "id": "F-36",
+      "what": "the session cookie shipped without Secure, and the fix everyone writes breaks sign-in locally with no error",
+      "to": ["blog", "docs", "faq"],
+      "angle": "Applies to every project on @supabase/ssr, whose DEFAULT_COOKIE_OPTIONS omits `secure` entirely. The NODE_ENV trap is the useful half — `next start` sets production, so the obvious one-liner silently drops every auth cookie over http."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

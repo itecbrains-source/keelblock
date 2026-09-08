@@ -19,8 +19,14 @@ three majors behind.
 
 ## The one claim
 
-**Tenant isolation is enforced by the database and proven by tests that run on every commit and
+**Tenant isolation is enforced by the database and proven by tests that run on every push and
 every night.**
+
+_"Every push", not "every commit", and the difference is measured rather than pedantic: CI builds the
+tip of a push, so a batch of four commits produces one run and three commits are verified only as
+part of the state that followed them. On 2026-09-08 the commit that shipped sign-in had no run of its
+own. The alternative is to push singly and spend a run per commit; the claim is worded to match what
+actually happens instead._
 
 Everything else keelblock ships — auth, invitations, billing, settings, domains — is table stakes that
 several kits already do. This is the only line that is both _the thing every buyer says is missing_
