@@ -71,6 +71,30 @@ export function validate(entries) {
 }
 
 /**
+ * Ids must be contiguous across open and closed. A gap means a row was **deleted** — and a deleted
+ * deferral is invisible, because nothing else in the repository references it.
+ *
+ * This exists because it happened: repairing one malformed row spliced between two indices and
+ * silently removed everything in between, taking DEF-006 and DEF-008 with it. The gate reported
+ * "ok — 5 open" and was, narrowly, telling the truth. Recovered from git history rather than
+ * rewritten from memory, because a rewrite would have quietly changed what was deferred and why.
+ *
+ * @param {string[]} ids @returns {string[]}
+ */
+export function findGaps(ids) {
+  const nums = ids.map((id) => Number(id.replace('DEF-', ''))).sort((a, b) => a - b);
+  if (nums.length === 0) return [];
+  const missing = [];
+  for (let n = nums[0]; n < nums[nums.length - 1]; n++) {
+    if (!nums.includes(n)) missing.push(`DEF-${String(n).padStart(3, '0')}`);
+  }
+  return missing.map((id) =>
+    `${id} is missing from the registry. Ids are never reused, so a gap means a row was deleted — ` +
+    `recover it from git history rather than rewriting it, or record deliberately why it is gone.`
+  );
+}
+
+/**
  * Pure. `deps` is injected so a fired trigger can be proven without touching the filesystem.
  * @param {string} trigger
  * @param {{ fileExists: (p: string) => boolean, envSet: (n: string) => boolean, specDone: (id: string) => boolean, today: string }} deps
@@ -131,6 +155,10 @@ function main() {
 
   const files = walk('.').filter((f) => !SELF_EXEMPT.some((e) => f.endsWith(e)));
   const orphans = findOrphanMarkers(files, new Set(entries.map((e) => e.id)), (f) => readFileSync(f, 'utf8'));
+
+  // Closed rows count too — an id is never reused, so the sequence spans both sections.
+  const closed = (readFileSync(REGISTRY, 'utf8').split(/^## Closed/m)[1] ?? '').match(/DEF-\d+/g) ?? [];
+  problems.push(...findGaps([...entries.map((e) => e.id), ...closed]));
 
   const deps = {
     fileExists: (p) => existsSync(p),

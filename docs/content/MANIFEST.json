@@ -220,6 +220,15 @@
         "docs"
       ],
       "angle": "Ours. Short, and the reasoning generalises to any test suite."
+    },
+    {
+      "id": "F-25",
+      "what": "two tracked deferrals silently deleted while every gate said ok",
+      "to": [
+        "blog",
+        "docs"
+      ],
+      "angle": "A register whose entries nothing references cannot detect its own losses. Generalises to any tracking system, and the failure is invisible by construction."
     }
   ]
 }

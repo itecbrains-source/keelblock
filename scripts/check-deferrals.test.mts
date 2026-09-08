@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { parseRegistry, validate, evaluateTrigger, findOrphanMarkers, TRIGGER_KINDS, SELF_EXEMPT } from './check-deferrals.mjs';
+import { parseRegistry, validate, evaluateTrigger, findOrphanMarkers, findGaps, TRIGGER_KINDS, SELF_EXEMPT } from './check-deferrals.mjs';
 
 const registry = readFileSync('spec/DEFERRAL_REGISTRY.md', 'utf8');
 const entries = parseRegistry(registry);
@@ -72,6 +72,28 @@ describe('deferral registry', () => {
   it('the self-exemption is exactly one file and may only shrink', () => {
     // The scanner cannot scan itself. That is a real blind spot, so it is pinned rather than trusted.
     expect(SELF_EXEMPT).toEqual(['scripts/check-deferrals.mjs']);
+  });
+
+  it('MUTATION: a deleted row leaves a gap, and the gap is caught', () => {
+    // This happened. Repairing one malformed row spliced between two indices and removed everything
+    // between them, taking DEF-006 and DEF-008 with it. The gate said "ok — 5 open" and was,
+    // narrowly, telling the truth: nothing references a deferral by id, so a deleted one is
+    // invisible. Recovered from git history rather than rewritten, because a rewrite would have
+    // quietly changed what was deferred and why.
+    const g = findGaps(['DEF-001', 'DEF-003']);
+    expect(g).toHaveLength(1);
+    expect(g[0]).toMatch(/DEF-002 is missing/);
+    expect(g[0]).toMatch(/recover it from git history/);
+  });
+
+  it('a contiguous sequence has no gaps', () => {
+    expect(findGaps(['DEF-001', 'DEF-002', 'DEF-003'])).toEqual([]);
+  });
+
+  it('the real registry is contiguous across open AND closed — ids are never reused', async () => {
+    const { readFileSync } = await import('node:fs');
+    const text = readFileSync('spec/DEFERRAL_REGISTRY.md', 'utf8');
+    expect(findGaps([...new Set(text.match(/DEF-\d+/g) ?? [])])).toEqual([]);
   });
 
   it('the registry states Rule 0 — a defect is never a deferral', () => {

@@ -484,3 +484,31 @@ property of that external state rather than of the gate — and it is checked wh
 
 The exclusion list is pinned and may only shrink. *An exclusion list is where a determinism guarantee
 goes to die.*
+
+## F-25 · Two tracked deferrals were silently deleted, and every gate said "ok"
+
+**2026-09-08 · `scripts/check-deferrals.mjs`**
+
+Repairing one malformed row in the deferral registry, a script spliced from the index of `DEF-005` to
+the index of `DEF-004` — and removed everything in between. **DEF-006 (auth hardening) and DEF-008
+(the TypeScript 7 blocker) were deleted.**
+
+The gate then reported `deferrals: ok — 5 open, no trigger fired, no orphan markers`, and it was
+narrowly telling the truth. Every rule it had was satisfied: the surviving rows had reasons, valid
+triggers, no orphan markers. **Nothing checked that rows still existed**, because nothing else in the
+repository references a deferral by id, so a deleted one leaves no trace anywhere.
+
+Two things followed:
+
+**Recovered from git history, not rewritten.** Rewriting from memory would have produced rows that
+looked identical and quietly said something different — the TypeScript reason in particular was a
+precise external blocker with an upstream issue number, and an approximation of it is worse than
+useless, because it reads as a record.
+
+**Ids are now checked for contiguity.** They are never reused, so a gap means a deletion. The message
+says to recover it from git rather than rewrite it, because that is the mistake available at exactly
+that moment.
+
+The general shape is worth keeping: **a register whose entries nothing else references cannot detect
+its own losses.** Every such register needs a completeness check that is independent of its contents —
+here, the sequence itself.
