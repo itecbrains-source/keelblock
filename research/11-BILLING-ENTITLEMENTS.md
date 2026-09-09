@@ -113,12 +113,52 @@ Stripe's copy, and SPEC-031 owns the boundary.
 - **Dunning.** What happens on a failed payment — grace period, immediate downgrade, read-only — is a
   commercial decision, not a research finding.
 
+## The status vocabulary, and which way the boundary falls
+
+_Added 2026-09-09, when SPEC-007 REQ-7's direction was decided. Read from Stripe's own subscription
+lifecycle page, pinned as `stripe-subscription-lifecycle`._
+
+Stripe states the grant and the revoke boundary explicitly, which means keelblock does not have to
+invent one:
+
+> `trialing` — "The subscription is currently in a trial period and **you can safely provision your
+> product for your customer**."
+
+> `unpaid` — "**Revoke access to your product when the subscription is `unpaid`** because payments
+> were already attempted and retried while `past_due`."
+
+Between those two sits the only genuinely open span. `past_due` means the retries are still running,
+and the end of that cycle is configuration rather than a fixed behaviour: _"If the invoice is still
+unpaid after all attempted smart retries, you can configure the subscription to move to `canceled`,
+`unpaid`, or leave it as `past_due`."_
+
+**That configuration choice is not cosmetic, and it is the one worth writing down.** `canceled` is
+_"a terminal state that can't be updated"_, and recovering from it means _"you need to collect new
+payment information from them and create a new subscription"_ — the customer is made to re-subscribe
+after paying. `unpaid` keeps the subscription: _"To move the subscription to `active`, pay the most
+recent invoice before its due date."_ So end-of-retry → `unpaid` is what makes a late payment a
+recovery rather than a re-purchase.
+
+**Two edges that a status-only entitlement rule has to know about**, both from the same page:
+
+- **`paused` is a trial artifact.** It is reachable only when a trial ends with no default payment
+  method and `trial_settings.end_behavior.missing_payment_method` is `pause`. Whether that state can
+  occur at all is therefore decided by the trial policy, not by the entitlement rule.
+- **Delayed-confirmation payment methods can leave a failed payment `active`.** For ACH and similar,
+  _"a subscription can move directly to `active` after creation and bypass `incomplete`. If the
+  payment fails later, Stripe voids the invoice but the subscription remains `active`"_ — and
+  _"voided invoices don't affect subscription status."_ A rule reading status alone therefore grants
+  in that case. That is the same direction as the decision recorded in SPEC-007 REQ-7, so it is
+  consistent rather than a hole; it is written here because the alternative is someone finding an
+  `active` subscription behind a voided invoice later and reading it as a defect.
+
 ## Sources
 
 **Primary** — Stripe's own documentation, read 2026-09-08:
 
 - [Stripe — Receive Stripe events in your webhook endpoint](https://docs.stripe.com/webhooks) · ordering, duplicates, three-day retries, signature verification, return-2xx-first
 - [Stripe — Entitlements](https://docs.stripe.com/billing/entitlements?dashboard-or-api=api) · the Active Entitlement model, the summary event, the list endpoint, the persist-internally recommendation, and the 10-entitlement truncation
+- [Stripe — How subscriptions work](https://docs.stripe.com/billing/subscriptions/overview) · read 2026-09-09 · the status vocabulary, the provision-on-trialing and revoke-on-unpaid boundary, the end-of-retry configuration, and the delayed-confirmation edge
 
 **Secondary** — none. Both claims above are quoted from the vendor's own pages; nothing in this memo
 rests on a write-up about Stripe.

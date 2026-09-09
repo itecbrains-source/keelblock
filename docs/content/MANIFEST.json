@@ -373,6 +373,12 @@
       "what": "a spec said no deferrals were filed while three were armed to fire the moment it closed, and its sibling spec already carried exactly that warning",
       "to": ["blog", "docs"],
       "angle": "A review read a spec dependency off a column headed ADRs. The correction is more interesting than the error: the dependency graph this build evaluates lives in deferral TRIGGERS, not the spec index, and three rows key on the billing spec — so finishing it turns the build red three ways. The defect was the spec saying \"none filed yet\", which answers a different question from \"none waiting\". The sharpest part is that the convention already existed and had been applied to the auth spec in those exact words; a convention applied once and not to its sibling is harder to see than one never invented, because the reader who checks one place finds it there and stops."
+    },
+    {
+      "id": "F-62",
+      "what": "the requirement declaring \"no REQ without an AC\" had five rules, three implementations and a done acceptance criterion",
+      "to": ["blog", "docs"],
+      "angle": "Found by trying to write the missing acceptance criterion for a requirement the owner had just decided. SPEC-003 REQ-7 lists five traceability rules in one sentence; AC-7 was marked done and cited three proofs, and nobody had asked which of the five sentences had code behind them. Three requirements across the set were uncovered, and npm run status could not show it because it counts REQs and ACs separately — 8 REQ, 0/8 AC, one requirement with none and another with two. A count that reads as coverage. The publishable part is the near-miss: the second rule fired on a real row that was correct, because REQ-1..4 is a range, and a false positive on a correct row is how a gate gets exempted into uselessness."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

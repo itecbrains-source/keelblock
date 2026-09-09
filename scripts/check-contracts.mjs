@@ -32,8 +32,8 @@ const PATHLIKE = /\/|\.(md|tsx?|mts|mjs|jsx?|sql|json|ya?ml|toml|txt|sh)$/;
 const CELLS = /^\s*\|(.+)\|\s*$/;
 
 /**
- * @typedef {{ac: string, paths: string[], status: string, cited: string}} Evidence
- * @typedef {{ id: string, status: string, contracts: string[], evidence: Evidence[] }} Spec
+ * @typedef {{ac: string, paths: string[], status: string, cited: string, verifies: string[]}} Evidence
+ * @typedef {{ id: string, status: string, contracts: string[], evidence: Evidence[], reqs: string[] }} Spec
  * @param {string} id @param {string} text @returns {Spec}
  */
 export function parseSpec(id, text) {
@@ -62,13 +62,35 @@ export function parseSpec(id, text) {
     evidence.push({
       ac,
       cited,
+      verifies: parseVerifies(cells[1]),
       status: cells[4].replace(/\*/g, '').trim(),
       paths: [...cited.matchAll(/`([^`]+)`/g)]
         .map((m) => m[1].trim())
         .filter((t) => PATHLIKE.test(t)),
     });
   }
-  return { id, status, contracts, evidence };
+  const reqs = [...text.matchAll(/^### (REQ-[\w.]+)/gm)].map((m) => m[1]);
+  return { id, status, contracts, evidence, reqs };
+}
+
+/**
+ * A Verifies cell names requirements, and it is allowed to name a RANGE. SPEC-011 AC-7 reads
+ * `REQ-1..4`, which is one criterion claiming four — expanding it is the difference between a rule
+ * that reads the document and one that reads its punctuation. Getting this wrong in the other
+ * direction is what would matter: an unexpanded `REQ-1..4` looks like a citation of a requirement
+ * that does not exist, and a gate that reports that is a gate someone exempts.
+ *
+ * Only numeric ranges expand. `REQ-1b` is an id, not an endpoint. Exported for tests.
+ * @param {string} cell @returns {string[]}
+ */
+export function parseVerifies(cell) {
+  const out = [];
+  for (const m of cell.matchAll(/REQ-(\d+)\.\.(\d+)|REQ-([\w.]+?)(?=[,\s]|$)/g)) {
+    if (m[1] !== undefined) {
+      for (let n = Number(m[1]); n <= Number(m[2]); n++) out.push(`REQ-${n}`);
+    } else out.push(`REQ-${m[3]}`);
+  }
+  return out;
 }
 
 /**
@@ -202,6 +224,70 @@ export function checkStatusAgreement(specs, index) {
   return problems;
 }
 
+/**
+ * Every REQ is verified by at least one AC.
+ *
+ * This rule is not new: **every spec's Definition of Done already says it** — "Every REQ `done` with
+ * its AC passing, or a valid `DEF-*`" — thirteen times over, and nothing checked it. That is the
+ * F-60 shape, a rule stated in a document and enforced nowhere, and it had produced three uncovered
+ * requirements: SPEC-007 REQ-7, whose direction the owner had to decide before it could be tested,
+ * and SPEC-016 REQ-1b and REQ-1c, inserted after their AC table was written and never added to it.
+ *
+ * `npm run status` could not have shown it. It counts REQs and ACs independently, so SPEC-007 read
+ * "8 REQ · 0/8 AC" while one requirement had none and another had two — **a count that reads as
+ * coverage.**
+ *
+ * Scope, deliberately: this asks whether a requirement is CLAIMED by a criterion, not whether the
+ * criterion is any good. A weak AC that under-covers its REQ is a real defect and is not this rule's
+ * to catch — no parser can judge it, and pretending otherwise is how a gate earns a reputation for
+ * noise. Status is not consulted either: a `draft` spec with planned criteria is exactly where the
+ * gap appeared, so exempting drafts would exempt the case that motivated the rule.
+ *
+ * @param {Spec[]} specs
+ * @returns {string[]}
+ */
+export function checkReqCoverage(specs) {
+  const problems = [];
+  for (const spec of specs) {
+    const verified = new Set(spec.evidence.flatMap((e) => e.verifies));
+    for (const req of spec.reqs) {
+      if (verified.has(req)) continue;
+      problems.push(
+        `${spec.id} ${req} is not verified by any acceptance criterion. Every spec's Definition of ` +
+          `Done requires one, and the counts do not show it: \`npm run status\` totals REQs and ACs ` +
+          `separately, so a requirement with none reads as covered by a criterion that verifies ` +
+          `something else.`,
+      );
+    }
+  }
+  return problems;
+}
+
+/**
+ * The reverse direction, and the second rule SPEC-003 REQ-7 declares: **no AC verifying a REQ that
+ * does not exist.** A criterion pointing at a requirement nobody wrote reads as coverage from the
+ * table and is coverage of nothing — the same defect as its mirror, one column over.
+ *
+ * @param {Spec[]} specs
+ * @returns {string[]}
+ */
+export function checkAcTargets(specs) {
+  const problems = [];
+  for (const spec of specs) {
+    const reqs = new Set(spec.reqs);
+    for (const e of spec.evidence) {
+      for (const req of e.verifies) {
+        if (reqs.has(req)) continue;
+        problems.push(
+          `${spec.id} ${e.ac} verifies ${req}, which has no requirement heading in the spec. ` +
+            `A criterion aimed at nothing still fills a row in the table.`,
+        );
+      }
+    }
+  }
+  return problems;
+}
+
 function main() {
   const files = readdirSync(SPEC_DIR).filter((f) => /^SPEC-\d+/.test(f));
   const specs = files.map((f) =>
@@ -210,6 +296,8 @@ function main() {
   const problems = [
     ...checkContracts(specs, (p) => existsSync(p)),
     ...checkStatusAgreement(specs, readFileSync(`${SPEC_DIR}/README.md`, 'utf8')),
+    ...checkReqCoverage(specs),
+    ...checkAcTargets(specs),
   ];
 
   if (problems.length) {
@@ -218,8 +306,9 @@ function main() {
     process.exit(1);
   }
   const pairs = specs.reduce((n, s) => n + s.contracts.length, 0);
+  const reqs = specs.reduce((n, s) => n + s.reqs.length, 0);
   console.log(
-    `contracts: ok — ${specs.length} spec(s), ${pairs} reciprocal contract(s), all evidence present`,
+    `contracts: ok — ${specs.length} spec(s), ${pairs} reciprocal contract(s), ${reqs} REQ all verified, all evidence present`,
   );
 }
 

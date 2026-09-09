@@ -130,19 +130,21 @@ shown to be looking at anything.
 
 ## Acceptance criteria
 
-| AC    | Verifies | Method | Evidence                                                                                                                                           | Status  |
-| ----- | -------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| AC-1  | REQ-1    | test   | `scripts/preflight/migration-safety.test.mts` — `drop column`, rename, tightened constraint and changed signature each fail; additive changes pass | planned |
-| AC-2  | REQ-1    | test   | an explicitly marked schema-first migration passes, and the marker cannot be applied to a whole release                                            | planned |
-| AC-3  | REQ-2    | test   | `drift.test.mts` — target-behind, target-ahead, and **a hole with matching heads** are each reported                                               | planned |
-| AC-4  | REQ-3    | test   | `matrix-parity.test.mts` — an extra permission in the target fails, quoting the row                                                                | planned |
-| AC-5  | REQ-4    | test   | `secrets.test.mts` — a missing secret fails; a present one is confirmed **without its value appearing in output**                                  | planned |
-| AC-6  | REQ-5    | test   | `readonly.test.mts` — every statement preflight issues is rejected by a read-only connection                                                       | planned |
-| AC-7  | REQ-6    | test   | an unreachable target yields `unverified`, never `ok`                                                                                              | planned |
-| AC-8  | REQ-7    | test   | invoking without a target exits non-zero and names no environment                                                                                  | planned |
-| AC-9  | REQ-8    | test   | the verdict reports counts and the unverified list                                                                                                 | planned |
-| AC-10 | REQ-9    | test   | the deploy workflow invokes preflight, asserted against the **parsed** workflow                                                                    | planned |
-| AC-11 | REQ-10   | test   | four mutation proofs, each restoring a real defect and asserting red                                                                               | planned |
+| AC    | Verifies | Method | Evidence                                                                                                                                                                                                                             | Status  |
+| ----- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| AC-1  | REQ-1    | test   | `scripts/preflight/migration-safety.test.mts` — `drop column`, rename, tightened constraint and changed signature each fail; additive changes pass                                                                                   | planned |
+| AC-2  | REQ-1    | test   | an explicitly marked schema-first migration passes, and the marker cannot be applied to a whole release                                                                                                                              | planned |
+| AC-3  | REQ-2    | test   | `drift.test.mts` — target-behind, target-ahead, and **a hole with matching heads** are each reported                                                                                                                                 | planned |
+| AC-4  | REQ-3    | test   | `matrix-parity.test.mts` — an extra permission in the target fails, quoting the row                                                                                                                                                  | planned |
+| AC-5  | REQ-4    | test   | `secrets.test.mts` — a missing secret fails; a present one is confirmed **without its value appearing in output**                                                                                                                    | planned |
+| AC-6  | REQ-5    | test   | `readonly.test.mts` — every statement preflight issues is rejected by a read-only connection                                                                                                                                         | planned |
+| AC-7  | REQ-6    | test   | an unreachable target yields `unverified`, never `ok`                                                                                                                                                                                | planned |
+| AC-8  | REQ-7    | test   | invoking without a target exits non-zero and names no environment                                                                                                                                                                    | planned |
+| AC-9  | REQ-8    | test   | the verdict reports counts and the unverified list                                                                                                                                                                                   | planned |
+| AC-10 | REQ-9    | test   | the deploy workflow invokes preflight, asserted against the **parsed** workflow                                                                                                                                                      | planned |
+| AC-11 | REQ-10   | test   | four mutation proofs, each restoring a real defect and asserting red                                                                                                                                                                 | planned |
+| AC-12 | REQ-1b   | test   | a destructive change is refused while the new structure is unpopulated or any instance reports a head without it, and passes only on all three — the marker alone does not satisfy it, which is the difference between this and AC-2 | planned |
+| AC-13 | REQ-1c   | test   | preflight fails with no recent backup, and fails again with a recent backup that has never been restored — "restorable" is the drill, not the file                                                                                   | planned |
 
 ## Definition of Done
 

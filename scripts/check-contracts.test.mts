@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { parseSpec, checkContracts, checkStatusAgreement } from './check-contracts.mjs';
+import {
+  parseSpec,
+  checkContracts,
+  checkStatusAgreement,
+  checkReqCoverage,
+  checkAcTargets,
+  parseVerifies,
+} from './check-contracts.mjs';
 
 const real = readdirSync('spec')
   .filter((f) => /^SPEC-\d+/.test(f))
@@ -10,7 +17,15 @@ const spec = (over = {}) => ({
   status: 'done',
   contracts: [],
   evidence: [],
+  reqs: [],
   ...over,
+});
+const ac = (id: string, verifies: string[], status = 'planned') => ({
+  ac: id,
+  cited: 'a test',
+  verifies,
+  status,
+  paths: [],
 });
 const yes = () => true,
   no = () => false;
@@ -265,5 +280,99 @@ describe('F-58 · a cited path must be a repository artifact', () => {
       no,
     );
     expect(p).toEqual([]);
+  });
+});
+
+describe('REQ coverage — every requirement is claimed by a criterion', () => {
+  it('the real spec set passes', () => {
+    expect(checkReqCoverage(real)).toEqual([]);
+  });
+
+  it('parses REQ headings and the Verifies cell out of a real spec', () => {
+    const s = real.find((x) => x.id === 'SPEC-007')!;
+    expect(s.reqs).toContain('REQ-7');
+    expect(s.evidence.flatMap((e) => e.verifies)).toContain('REQ-7');
+  });
+
+  it('MUTATION: a REQ that no criterion verifies fails', () => {
+    const s = spec({ reqs: ['REQ-1', 'REQ-2'], evidence: [ac('AC-1', ['REQ-1'])] });
+    const out = checkReqCoverage([s]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('REQ-2');
+  });
+
+  it('MUTATION: a criterion verifying a DIFFERENT REQ does not cover this one', () => {
+    // The defect exactly: SPEC-007 had eight REQs and eight ACs, and read as covered while REQ-7
+    // had none and REQ-1 had two. A rule that counted would pass this fixture.
+    const s = spec({
+      reqs: ['REQ-1', 'REQ-7'],
+      evidence: [ac('AC-1', ['REQ-1']), ac('AC-8', ['REQ-1'])],
+    });
+    expect(checkReqCoverage([s])).toHaveLength(1);
+  });
+
+  it('a PLANNED criterion counts — the requirement is claimed, not yet met', () => {
+    const s = spec({
+      status: 'draft',
+      reqs: ['REQ-1'],
+      evidence: [ac('AC-1', ['REQ-1'], 'planned')],
+    });
+    expect(checkReqCoverage([s])).toEqual([]);
+  });
+
+  it('one criterion may verify several requirements', () => {
+    const s = spec({ reqs: ['REQ-1', 'REQ-2'], evidence: [ac('AC-1', ['REQ-1', 'REQ-2'])] });
+    expect(checkReqCoverage([s])).toEqual([]);
+  });
+
+  it('a sub-numbered REQ is not satisfied by its parent — REQ-1 does not cover REQ-1b', () => {
+    // SPEC-016's real shape: AC-1 and AC-2 both verify REQ-1, and REQ-1b/REQ-1c were uncovered.
+    const s = spec({ reqs: ['REQ-1', 'REQ-1b'], evidence: [ac('AC-1', ['REQ-1'])] });
+    const out = checkReqCoverage([s]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('REQ-1b');
+  });
+
+  it('MUTATION: caught in a REAL spec, not only in a fixture', () => {
+    const text = readFileSync('spec/SPEC-007-billing.md', 'utf8');
+    // Restore the defect: strip the criteria that verify REQ-7 and nothing else.
+    const without = text
+      .split('\n')
+      .filter((l) => !/^\|\s*AC-\d+\s*\|\s*REQ-7\s*\|/.test(l))
+      .join('\n');
+    expect(checkReqCoverage([parseSpec('SPEC-007', without)])).toHaveLength(1);
+    expect(checkReqCoverage([parseSpec('SPEC-007', text)])).toEqual([]);
+  });
+});
+
+describe('AC targets — no criterion aimed at a requirement nobody wrote', () => {
+  it('the real spec set passes', () => {
+    expect(checkAcTargets(real)).toEqual([]);
+  });
+
+  it('MUTATION: a criterion verifying a REQ with no heading fails', () => {
+    const s = spec({ reqs: ['REQ-1'], evidence: [ac('AC-1', ['REQ-9'])] });
+    const out = checkAcTargets([s]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('REQ-9');
+  });
+
+  it('a range is expanded, not read as an id — SPEC-011 AC-7 is `REQ-1..4`', () => {
+    // Without expansion this reports REQ-1..4 as a citation of a requirement that does not exist,
+    // which is a false positive on a real row, and a false positive is how a gate gets exempted.
+    expect(parseVerifies('REQ-1..4')).toEqual(['REQ-1', 'REQ-2', 'REQ-3', 'REQ-4']);
+    const real011 = real.find((x) => x.id === 'SPEC-011')!;
+    expect(checkAcTargets([real011])).toEqual([]);
+    expect(real011.evidence.find((e) => e.ac === 'AC-7')!.verifies).toEqual([
+      'REQ-1',
+      'REQ-2',
+      'REQ-3',
+      'REQ-4',
+    ]);
+  });
+
+  it('a sub-numbered id is not mistaken for a range endpoint', () => {
+    expect(parseVerifies('REQ-1b')).toEqual(['REQ-1b']);
+    expect(parseVerifies('REQ-1, REQ-1c')).toEqual(['REQ-1', 'REQ-1c']);
   });
 });

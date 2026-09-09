@@ -2009,3 +2009,50 @@ there and stops.
 The general shape: **"none filed" answers a different question from "none waiting", and a deferral
 registry is read in both directions.** The dependency graph the build evaluates lives in triggers,
 and a spec is the only place a reader will look for its own edges.
+
+## F-62 · The requirement that says "no REQ without an AC" was the one requirement nothing checked
+
+**2026-09-09 · found while recording an owner decision · fixed**
+
+SPEC-007 REQ-7 was decided by the owner, which made it testable for the first time. Writing its
+acceptance criterion showed it had never had one — and then that nothing would ever have said so.
+
+SPEC-003 REQ-7 declares **five** rules, and the first of them is the one that was missing:
+
+> no REQ without an AC, no AC verifying a non-existent REQ, no source-of-truth path that does not
+> exist, no `TODO`/`FIXME`/`@defer` without a registry entry, no registry entry without a
+> machine-evaluable trigger.
+
+Its acceptance criterion, AC-7, was marked **done** and cited three proofs — a dead source path, an
+orphan `@defer`, a trigger-less entry. Those are rules three, four and five. **Rules one and two had
+no proof and no implementation**, in the requirement whose whole subject is that a requirement
+without a proof is not done.
+
+```bash
+node scripts/check-contracts.mjs   # 13 spec(s), 50 reciprocal contract(s), 108 REQ all verified
+```
+
+That line reads `108 REQ all verified` only since this change; the rule that counts them did not
+exist, and three requirements were uncovered: SPEC-007 REQ-7, and SPEC-016 REQ-1b and REQ-1c, which were
+inserted after their AC table was written — the `b` and `c` are the tell — and never added to it.
+
+**Why `npm run status` could not have shown it.** It counts requirements and criteria separately and
+prints them together, so SPEC-007 read `8 REQ · 0/8 AC` while one requirement had none and another
+had two. **A count that reads as coverage**, which is the F-60 shape again: the number is accurate
+and the sentence it forms is false.
+
+**Fixed:** both rules now run inside the contracts gate — `checkReqCoverage` and `checkAcTargets` —
+each with mutation proofs, one of them restoring the defect in a real spec rather than a fixture.
+Neutering the rule turns four tests red. The three uncovered requirements are covered: REQ-7 by three
+new criteria, SPEC-016's two by transcribing what their requirements already state. AC-7 now names
+all five rules and what proves each.
+
+**One near-miss worth recording**, because it decided the design. The second rule reported a defect on
+its first run: SPEC-011 AC-7 verifies `REQ-1..4`, which is a **range**, and a naive parse reads it as a
+citation of a requirement called `REQ-1..4` that nobody wrote. That is a false positive on a correct
+row, and a false positive on a correct row is how a gate gets exempted into uselessness — so ranges
+are expanded, `REQ-1b` is not mistaken for an endpoint, and both are pinned by tests.
+
+The general shape: **a gate is trusted for the rules it was named after, not the rules it runs.**
+Everyone had read "no REQ without an AC" — it is in SPEC-003, and every spec's Definition of Done
+repeats it — and nobody had asked which of the five sentences in that list had code behind it.
