@@ -23,6 +23,15 @@ than at token expiry.
   - **Erasure of billing data.** SPEC-031 owns it. ADR-006's addendum already settles the part that
     constrains this spec: the rows here are not immortal, and a stored customer id points at data held
     by a processor this project does not control.
+  - **Trials.** Whether a subscription may start with no payment method, and what `trialing`
+    entitles. Stripe emits the status either way; the mapping is a commercial choice. Named here
+    because REQ-1 turns a status into an entitlement, and a status nobody decided about is decided by
+    whoever writes the first `switch` — which is the failure ADR-021 names, in the place where it
+    costs money.
+  - **Coupons and discounts.** Whether the entitlement layer reads them at all, or whether a discount
+    is invisible to it because the plan is unchanged.
+  - **Tax.** Stripe Tax on or off. Schema-adjacent rather than a setting: collecting it means holding
+    a customer address, which is a tenant-scoped table and an erasure obligation (SPEC-031).
   - **Dunning policy.** What a failed payment does — grace period, downgrade, read-only — is a
     commercial decision. The mechanism is in scope; the choice is the owner's.
 
@@ -112,3 +121,13 @@ work first is one timeout away from being retried for three days.
 
 None filed yet. Two are expected at build time and are named here so they are not invented later as
 though they were always planned: the live Stripe round-trip, and dunning policy.
+
+**Three rows already carry the trigger `spec-done:SPEC-007` and fire when this spec closes** —
+DEF-011 (mutation testing over application logic, which earns its keep the moment money math
+exists), DEF-012 (property-based testing, which wants an invariant like "splitting a payment
+conserves every cent"), and DEF-029 (organization ownership transfer, filed here because a transfer
+moves a payment relationship once entitlement rows exist). This paragraph exists because SPEC-004
+carries the same warning and this spec said "none filed yet", which reads as nothing waiting on it
+(F-61). Read it as a warning rather than a formality: **marking this spec `done` fails the build
+until three other pieces of work are picked up**, and each was filed that way because billing is the
+moment it stops being reasonable to postpone them.

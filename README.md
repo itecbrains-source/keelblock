@@ -93,7 +93,7 @@ Two of the eight were keelblock's own mistakes. They are published for the same 
 what makes feature-completeness affordable rather than a slogan: the field maintains the same feature
 set across three frameworks, so keelblock has roughly three times the budget per feature.
 
-Marketing shell · auth (password, magic link, OAuth, passkeys, 2FA, verification, reset, unlock) ·
+Marketing shell · auth (magic link, OAuth, passkeys, 2FA, email verification — **no password**, ADR-021) ·
 account · organizations · team & invitations · billing · custom domains · ops & health ·
 transactional email · file storage · background jobs · notifications · admin & audited impersonation
 · **audit log** · **API keys** · **outbound webhooks**.

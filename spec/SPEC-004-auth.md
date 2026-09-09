@@ -40,6 +40,10 @@ governing nothing but a laptop.
   - **Per-account lockout, disposable-email blocking, bot check** — DEF-006, already filed with the
     right reasoning: Supabase's rate limits are per-IP, and rotating IPs defeats them. This spec
     creates the login those measures protect and does not pre-empt them.
+  - **Passkeys** — DEF-028. `PRODUCT.md` names them in this area and this spec neither builds nor
+    refuses them, which is the omission F-60 found. The platform half is unmeasured — `config.toml`
+    ships `[auth.passkey]` commented out, and `research/07-AUTH-2026.md` says what that is worth —
+    and the product half is ADR-021's own argument about a further credential surface to prove.
   - **MFA and leaked-password protection** — DEF-017. Both are Supabase Pro-plan features, so the
     constraint is commercial rather than technical, and promising either on a free-tier install
     would be the marketing-claim honesty rule broken about a security control.
@@ -255,6 +259,7 @@ second method is part of the answer.
 ## Deferrals
 
 - **DEF-017** — MFA and leaked-password protection, both Supabase Pro-plan features.
+- **DEF-028** — passkeys, unowned until F-60 found them declared in two documents and built by none.
 
 DEF-002 (journey tests), DEF-004 (the unwired Supabase clients) and DEF-006 (auth hardening) all
 carry the trigger `spec-done:SPEC-004` and fire when this spec closes. That is deliberate and worth

@@ -361,6 +361,18 @@
       "what": "three deferrals are waiting on a release process that no spec owns, each keyed to the nearest spec with Release in its title",
       "to": ["blog", "docs"],
       "angle": "A trigger that fires on an adjacent event is worse than one that never fires and admits it: a spurious fire spends attention and teaches the reader to wave the next one through. Reading the spec rather than its title settled it — the release-preflight spec is the BUYER's deployment gate and mentions publishing nowhere. Two of the three rows were mine and are corrected; the third reasons explicitly to the opposite conclusion and is left alone with its root recorded, because rewriting someone else's considered choice on a draft spec is the over-reach."
+    },
+    {
+      "id": "F-60",
+      "what": "passkeys were promised in two customer-facing documents and owned by no spec or deferral, and the README still advertised the password surface an ADR had just refused",
+      "to": ["blog", "docs"],
+      "angle": "The promises gate enforces the acceptance-bar TABLE and cannot enforce the capability list beside it, because that list is prose and the gate refuses to parse prose in its own comments. So the bars were checked, the capabilities were not, and the gap was one word inside a parenthesis. The publishable half is the second instance: the README advertised password sign-in on the same day an ADR refused it and a build gate began failing any module that called signInWithPassword — the code was enforcing the opposite of the marketing."
+    },
+    {
+      "id": "F-61",
+      "what": "a spec said no deferrals were filed while three were armed to fire the moment it closed, and its sibling spec already carried exactly that warning",
+      "to": ["blog", "docs"],
+      "angle": "A review read a spec dependency off a column headed ADRs. The correction is more interesting than the error: the dependency graph this build evaluates lives in deferral TRIGGERS, not the spec index, and three rows key on the billing spec — so finishing it turns the build red three ways. The defect was the spec saying \"none filed yet\", which answers a different question from \"none waiting\". The sharpest part is that the convention already existed and had been applied to the auth spec in those exact words; a convention applied once and not to its sibling is harder to see than one never invented, because the reader who checks one place finds it there and stops."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

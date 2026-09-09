@@ -1921,3 +1921,91 @@ named here instead, so the shared root is visible rather than fixed twice and un
 The general shape: **a trigger keyed on the nearest plausible spec fires on an adjacent event.** It
 is worse than `decided:`, which never fires and admits it — a spurious fire spends attention and
 teaches the reader to wave the next one through.
+
+## F-60 · A capability promised in two customer-facing documents and owned by nothing — and one of the promises was left behind by the ADR that refuted it
+
+**2026-09-09 · found by review, swept wider than reported · fixed**
+
+`docs/PRODUCT.md` line 188 declares area 2 as _"Auth (magic link, OAuth, passkeys, 2FA — **no
+password**, ADR-021)"_.
+
+```bash
+grep -rl passkey spec/     # no matches
+```
+
+2FA is registered as DEF-017. **Passkeys are owned by no spec and by no deferral.** What makes that a
+defect rather than an oversight is where the omission sits: SPEC-004's non-scope list is otherwise
+exhaustive — organizations, invitations, SSO, SCIM, per-account lockout, MFA and the audit log, each
+with a reason and an id. Passkeys is the one item in its own area's declared scope that the spec
+neither builds nor refuses.
+
+**The sweep found a second instance, and it is worse.** `README.md` line 96 read:
+
+> auth (password, magic link, OAuth, passkeys, 2FA, verification, reset, unlock)
+
+ADR-021 was accepted the same day and decided against three of those words — _"No password field, no
+password reset, no account-unlock flow."_ ADR-021's own Context quotes `PRODUCT.md`'s pre-decision
+wording as the thing to fix; `PRODUCT.md` was fixed and the README was not. So the first document a
+buyer reads advertised a password surface the repository had refused, while
+`scripts/check-boundaries.mjs` was already failing the build for any module that called
+`signInWithPassword` — **the code enforced the opposite of the marketing**, and that is the direction
+that gets noticed publicly.
+
+**Why nothing caught either.** The promises gate is the one that would have, and it is looking at a
+different list. It checks that every acceptance bar `B-n` has an owning spec — a **table**, which
+parses cleanly. The capability list is nineteen areas with their sub-items in parentheses, which is
+**prose**, and that gate's own comments refuse to parse prose: _"A gate that reads prose reports
+defects that are its own."_ So the bars are enforced, the capabilities beside them are not, and the
+gap between the two is the width of one word inside a parenthesis.
+
+A gate is possible and is not cheap, and the shape it needs is recorded here rather than guessed at
+later: **one row per named capability with an owner column**, replacing the prose, so that
+`passkeys | DEF-028` becomes a parseable claim. That restructures the governing document and changes
+how `PRODUCT.md` reads, so it is named here rather than done in the change that found the defect.
+
+**Fixed:** DEF-028 files passkeys with its reason and trigger; SPEC-004's non-scope names it beside
+MFA; the README's auth list now says what ADR-021 decided.
+
+The general shape: **a gate over the structured half of a document teaches every reader that the
+whole document is checked.** The bars had been enforced long enough that the list beside them read as
+enforced too.
+
+## F-61 · A spec said no deferrals were waiting on it while three were armed to fire the moment it closed
+
+**2026-09-09 · measured while checking a review claim · fixed**
+
+A review record described SPEC-007 (billing) as the most load-bearing unfinished document and cited
+three specs depending on it — 003, 011 and 031. That dependency does not exist: the column in
+`spec/README.md` is headed **ADRs**, and those rows cite ADR-004, ADR-006 and ADR-007. Read as a spec
+dependency it is a coincidence of numbering.
+
+**The conclusion survives on different and stronger evidence.** What actually keys on SPEC-007:
+
+```bash
+grep -n 'SPEC-007' spec/*.md | grep -v '^spec/SPEC-007'
+```
+
+Two done specs name it as a contract (SPEC-001, SPEC-005), and **two deferrals are armed on
+`spec-done:SPEC-007`** — DEF-011 (mutation testing over application logic, which "earns its keep the
+moment money math exists") and DEF-012 (property-based testing, which wants an invariant like
+"splitting a payment conserves every cent"). DEF-029 now joins them. A trigger firing **fails the
+build**, so the day SPEC-007's status becomes `done`, `npm run check` goes red three ways.
+
+**The defect is not the arrangement, it is that the spec said the opposite.** SPEC-007's Deferrals
+section read _"None filed yet"_ — true of rows filed **by** it, false of rows waiting **on** it, and
+the sentence a reader takes away is the second one. That this is worth writing down is not a
+judgement call: **SPEC-004 already carries exactly the warning**, in the same section, in these
+words — _"marking this spec `done` fails the build until three other pieces of work are picked up"_ —
+so the convention exists, was applied once, and was not applied to the draft.
+
+I first wrote this finding claiming nobody had noticed the pattern. Reading SPEC-004's own Deferrals
+section before committing showed it was noticed, named and written down, and only this instance was
+missing. That correction is the finding: **a convention applied to one spec and not its sibling is
+harder to see than one that was never invented**, because the reader who checks one place finds it
+there and stops.
+
+**Fixed:** SPEC-007's Deferrals section now names the three rows and what closing it costs.
+
+The general shape: **"none filed" answers a different question from "none waiting", and a deferral
+registry is read in both directions.** The dependency graph the build evaluates lives in triggers,
+and a spec is the only place a reader will look for its own edges.

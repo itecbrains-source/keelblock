@@ -22,7 +22,7 @@ The brief was to assume the project fails and go looking for the reason. Read
 | [`10-RESCORE-SATURATION.md`](10-RESCORE-SATURATION.md)   | Flat score, the field-anchored switch, and where the rubric stops measuring        |
 | [`11-DOCS-AND-COMPLIANCE.md`](11-DOCS-AND-COMPLIANCE.md) | Two questions answered: documentation timing, and whether to build a SOC 2 emitter |
 | [`12-ROADMAP.md`](12-ROADMAP.md)                         | The road to parity: which absences lose deals, and the order to build in           |
-| [`DISPOSITIONS.md`](DISPOSITIONS.md)                     | **The only live file here** — one row per finding, enforced by `npm run check`     |
+| [`13-V1-SCOPE.md`](13-V1-SCOPE.md)                       | What v1 promises against what exists: 3 of 19 areas, and four unregistered gaps    |
 | [`DISPOSITIONS.md`](DISPOSITIONS.md)                     | **What was done about each finding.** The only live file here                      |
 
 ## The records are frozen; which one is current is not
