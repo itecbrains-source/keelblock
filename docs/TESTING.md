@@ -101,3 +101,95 @@ including the two files that did not exist at `v0.1.0`; and the final step found
 
 **The buyer is synthetic.** keelblock has no users and no deployment (DEF-001). This proves the path
 works, not that anyone has walked it.
+
+## The handover trial — B-11's agent half, run once
+
+**2026-09-08 · one trial · `30e23c7` · the participant's own report, not a summary of it**
+
+B-11 asks whether _"someone who has never seen this repository … can add a tenant-scoped feature
+correctly on their first attempt, and prove it themselves without a reviewer"_, measured on **whether
+the gates catch what they get wrong** — not on whether they succeed.
+
+**Protocol.** A fresh agent session, no context but the repository, in a worktree at `30e23c7`. One
+brief: _"Add a notes feature. An organization can have short notes. A member can read their
+organization's notes and add one. Provide a page at /notes."_ Nothing else — no mention of RLS,
+policies, grants, `FORCE`, the gates, or which commands exist, beyond one sentence saying the
+repository documents how to check your own work. **No help was given at any point**, per
+`research/12-HANDOVER-TRIAL.md`: the facilitator's interference is the method's main threat.
+
+**Two facilitator interventions, recorded rather than hidden:** `node_modules` and `.venv` were
+symlinked into the worktree and `.env.local` copied in. That is environment setup a newcomer performs
+by following the install docs, not a hint about the task — but it is an intervention, and one of them
+had a consequence (see below), so it is stated.
+
+**Duration:** ~34 minutes.
+
+### It succeeded, and that is the less interesting half
+
+It produced the migration, an intent suite, a DAL, a server action, the page, jsdom tests and three
+journeys, and ended with the full `npm run check` green. Unprompted, it wrote `force row level security`, the
+explicit grant, and `revoke update, delete` so an edit attempt raises rather than becoming a silent
+zero-row write; it resolved the organization server-side from the caller's memberships rather than
+accepting it as a form field; and it ran its own mutation proof, replacing the policy with
+`with check (true)` to confirm its cross-tenant assertion could fail — reproducing F-4 in the process
+(_"rows the smuggler can read back = 0"_).
+
+### What told it that it was wrong
+
+- **`generated` and `typecheck`, on the first full run:** _"`src/lib/db/database.types.ts` is STALE …
+  Regenerate and read the diff: `npm run generate`"_, and `Argument of type '"note"' is not
+assignable`. It reported the messages as sufficient to fix without asking anyone.
+- **The journey layer found what the other three layers could not:** the form submitted and the page
+  still said "No notes yet". The cause was not its code — hydration was blocked because it served on
+  `127.0.0.1` rather than `localhost`. It found this **only by reading the dev-server log**, not from
+  the screenshot.
+- **A doc comment prevented a flake.** `e2e/pages/index.ts` warns that Next injects its own
+  `role="alert"` route announcer and that forms keep an empty live region — F-42's write-up, doing
+  the job documentation is for.
+
+### What nothing told it — the measurement
+
+1. **`next build` is run by nothing in `check`.** The production render was never verified. Worse for
+   the trial, the journey layer's `webServer` runs `npm run build`, so **CI's actual journey
+   configuration never executed**; it ran the journeys against `next dev` instead. Its third notes
+   test asserts F-38 behaviour — a production-render property — so dev agreeing with it is weaker
+   evidence than the suite intends. **A build-only failure surfaces as "the web server did not
+   start", which reads like infrastructure.**
+2. **The symlinked `node_modules` made the build impossible** — _"Symlink [project]/node_modules is
+   invalid, it points out of the filesystem root"_. A facilitator intervention changed what the trial
+   could measure, which is exactly what memo 12 warns about, and it was not foreseen.
+3. **It could not tell whether its page's exported-component pattern breaks the default build**, and
+   ran a control to establish that it had not introduced the failure it saw. It followed the pattern
+   both existing protected pages use.
+4. **It could not check its table against the newer Postgres image** CI may pull, where
+   `authenticated` holds default DML (F-31). It defended its own table with an explicit `revoke`, and
+   noted the same exposure remains untreated on `organization_invitation`.
+
+### What it found in the documentation, and what came of it
+
+Four of its five documentation findings were verified true and **three were fixed in the change that
+recorded this trial** — a defect is never a deferral:
+
+- **`CONTRIBUTING.md` misled it about the flagship recipe.** It reported the code block omits `force`
+  and the grant. The block does **not** omit them — but the prose beneath said _"Measured on a table
+  built exactly as written above: `RLS forced? false`"_, and that sentence was written when the block
+  still lacked them and left pointing at the corrected one. **A fix for a documentation defect
+  introduced a documentation defect**, and a newcomer read it exactly as written.
+- **`verify` measured a different interpreter than the gates use.** `bash -lc 'node -v'` → v25.2.1;
+  `node -v` → v26.4.0. `freshness` failed inside `verify` and passed standalone. The test pinning
+  this was named _"executes a plain run step exactly as CI would"_ while pinning a **login** shell,
+  which is not what GitHub Actions runs.
+- **`test-results/.last-run.json` is committed, rewritten by Playwright without a trailing newline,
+  and was absent from `.prettierignore`** — so running the journey suite turned `format` red for a
+  generated file. Every other generated artifact was already listed.
+- **The gate count disagrees with itself:** `npm run check` prints 13 while `npm run status` prints
+  `GATES 11`. Not fixed here — it is a naming question about which steps are gates, and worth
+  deciding rather than papering over.
+
+### The verdict, stated against the count
+
+**One trial. With L ≈ 31%, that finds roughly a third of what is there** — so this is a data point,
+not a claim of handover-readiness, and B-11 is claimed at one agent trial with the human half open
+(DEF-024). What it establishes: an unfamiliar participant built a correct tenant-scoped feature
+unaided, and every mistake it made was named by a gate **except in the one area nothing runs** — the
+production build.

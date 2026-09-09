@@ -301,6 +301,22 @@
       "url": "https://docs.stripe.com/billing/entitlements?dashboard-or-api=api",
       "title": "Stripe — Entitlements",
       "claim": "Features attach to products; entitlements.active_entitlement_summary.updated fires when a customer's entitlements change; List Active Entitlements retrieves them on demand, recommended 'on application startup, for authorization checks, or to reconcile state after a webhook delivery failure'. Stripe's explicit recommendation: 'We recommend you persist these entitlements internally for faster resolution.' The summary webhook's entitlements.data array is capped at 10 — beyond that the payload's entitlements.url must be paginated, so a handler treating data as complete silently revokes the rest."
+    },
+    {
+      "id": "nng-five-users",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/",
+      "title": "NN/g — Why You Only Need to Test with 5 Users",
+      "claim": "Problems found = N(1 - (1 - L)^n) with L about 31%. 'A single user uncovers roughly one-third of all problems'; by the fifth 'you are wasting your time by observing the same findings repeatedly'. Recommends several small studies over one large one: 'Spend this budget on 3 studies with 5 users each!'"
+    },
+    {
+      "id": "nng-think-aloud",
+      "tier": "primary",
+      "retrievedOn": "2026-09-08",
+      "url": "https://www.nngroup.com/articles/thinking-aloud-the-1-usability-tool/",
+      "title": "NN/g — Thinking Aloud: The #1 Usability Tool",
+      "claim": "Facilitator interference is the main threat: 'from an untrained facilitator, such interruptions can very easily change user behavior … the resulting behavior doesn't represent real use, so you can't base design decisions on the outcome.' The method is nonetheless robust — 'unless you blatantly bias users by putting words into their mouths, you'll still get reasonably good findings.'"
     }
   ]
 }

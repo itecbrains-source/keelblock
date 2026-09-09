@@ -92,7 +92,13 @@ export function planStep(step, { full = false, handlers = ACTION_HANDLERS } = {}
         label: step.run,
         detail: `${heavy.why} — use --full`,
       };
-    return { kind: 'run', state: 'ran', label: step.run, cmd: ['bash', '-lc', step.run] };
+    // `-c`, NOT `-lc`. A login shell sources the user's profile, which on this machine selects a
+    // different Node than the one the gates run under — measured 2026-09-08 during the handover
+    // trial: `bash -lc 'node -v'` reported v25.2.1 while `node -v` reported v26.4.0. The `freshness`
+    // step then failed inside `verify` ("running Node 25, stamp verified against 26") and passed
+    // standalone, so the step whose stated purpose is that a Node major mismatched against CI's pin
+    // is a failure rather than a shrug was asserting against an interpreter nothing else uses.
+    return { kind: 'run', state: 'ran', label: step.run, cmd: ['bash', '-c', step.run] };
   }
   const uses = String(step.uses ?? '');
   const key = uses.split('@')[0];

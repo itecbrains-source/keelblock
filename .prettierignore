@@ -8,3 +8,7 @@ docs/ACCESS-MATRIX.md
 docs/content/BATTLECARD.md
 supabase/tests/rls
 package-lock.json
+
+# Playwright rewrites this after every run, without a trailing newline, so running the journey
+# suite turned `format` red on the next `npm run check` — for a file nothing hand-edits.
+test-results

@@ -1,7 +1,7 @@
 # SPEC-003: Gates
 
 > Status: `done` (every gate built and mutation-proven) ·
-> Contracts: SPEC-001, SPEC-002, SPEC-004, SPEC-016, SPEC-028 · Bars: **B-3**, **B-4**, **B-9** · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [007](../docs/adr/ADR-007-supply-chain-and-freshness.md), SPEC-013 ·
+> Contracts: SPEC-001, SPEC-002, SPEC-004, SPEC-016, SPEC-028 · Bars: **B-3**, **B-4**, **B-9** · ADRs: [004](../docs/adr/ADR-004-rendering-and-cache.md), [007](../docs/adr/ADR-007-supply-chain-and-freshness.md), SPEC-013, SPEC-024 ·
 
 ## Intent
 

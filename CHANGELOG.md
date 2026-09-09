@@ -10,12 +10,23 @@ entries are what make the rest worth believing. Full reproductions live in
 ## [Unreleased]
 
 The tenancy foundation, the proof harness, the gates, sign-in, organizations, invitations and the
-upgrade path (SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-006, SPEC-013). Billing and the
-remaining product surfaces are specced and not built — run `npm run status`, which reads the
+upgrade path (SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-006, SPEC-013), and the
+handover trial that measures whether any of it can be picked up by a stranger (SPEC-024). Billing and
+the remaining product surfaces are specced and not built — run `npm run status`, which reads the
 repository rather than this paragraph.
 
 ### Added
 
+- **The handover trial (SPEC-024), and what it found.** B-11 asks whether someone who has never seen
+  this repository can add a tenant-scoped feature and be told when they get it wrong. A fresh agent
+  session, given one brief and no help, built an organization-scoped notes feature in about half an
+  hour with the gate suite green — writing `force row level security`, the explicit grant and a
+  `revoke update, delete` unprompted, and running its own mutation proof. **What it found is the
+  point:** nothing in the gate suite runs `next build`, so a build-only failure arrives disguised as
+  "the web server did not start" (F-49); and a fix for a documentation defect had introduced one, so a
+  careful reader concluded the flagship recipe was wrong when it was right (F-50). Three of its
+  documentation findings were fixed in the same change. **One trial finds about a third of what is
+  there**, so B-11 is claimed at one agent trial with the human half open (DEF-024).
 - **The upgrade path (SPEC-013), and the experiment that corrected it.** `PRODUCT.md` calls
   upgradability the deepest structural failure in this category. A synthetic buyer was scaffolded at
   `v0.1.0` — cut before the `is_org_admin` NULL fix so the payload was a real security fix — given

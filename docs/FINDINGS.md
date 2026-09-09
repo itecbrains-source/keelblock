@@ -1434,3 +1434,51 @@ Both layers now require something present. `assertPlanDelivers` refuses a plan t
 exits `2` (verified: `real exit code: 2`). The job computes a file **added** to an upstream-owned path
 since the tag and requires it in the scaffold, and refuses a release where no such file exists rather
 than passing vacuously — because a run that cannot prove anything is not a passing one.
+
+## F-49 · Nothing runs `next build`, and the handover trial is what noticed
+
+**2026-09-08 · found by the B-11 agent trial · recorded, not fixed**
+
+`npm run check` runs `next typegen` and `tsc --noEmit`. Neither is `next build`, and the build has its
+own route-type checking that the pair does not reproduce. The only place a build happens is inside the
+journey layer's Playwright `webServer`, which means **a build-only failure surfaces as "the web server
+did not start"** — a message that reads like infrastructure and sends the reader to look at ports.
+
+An unfamiliar participant found this in half an hour, and the way it found it is the point: it could
+not run the build at all in its worktree, so it ran the journeys against `next dev` instead. One of
+its own tests asserts F-38 behaviour — that a protected route answers a stranger with a 200 shell and
+no tenant data — which is a **production-render** property. Dev agreeing with it is weaker evidence
+than the suite intends, and nothing said so.
+
+It also reported that `next build --webpack` fails on this repository **with and without its change**,
+rejecting the named export a `page.tsx` carries for its test — and it ran the control to establish
+that it had not introduced the failure. Whether the default Turbopack build rejects the same pattern
+is **unknown**, and that is the honest state: two protected pages already use it.
+
+Not fixed here, deliberately. Adding a build step to `check` is a real decision — it is the slowest
+thing that would be in it, and SPEC-003 treats the gate count as a ceiling rather than a floor — and
+the trial's job is to find, not to choose. What is recorded is that the gap exists, that it was
+invisible from inside, and that the first person to look from outside hit it immediately.
+
+## F-50 · A fix for a documentation defect introduced a documentation defect
+
+**2026-09-08 · found by the B-11 agent trial · fixed in `CONTRIBUTING.md`**
+
+F-47 corrected the flagship "add a tenant-scoped table" recipe, which had taught `enable row level
+security` without `force`. The correction added both missing lines to the code block **and** prose
+explaining them, including:
+
+> "Measured on a table built exactly as written above: `RLS forced? false`."
+
+That sentence was true of the recipe as it stood **before** the same commit fixed it, and false the
+moment it landed — "as written above" now pointed at a corrected block that does force RLS.
+
+The trial's participant read it exactly as written and reported that the recipe "omits `force row
+level security` and the grant in the code block while explaining both in prose immediately below".
+**Its diagnosis was wrong and its finding was right**: the block is correct, and the passage
+contradicts itself badly enough that a careful newcomer concluded the opposite of the truth.
+
+The general shape is worth more than the instance. **A correction written in the same breath as the
+thing it corrects tends to describe the old state in the present tense**, because its author is
+holding both versions in mind and the reader only ever sees one. The repair is to date the claim —
+"as it stood before that date" — rather than to point at "above".

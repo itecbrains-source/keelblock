@@ -62,18 +62,18 @@ Three rules the gates enforce, each because of a measured defect:
 - **`(select auth.uid())`, not `auth.uid()`** — the subquery form is evaluated once rather than per
   row. It is also _illegal_ in a trigger `WHEN` clause, where the plain form belongs.
 
-And two lines this recipe did not have until 2026-09-08, both measured against a live stack
+Two of the lines above were **added** on 2026-09-08 after being measured missing, and they are called
+out because copying an older version of this recipe from anywhere else will omit them
 ([F-47](docs/FINDINGS.md)):
 
 - **`force row level security`, not just `enable`.** On Supabase the table owner is `postgres`, which
   is not a superuser but carries `rolbypassrls` — so `ENABLE` alone leaves the owner reading every
   tenant's rows, and with it every `SECURITY DEFINER` function, since those run as the owner. Measured
-  on a table built exactly as written above: `RLS forced? false`. This is the defect
+  on a table built from the recipe **as it stood before that date**: `RLS forced? false`. This is the defect
   `organization_invitation` shipped with, and the guard now catches it.
 - **The grant.** Default privileges were deliberately stripped here (`20260908140000`), so a table
   created without one is unreachable: measured `authenticated SELECT grant: false`. It fails closed,
-  which is the safe direction, and it means the recipe as previously written produced a table nobody
-  could read.
+  which is the safe direction, and it meant the earlier recipe produced a table nobody could read.
 
 ## Testing a policy
 

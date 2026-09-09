@@ -295,6 +295,18 @@
       "what": "the CI job proving the upgrade path could pass while delivering nothing — and the bar had already been claimed on it",
       "to": ["blog", "docs"],
       "angle": "The sharpest instance of the recurring lesson, because the author had already written the rule that catches this exact shape. checkPositiveControls exists because a suite of nothing but denials is green against an empty database; the upgrade job was a job whose every step was satisfied by absence. Writing the rule did not stop the same hole being built into the next thing. A lesson learned in one place does not transfer by itself — which is an argument for gates over understanding, made against its own author."
+    },
+    {
+      "id": "F-49",
+      "what": "nothing in the gate suite runs `next build`, so a build-only failure appears as \"the web server did not start\"",
+      "to": ["blog", "docs"],
+      "angle": "Found by an unfamiliar participant in half an hour, and invisible from inside for weeks. The mechanism is the interesting part: the only build in the repository happens inside Playwright's webServer, so its failure mode is disguised as infrastructure. Recorded rather than fixed, because adding the slowest possible step to a gate suite whose count is a stated ceiling is a decision, and a trial's job is to find rather than to choose."
+    },
+    {
+      "id": "F-50",
+      "what": "the fix for a documentation defect introduced a documentation defect, and the next reader concluded the opposite of the truth",
+      "to": ["blog", "docs", "faq"],
+      "angle": "A correction written in the same breath as the thing it corrects describes the old state in the present tense, because its author holds both versions in mind and the reader only ever sees one. Caught because an unfamiliar participant read the page as written and reported the recipe was wrong — right about the passage, wrong about the code, which is exactly what a misleading document produces. The repair is to date the claim rather than point at \"above\"."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",
@@ -390,6 +402,21 @@
       "battlecard": "An upgrade path that was tested before it was claimed",
       "oneLine": "*Ask what happens when they fix a security bug and you cloned in March — then ask to see the test.*",
       "artifacts": ["scripts/upgrade.mjs", ".github/workflows/check.yml"]
+    },
+    {
+      "spec": "SPEC-024",
+      "claim": "The repository's teachability is measured rather than asserted: an unfamiliar participant is given one feature task and no help, and what the gates failed to catch is published as a finding.",
+      "rivals": "Every kit in the category asserts its documentation is good and none publishes a trial. The measurement is cheap and nobody runs it, so no competitor can tell you what a newcomer got wrong in their repository last week — or what their own checks stayed silent about.",
+      "evidence": [
+        "docs/TESTING.md",
+        "research/12-HANDOVER-TRIAL.md",
+        "spec/SPEC-024-handover.md",
+        "F-49",
+        "F-50"
+      ],
+      "battlecard": "A handover trial that publishes what it missed",
+      "oneLine": "*Ask when they last watched somebody fail to use their documentation, and what that person got wrong.*",
+      "artifacts": ["docs/FINDINGS.md"]
     }
   ],
   "documentation": {
@@ -397,7 +424,8 @@
     "SPEC-002": "docs/TESTING.md",
     "SPEC-004": "docs/AUTHORIZATION.md",
     "SPEC-005": "docs/AUTHORIZATION.md",
-    "SPEC-013": "docs/TESTING.md"
+    "SPEC-013": "docs/TESTING.md",
+    "SPEC-024": "docs/TESTING.md"
   },
   "$noDocumentation": {
     "SPEC-003": "The gates document themselves at the point of failure: every one names the file, the line and the fix, and AGENTS.md carries the table of what each catches. A separate page describing them would be a second copy that goes stale the first time a message is improved.",

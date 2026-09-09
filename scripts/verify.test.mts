@@ -2,10 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { planStep, summarize, ACTION_HANDLERS } from './verify.mjs';
 
 describe('local CI verifier', () => {
-  it('executes a plain run step exactly as CI would', () => {
+  it('executes a plain run step exactly as CI would — a NON-login shell', () => {
+    // `-c`, not `-lc`, and the test name is the argument. GitHub Actions runs `run:` steps in a
+    // non-login shell, so a login shell here is not "exactly as CI would" — it is a different
+    // environment wearing that claim.
+    //
+    // It was not academic. A login shell sources the user's profile, which selected a different
+    // Node: measured during the handover trial, `bash -lc 'node -v'` gave v25.2.1 where `node -v`
+    // gave v26.4.0. `freshness` then failed inside `verify` and passed standalone, so the step whose
+    // whole purpose is to refuse a Node major that does not match CI's pin was asserting against an
+    // interpreter nothing else in the repository uses.
     const p = planStep({ run: 'npm run check' });
     expect(p.state).toBe('ran');
-    expect(p.cmd).toEqual(['bash', '-lc', 'npm run check']);
+    expect(p.cmd).toEqual(['bash', '-c', 'npm run check']);
   });
 
   it('defers heavy steps but names them, rather than dropping them', () => {
