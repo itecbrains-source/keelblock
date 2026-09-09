@@ -1,7 +1,7 @@
 # SPEC-011: `create-keelblock-app`
 
 > Status: `done` · Bars: **B-1** · Research: [`research/13-SCAFFOLDING.md`](../research/13-SCAFFOLDING.md) · ADRs: [008](../docs/adr/ADR-008-upgradability.md), [017](../docs/adr/ADR-017-repository-shape.md)
-> Contracts: SPEC-013 ·
+> Contracts: SPEC-013, SPEC-012 ·
 
 ## Intent
 

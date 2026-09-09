@@ -472,6 +472,19 @@
       "battlecard": "A generated project that can still take a security fix",
       "artifacts": ["research/13-SCAFFOLDING.md"],
       "oneLine": "_Ask what your generated project remembers about where it came from. Usually nothing — and that is why there is no upgrade._"
+    },
+    {
+      "spec": "SPEC-012",
+      "claim": "The getting-started page is executed on every push — its shell blocks extracted and run in one shell in an empty directory, asserting that a real project came out rather than that the commands exited zero.",
+      "rivals": "boxyhq/saas-starter-kit has one CI workflow and every step in it runs an npm script; no step executes their installation documentation. Read 2026-09-09, and the claim is exactly as broad as that one file — it says nothing about the paid kits, whose CI is not public.",
+      "evidence": [
+        "research/14-EXECUTABLE-DOCS.md",
+        "scripts/walkthrough.test.mts",
+        ".github/workflows/check.yml"
+      ],
+      "battlecard": "A setup page that was known to work on this commit",
+      "artifacts": ["docs/GETTING-STARTED.md"],
+      "oneLine": "_Ask when their setup page last worked. Ours answers with a commit, because a job follows it._"
     }
   ],
   "documentation": {
@@ -481,7 +494,8 @@
     "SPEC-005": "docs/AUTHORIZATION.md",
     "SPEC-013": "docs/TESTING.md",
     "SPEC-024": "docs/TESTING.md",
-    "SPEC-011": "README.md"
+    "SPEC-011": "README.md",
+    "SPEC-012": "docs/GETTING-STARTED.md"
   },
   "$noDocumentation": {
     "SPEC-003": "The gates document themselves at the point of failure: every one names the file, the line and the fix, and AGENTS.md carries the table of what each catches. A separate page describing them would be a second copy that goes stale the first time a message is improved.",

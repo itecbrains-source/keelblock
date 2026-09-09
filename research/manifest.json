@@ -118,6 +118,14 @@
       "verifiedOn": "2026-09-09",
       "specs": ["SPEC-011"],
       "kind": "measured"
+    },
+    {
+      "file": "14-EXECUTABLE-DOCS.md",
+      "area": "executable documentation — running a walkthrough, and what a machine cannot check",
+      "volatility": "stable",
+      "verifiedOn": "2026-09-09",
+      "specs": ["SPEC-012"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {

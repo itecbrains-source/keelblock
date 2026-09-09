@@ -18,6 +18,18 @@ this paragraph.
 
 ### Added
 
+- **The getting-started page, executed (SPEC-012).** B-5's proof is "a scripted walkthrough run by
+  someone with no prior context, timed and recorded" — a promise about a future event, which is the
+  shape B-1 was in until last week. This keeps the half a machine can keep: a runner extracts the
+  page's shell blocks and executes them in one shell in an empty directory, because a person follows
+  a page in one terminal and `cd my-app` is load-bearing for everything after it. Borrowed from
+  rustdoc, which runs Rust's documentation examples so they stay "up to date and working", including
+  its in-band way for a block to say it cannot run. The job asserts an **artefact** — a project that
+  exists, declares itself generated and passed its own suite — not an exit status. **B-5 is NOT
+  claimed**: a machine will happily execute an incomprehensible page, and whether a newcomer can
+  follow it is DEF-024. Measured on the closest comparable kit: its CI runs npm scripts and no step
+  executes its installation documentation.
+
 - **`create-keelblock-app` (SPEC-011), and the thing it is actually for.** Bar B-1 claims a running
   application in five minutes; before this it was not unmet but **unfalsifiable**, because the tool
   did not exist. The interesting half is not copying files. Scaffolding and upgrading are one

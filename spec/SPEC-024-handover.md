@@ -1,7 +1,7 @@
 # SPEC-024: Handover
 
 > Status: `partial` · Bars: **B-11** · Research: [`research/12-HANDOVER-TRIAL.md`](../research/12-HANDOVER-TRIAL.md) · ADRs: [019](../docs/adr/ADR-019-documentation-timing.md)
-> Contracts: SPEC-002, SPEC-003 ·
+> Contracts: SPEC-002, SPEC-003, SPEC-012 ·
 
 ## Intent
 
