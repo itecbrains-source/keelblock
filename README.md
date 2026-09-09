@@ -1,3 +1,5 @@
+<img src="public/keelblock-logo.svg" alt="" width="72" height="72" align="left" />
+
 # keelblock
 
 [![check](https://github.com/itecbrains-source/keelblock/actions/workflows/check.yml/badge.svg)](https://github.com/itecbrains-source/keelblock/actions/workflows/check.yml)
