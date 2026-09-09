@@ -31,6 +31,13 @@ application first, which takes longer than every other gate combined". Both halv
 of the suite nearer a minute, so it never took longer than everything else combined. The browser is
 the real reason, and it was always the real reason.
 
+**In a git worktree, install into it** — `npm ci --ignore-scripts` inside the worktree, not a symlink
+to the parent's `node_modules`. Turbopack refuses one: _"Symlink [project]/node_modules is invalid,
+it points out of the filesystem root"_. That was already known — it is finding 2 of the handover
+trial below — but it cost a trial participant its build back when the build was optional. Since F-52
+made `build` a step, it turns `npm run check` red for a reason that has nothing to do with the code,
+and this repository runs its trials in worktrees.
+
 ## The journey layer
 
 **It exists because of [F-38](FINDINGS.md).** A unit test asserted that the protected page calls
