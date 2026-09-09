@@ -1827,3 +1827,42 @@ described SPEC-031 as "already specced, unblocked". It is neither: `spec/README.
 `draft` blocked on the owner's REQ-7 decision. Both halves of a two-word claim, wrong, and wrong
 generously. The review's B-6 recommendation, by contrast, held up under measurement — which is the
 point of checking rather than discounting: the bias is a prior, not a verdict.
+
+## F-57 · Two green jobs, each honest about its own half, with nothing crossing between them
+
+**2026-09-09 · predicted from a pattern, then tested · closed by construction**
+
+F-41, F-48, F-49, F-53 and one unnumbered fix share a shape. F-41 counted exit codes rather than files. F-48's upgrade job asserted
+the tests passed but never that the upgrade delivered anything. F-49 found nothing runs `next build`.
+F-53 found nothing exercised `project` DELETE. And `03503ee` found `create-keelblock-app` died on its
+last line, green suite and all, because nothing ran the CLI. **Components proven, composition unrun**,
+every time — and every fix was the same move: run the real thing end to end and assert something must
+be PRESENT.
+
+Applied forward rather than backward, it named a live gap:
+
+- the `upgrade` job scaffolded with `git worktree add` and proved **that** project upgrades;
+- the `scaffold` job used `create-keelblock-app` and proved **that** project checks green;
+- **nothing proved a CLI-scaffolded project could be upgraded.**
+
+The seam was not incidental. SPEC-011's memo made provenance the load-bearing question, and
+`upgrade.mjs` consumes exactly that — a worktree carries every ref in keelblock's repository and
+satisfies it for free, which is precisely the shape no buyer has. The memo had already measured the
+alternative dying with `fatal: bad object`. So the one job that could have caught a provenance bug
+was structurally incapable of it.
+
+**Tested: it works.** A project scaffolded by the CLI at `v0.1.0`, given the two commands the
+scaffolder prints, took an upgrade to HEAD — 60 upstream-owned files, migrations applied, 65 left
+alone, and the positive control file present.
+
+**Closed by making one job consume the other's output rather than by adding a third.** The `upgrade`
+job now scaffolds with `create-keelblock-app` instead of `git worktree`, so what gets upgraded is
+what the tool produces, and it asserts the provenance record before starting — a scaffolder that
+quietly stopped writing one fails there rather than somewhere subtler. B-1 and B-10 are joined by
+construction, and neither can go green over the other's gap.
+
+**What is worth keeping is the method, not the result.** The prediction was that this would fail; it
+did not. That is the cheaper of the two outcomes and it was still worth ten minutes, because the
+other outcome was a defect a buyer would have found first. A recurring shape is worth pointing
+forward at the seams nobody has looked at yet — and the answer "we checked, it holds" is only
+available to people who checked.

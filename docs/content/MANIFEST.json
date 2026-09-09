@@ -343,6 +343,12 @@
       "what": "a module was actually deleted to find out what removability costs, and the gates turned out to be most of the test",
       "to": ["blog", "docs"],
       "angle": "The loudest complaint about starter kits is that you cannot get anything out of them. Rather than argue, the invitations subsystem was deleted and the whole loop run: typecheck, build and 500 tests stayed green, and the four gates that failed each named exactly one leftover until it was gone. Removal took five files across three modules and no archaeology, because the checklist was generated. Also names the two things a deletion test still has to decide — retiring the spec that owns the module, and the fact that a migration cannot be un-run, so removability here is a code property. Includes the author's own first measurement, which was wrong for being broader than the experiment."
+    },
+    {
+      "id": "F-57",
+      "what": "two green CI jobs each proved half of the same story, and nothing crossed between them",
+      "to": ["blog", "docs"],
+      "angle": "F-41, F-48, F-49 and F-53 share one shape — components proven, composition unrun — so the shape was pointed FORWARD at a seam nobody had looked at: one job proved a worktree could be upgraded, another proved a generated project checks green, and neither proved a generated project could be upgraded. The prediction was that it would fail. It did not, and that is the cheaper outcome and still worth the ten minutes, because the other one was a defect a buyer finds first. Closed by making one job consume the other's output rather than by adding a third job."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

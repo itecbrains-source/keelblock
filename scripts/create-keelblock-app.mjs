@@ -134,8 +134,16 @@ function main() {
   const name = argv.find((a) => !a.startsWith('--'));
   const fromArg = argv.indexOf('--from');
   const refArg = argv.indexOf('--ref');
+  // `--upstream` exists for two real cases and is not a testing hook: a fork, and CI. On a pull
+  // request `$GITHUB_SHA` is a merge commit that exists in the checkout and NOT on the remote, so a
+  // job proving the generated project can be upgraded has to point it at the checkout or prove
+  // nothing. The default is the public repository, which is what a person gets.
+  const upArg = argv.indexOf('--upstream');
+  const upstream = upArg === -1 ? UPSTREAM_URL : argv[upArg + 1];
   if (!name) {
-    console.error('usage: create-keelblock-app <directory> [--from <path>] [--ref <tag>]');
+    console.error(
+      'usage: create-keelblock-app <directory> [--from <path>] [--ref <tag>] [--upstream <url>]',
+    );
     process.exit(2);
   }
   if (existsSync(name)) {
@@ -186,13 +194,13 @@ function main() {
   );
   writeFileSync(
     join(name, PROVENANCE_FILE),
-    JSON.stringify(provenanceFor({ name, ref, commit }), null, 2) + '\n',
+    JSON.stringify(provenanceFor({ name, ref, commit, upstream }), null, 2) + '\n',
   );
 
   // The buyer's history starts here. Not a clone: 200 commits of a product they did not write is
   // not their project's past, and it is the whole reason scaffolders download tarballs.
   run('git', ['init', '-q'], name);
-  run('git', ['remote', 'add', UPSTREAM_REMOTE, UPSTREAM_URL], name);
+  run('git', ['remote', 'add', UPSTREAM_REMOTE, upstream], name);
   run('git', ['add', '-A'], name);
   run(
     'git',

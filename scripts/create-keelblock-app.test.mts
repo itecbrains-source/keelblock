@@ -96,3 +96,22 @@ describe('the generated project is its own', () => {
     expect(steps).toContain('npm run check');
   });
 });
+
+describe('--upstream, and why it is not a testing hook', () => {
+  it('the provenance records whichever origin the project was given', () => {
+    const forked = provenanceFor({
+      name: 'acme',
+      ref: 'v1',
+      commit: 'abc',
+      upstream: 'https://example.invalid/fork.git',
+      at: '2026-01-01T00:00:00Z',
+    });
+    expect(forked.upstream).toBe('https://example.invalid/fork.git');
+  });
+
+  it('and defaults to the real repository, which is what a person gets', () => {
+    expect(provenanceFor({ name: 'a', ref: 'v1', commit: 'b', at: 'x' }).upstream).toContain(
+      'github.com',
+    );
+  });
+});
