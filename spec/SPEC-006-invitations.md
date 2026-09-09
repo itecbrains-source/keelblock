@@ -24,7 +24,8 @@ revocation to perform, that is an argument.
     transactional email. Until then the link is surfaced to the inviter to pass on, which is honest
     about what exists rather than pretending mail is wired.
   - **Bulk invitations, domain auto-join, SSO provisioning** — SPEC-009's enterprise identity
-    territory (DEF-005), and each changes the trust model rather than extending it.
+    territory (DEF-005 for SSO, DEF-025 for SCIM provisioning), and each changes the trust model
+    rather than extending it.
   - **The role model and the last-owner invariants** — SPEC-001 (REQ-7, F-9, F-10). Acceptance and
     revocation must not be able to violate them, and that is asserted rather than re-implemented.
   - **Rate limiting the preview endpoint** — nothing in keelblock is rate limited (DEF-006), and

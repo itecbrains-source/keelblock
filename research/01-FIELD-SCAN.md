@@ -37,9 +37,35 @@ So the most successful free enterprise SaaS starter in the category — five tho
 thousand forks — has **no database-enforced tenant isolation at all**, and one unit test file, with
 its entire safety net in Playwright.
 
-Its business model also explains its shape: the kit is a funnel for Jackson, BoxyHQ's own SSO
-product. Free and enterprise-featured is a distribution strategy, not charity — worth knowing before
-reading its feature list as a bar to match.
+Its business model also explains its shape: the kit is a funnel for the SSO service behind it. That
+service is now **Ory Polis**, not BoxyHQ's own product — see the correction below. Free and
+enterprise-featured is a distribution strategy, not charity — worth knowing before reading its
+feature list as a bar to match.
+
+**Correction to this memo (2026-09-09) — Jackson is now Ory Polis.** BoxyHQ Jackson was acquired
+by Ory and is `github.com/ory/polis`; `boxyhq/jackson` redirects there. Still Apache-2.0, still
+maintained (100+ commits since its 2026-03-20 release, though most are dependency automation), still
+both a standalone service and an embedded library, and it does SCIM 2.0 as well as SAML.
+
+Two things the rename does not change, and one it sharpens:
+
+- **The table above still reads correctly.** The kit's dependency is literally
+  `@boxyhq/saml-jackson@26.2.0` — checked in its own `package.json` on 2026-09-09 — so the package
+  name has not followed the project name. A find-and-replace would have made that cell wrong.
+- **The star and fork counts have not moved** (4,929 / 1,228 against the 4,928 / 1,228 recorded
+  above), so nothing else in the BoxyHQ row is stale.
+- **The funnel reading gets sharper, and it is now the vendor's own words.** Ory's README says the
+  paid network's "**SAML & SCIM** on Ory Network are powered by Ory Polis", and there is a separate
+  paid Ory Enterprise License build for on-premise use. So the free tier is the free tier of
+  somebody's commercial product — as it always was — except that the somebody changed, which makes
+  its maintenance trajectory a business decision taken elsewhere. That is the class ADR-007's
+  freshness gate exists to notice, not a licence problem.
+
+**`verifiedOn` in `research/manifest.json` is deliberately NOT moved by this correction.** It reads
+2026-09-08 and that is still true: this pass re-read the BoxyHQ and Ory primary sources only, not
+MakerKit, Supastarter, ShipFast, Achromatic or nextacular. Moving the date would assert a
+re-verification of all of them that nobody performed, and the date is the one thing in this file a
+reader is entitled to take literally.
 
 The free options define the gap precisely:
 
@@ -160,8 +186,8 @@ Naming these so the choice is a decision rather than an oversight:
 
 - **i18n and `check-locale`.** A real cost for a speculative benefit in a starter; already a stated
   non-goal, and their locale gate only earns its keep once i18n exists.
-- **The enterprise feature set.** Registered as DEF-005, not copied — and the ordering stands:
-  isolation proven, then table stakes.
+- **The enterprise feature set.** Registered as DEF-005 (SSO) and DEF-025 (SCIM), not copied — and
+  the ordering stands: isolation proven, then table stakes.
 - **Page-object boilerplate.** The _pattern_ is settled (SPEC-002 REQ-3b); the code gets written when
   there is a flow to drive, not before.
 - **Their RBAC matrix shape.** SPEC-001 REQ-7 already specifies a role model pinned across TypeScript

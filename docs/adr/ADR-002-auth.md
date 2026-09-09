@@ -59,3 +59,45 @@ and policies together, so tests exercise the real path.
 **Negative:** more of v1 is keelblock's to build, and the invitation flow in particular (accept, decline,
 join, role change, revoke) is fiddly and security-sensitive. Mitigated by making it a SPEC of its own
 with adversarial intent tests, rather than a sub-section of a larger one.
+
+## Addendum, 2026-09-09 — what shape an SSO integration has to take
+
+This ADR's whole argument is one property: policies key off `auth.uid()` from a **Supabase-issued**
+JWT, so keelblock's claim needs no bridge and no asterisk (D-2). It says why that mattered when
+choosing between auth systems. It does not say what it demands of the first SSO integration somebody
+adds, and that is the decision this addendum makes before there is code to argue about.
+
+**The constraint.** An SSO integration preserves the property only if it sits **upstream** of
+Supabase, so that Supabase still mints the session. Enterprise IdP → SSO service → Supabase → JWT →
+`auth.uid()`. Every policy in the repository, and every pgTAP test that sets
+`request.jwt.claim.sub`, keeps working untouched, because nothing about the token has changed.
+
+**The shape that destroys it, and how close to hand it is.** Wire an auth service _beside_ Supabase
+instead and the database stops reading a Supabase token. Supabase's own third-party auth documents
+this plainly — "the API will trust JWTs issued by the provider similar to how it trusts JWTs issued
+by Supabase Auth" — and `supabase/config.toml` already carries four commented-out
+`[auth.third_party.*]` sections for exactly that. So the wrong shape is one uncomment away, it would
+be a perfectly reasonable-looking change, **and nothing in this repository would notice**: the
+policies still compile, the tests still pass with the claims they set themselves, and the property
+D-2 bought is simply gone.
+
+**What satisfies the constraint** (verified from Supabase's own documentation, 2026-09-09):
+
+- **An upstream OIDC provider, registered as a custom provider.** You supply "the `issuer` URL and
+  the discovery document, JWKS, and endpoints are resolved automatically". Available on every tier —
+  "Free plan projects can add up to 3 custom providers. Pro plan and above have unlimited custom
+  providers" — so the shape that keeps the property is also the one that is not paywalled. Any
+  SAML-to-OIDC bridge can occupy that slot; none is named here, and none is a dependency of this
+  project.
+- **Supabase's own SAML SSO** preserves it too, and is the obvious answer, with a caveat this project
+  has to take seriously: "SAML 2.0 support is offered on plans Pro and above", and it cannot be
+  exercised on the stack this repository runs. Measured, not read — there is no SAML or SSO
+  environment variable on the local auth container, no `[auth.saml]` key in the pinned CLI, and no
+  such section in `config.toml`. Something that can never run in `check` or in CI is the unexercised
+  seam this ADR refuses in its own Context.
+
+**This ships nothing.** No dependency is added, no SSO is built, and DEF-005 stays open on a blocker
+that has not moved. It is recorded now for the reason ADR-006's addendum was: it is a constraint on
+work that has not happened yet, and a constraint like that gets **discovered** rather than **decided**
+if it waits for the change that violates it. It also answers a buyer's "can I add SSO?" — yes,
+upstream, and here is the line not to cross — without this repository carrying the integration.

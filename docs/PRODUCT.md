@@ -80,16 +80,20 @@ evidence for keelblock's thesis and, simultaneously, the clearest statement of w
 
 **These are not non-goals.** keelblock targets multi-tenant B2B SaaS, and SSO, SCIM and audit logs are
 exactly what a B2B buyer's security review asks for. Calling them out of scope would be convenient
-rather than true, so they are registered as **DEF-005** instead.
+rather than true, so they are registered as **DEF-005** (SSO) and **DEF-025** (SCIM) instead.
 
 Two things worth taking from how BoxyHQ does it:
 
-- **Delegate, do not build.** Their SSO is Jackson, audit logs are Retraced, webhooks are Svix. None
+- **Delegate, do not build.** Their SSO is Jackson — now Ory Polis — audit logs are Retraced,
+  webhooks are Svix. None
   of it is written from scratch, and that is the right instinct — an audit-log implementation in a
   starter kit is a liability its author will not maintain.
-- **Read their feature list knowing the business model.** The kit is a funnel for Jackson, BoxyHQ's
-  own SSO product. Free-and-enterprise-featured is distribution strategy, not generosity, and it
-  explains which features got built first.
+- **Read their feature list knowing the business model.** The kit is a funnel for its own SSO
+  service — which, since the Ory acquisition, is **Ory Polis**, and Ory's README says the paid
+  network's "SAML & SCIM ... are powered by Ory Polis". Free-and-enterprise-featured is
+  distribution strategy, not generosity, and it explains which features got built first. It also
+  means the funnel now points at somebody else's business, which is a maintenance question rather
+  than a licence one (checked 2026-09-09).
 
 The ordering keelblock keeps: **isolation proven, then the enterprise surface.** A kit with SSO and no
 provable isolation is the arrangement the whole field already offers.
@@ -240,7 +244,7 @@ publish them, because none of them did the measuring.
 ### Three borrowed features, and why keelblock's versions are different
 
 BoxyHQ ships SSO, audit logs and webhooks — and **all three are third-party services**: Jackson
-(their own product), Retraced, and Svix. Its Prisma schema contains no audit or webhook model at all.
+(now Ory Polis, and no longer their own product), Retraced, and Svix. Its Prisma schema contains no audit or webhook model at all.
 A buyer gets integration code and three vendor relationships. That is a defensible choice, and
 "delegate, do not build" is usually right — an audit-log implementation inside a starter is a
 liability nobody maintains.

@@ -56,7 +56,7 @@ Recorded as **DEF-009**, so it cannot be quietly guessed later.
 ## What is deliberately not sold
 
 - **The code.** See above. This is the decision everything else rests on.
-- **The enterprise surface** (SSO, SCIM). Registered as DEF-005 and it ships **free** when built — a
+- **The enterprise surface** (SSO, SCIM). Registered as DEF-005 and DEF-025 and it ships **free** when built — a
   security review asking for SSO is not the same customer as one buying audit evidence, and gating
   it would make keelblock's B2B claim conditional on payment.
 - **Anything that weakens the free tier to create a paid one.** The rule above, restated because it

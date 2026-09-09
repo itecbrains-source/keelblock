@@ -33,7 +33,10 @@ governing nothing but a laptop.
     `auth.uid()`"; what it may reach is already policy.
   - **Invitations** — SPEC-006, deliberately its own spec per ADR-002, because accept/decline/join/
     revoke/role-change is where a tenancy model usually leaks.
-  - **SSO and SCIM** — DEF-005, blocked on having an identity provider to test against.
+  - **SSO** — DEF-005, and **SCIM** — DEF-025, split on 2026-09-09 because they fall on opposite
+    sides of this project's delegate-or-build test: SSO produces an identity and is upstream of the
+    tenant boundary, SCIM writes `organization_member`. Both blocked on having an identity provider
+    to test against.
   - **Per-account lockout, disposable-email blocking, bot check** — DEF-006, already filed with the
     right reasoning: Supabase's rate limits are per-IP, and rotating IPs defeats them. This spec
     creates the login those measures protect and does not pre-empt them.
