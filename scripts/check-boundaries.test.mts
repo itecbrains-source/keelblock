@@ -11,6 +11,7 @@ import {
   importsOf,
   isEntryPoint,
   resolveImport,
+  findPasswordSignIn,
 } from './check-boundaries.mjs';
 
 const ADMIN = 'src/lib/supabase/server-only/admin.ts';
@@ -442,5 +443,36 @@ describe('Server Action authorization (SPEC-004 REQ-3)', () => {
     expect(
       findUnauthorizedActions(files, read, (s, f) => resolveImport(s, f), []).length,
     ).toBeGreaterThan(0);
+  });
+});
+
+describe('findPasswordSignIn — ADR-021, a decision that cannot erode quietly', () => {
+  const read = (files: Record<string, string>) => (f: string) => files[f] ?? '';
+
+  it('MUTATION: a call to signInWithPassword is caught, and the message says why', () => {
+    // The real shape: somebody adds a password form beside the magic-link one. Nothing else in the
+    // suite goes red for that — the policies are untouched and the page renders fine.
+    const files = {
+      'src/app/login/actions.ts':
+        'const s = await createClient(); await s.auth.signInWithPassword({ email, password });',
+    };
+    const problems = findPasswordSignIn(Object.keys(files), read(files));
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('ADR-021');
+  });
+
+  it('the word in a comment or a string is not a call — parsed, not searched', () => {
+    // ADR-021, this file and the rule's own doc comment all contain the name. A text scan would
+    // fail on the documents that explain the rule.
+    const files = {
+      'src/lib/notes.ts':
+        "// ADR-021 forbids signInWithPassword.\nexport const why = 'signInWithPassword is refused';",
+    };
+    expect(findPasswordSignIn(Object.keys(files), read(files))).toEqual([]);
+  });
+
+  it('is not vacuous: the real source tree is clean, and that is the claim', () => {
+    const files = { 'src/app/login/actions.ts': 'await s.auth.signInWithOtp({ email });' };
+    expect(findPasswordSignIn(Object.keys(files), read(files))).toEqual([]);
   });
 });

@@ -22,7 +22,7 @@
   },
   "login": {
     "title": "Sign in",
-    "subtitle": "We email you a link. There is no password to forget or leak.",
+    "subtitle": "We email you a sign-in link. The link expires, and can be used once.",
     "email": "Email address",
     "submit": "Email me a link",
     "sending": "Sending",

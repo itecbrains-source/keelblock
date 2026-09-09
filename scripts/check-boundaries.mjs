@@ -395,6 +395,45 @@ function callsWithin(node) {
 }
 
 /**
+ * ADR-021 — the product has no password, so no code may reach for one.
+ *
+ * The decision was made after measuring that Supabase still accepts a password sign-up and a
+ * password grant through the publishable key, with no config key to switch either off. The product
+ * is passwordless; the platform is not. What this repository can hold is its own half — and a
+ * decision recorded only in an ADR erodes the first time somebody adds a form, because nothing goes
+ * red.
+ *
+ * Parsed rather than searched: `signInWithPassword` appears in ADR-021, in this comment, and in the
+ * test that proves this rule. A text scan would fail on the documents explaining the rule, which is
+ * the false-positive class that gets a gate exempted into uselessness.
+ *
+ * @param {string[]} files @param {(f: string) => string} read
+ */
+export function findPasswordSignIn(files, read) {
+  const problems = [];
+  for (const file of files) {
+    walkAst(parse(read(file), file), (n) => {
+      if (!ts.isCallExpression(n)) return;
+      const target = n.expression;
+      const name = ts.isPropertyAccessExpression(target)
+        ? target.name.text
+        : ts.isIdentifier(target)
+          ? target.text
+          : null;
+      if (name !== 'signInWithPassword') return;
+      problems.push(
+        `${file} calls signInWithPassword. ADR-021 decided this product is passwordless — magic ` +
+          `link and OAuth — and the login copy no longer claims otherwise. Adding a password ` +
+          `surface is a decision that supersedes an ADR, not a change that slips in beside one: ` +
+          `it brings reset, lockout, and a breach-corpus check keelblock cannot run on a free ` +
+          `Supabase plan (DEF-017).`,
+      );
+    });
+  }
+  return problems;
+}
+
+/**
  * SPEC-004 REQ-3 — every Server Action authorizes, or is a declared public one.
  *
  * This is the rule the field does not have, and F-15 is what its absence looks like in the
@@ -518,6 +557,7 @@ function main() {
     ...findDroppedCacheHeaders(files, read),
     ...findUnauthorizedActions(files, read, (s, f) => resolveImport(s, f)),
     ...findCycles(files, read, (s, f) => resolveImport(s, f)),
+    ...findPasswordSignIn(files, read),
   ];
 
   if (!problems.length) {

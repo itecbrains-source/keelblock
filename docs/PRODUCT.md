@@ -185,7 +185,7 @@ budget per feature.** The offsetting cost is real and specific — every keelblo
 policies, intent tests, access-matrix rows and schema-guard compliance, call it 1.75× — so the net
 advantage is real but not threefold. It is enough.
 
-1. Marketing shell · 2. Auth (password, magic link, OAuth, passkeys, 2FA) · 3. Account ·
+1. Marketing shell · 2. Auth (magic link, OAuth, passkeys, 2FA — **no password**, ADR-021) · 3. Account ·
 2. Organizations · 5. Team & invitations · 6. Billing (Stripe: subscriptions, seats, usage) ·
 3. Custom domains · 8. Ops & health · 9. **Transactional email** · 10. **File storage** ·
 4. **Background jobs & cron** · 12. **Notifications** · 13. **Admin, user management &
@@ -193,7 +193,9 @@ advantage is real but not threefold. It is enough.
 5. **SEO & structured data** · 18. **Product analytics** · 19. **Local development**
 
 Auth covers what the field's routes reveal as table stakes and specs often forget: email
-verification, password reset, resend, account unlock, and an organization switcher.
+verification, resend, and an organization switcher. **Password reset and account unlock are not on
+that list, and that is a decision** — ADR-021 — not an omission: there is no password to reset, and
+nothing to unlock when the only credential is a fresh link.
 
 **SEO is a first-class area, not a `<meta>` tag** — canonical URLs, Open Graph, `JSON-LD`
 structured data, a generated sitemap and robots policy, per-locale `hreflang` (i18n makes this

@@ -1720,3 +1720,49 @@ allowed`, an anomaly the database never produced. Each attempt now runs in its o
 that is abandoned before the next begins. A measurement whose answer depends on the order it ran is
 not a measurement, which is F-28 and F-29 in a third costume, and it was visible only because the
 mutation was tried rather than reasoned about.
+
+## F-55 · The login page argued a security position the platform does not support
+
+**2026-09-09 · found by a review comparison, settled by measuring · fixed in `messages/en.json` and ADR-021**
+
+The review asked a paperwork question: password is listed in `docs/PRODUCT.md`'s scope, the login
+page says there is no password, and no ADR decides either way — so which is stale? It expected an
+hour of writing and no code.
+
+Measuring it first turned a bookkeeping mismatch into a defect. Against the local stack, through the
+**publishable** key that ships to every browser:
+
+```
+POST /auth/v1/signup            {email, password}    → 200, session issued
+POST /auth/v1/token?grant_type=password              → 200, session issued
+select encrypted_password is not null from auth.users → t
+```
+
+The subtitle read **"We email you a link. There is no password to forget or leak."** There is one.
+Anyone can create it, the grant that accepts it is live, and the hash is stored — the login page
+simply does not render the box. So the sentence was not an undecided position, it was **false**, and
+it was false in the worst available place: user-facing copy, on the first screen, making a security
+claim.
+
+**It cannot be made true by configuration.** Supabase's CLI config reference has no key that
+disables password sign-in while leaving magic link working, and Supabase's own guidance treats the
+choice as a client-side one. So the honest fix is the copy, not a setting: the subtitle now says what
+the product does and asserts nothing about what does not exist underneath it. ADR-021 records the
+decision that was being made by implication, and — because an ADR alone erodes the first time
+somebody adds a form — `findPasswordSignIn` in the boundaries gate now fails the build if any module
+calls `signInWithPassword`. Parsed, not searched, because the name appears in the ADR, in the rule's
+own comment and in the test that proves it.
+
+**The general shape.** A UI string is a decision with nobody's name on it. This project already made
+a point of settling six undecided things; it did not notice that the most exposed one had been
+settled in `messages/en.json` by whoever wrote the sentence, and settled wrongly. **Copy that argues
+a position is a claim, and a claim gets checked like any other** — the difference between this and
+the six is that this one could be tested in three HTTP requests, and nobody had.
+
+**A second thing the measurement corrected, in the review rather than the repository.** The same
+review proposed a battlecard row: this kit ships one authentication method and proves it, while the
+field ships five and proves none. The second half is not true. BoxyHQ's repository carries
+`tests/e2e/auth/sso.login.spec.ts`, `tests/e2e/auth/idp-initiated.spec.ts` and
+`tests/e2e/settings/directory-sync.spec.ts` — they prove several. The row was not written. It was
+offered conditionally ("if it reads true"), which is the right way to offer one, and checking took
+two minutes against the claim's own source.

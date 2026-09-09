@@ -331,6 +331,12 @@
       "what": "the artifact that proves the central claim was reporting a mock on its most important row, and four published cells were wrong",
       "to": ["blog", "docs", "faq"],
       "angle": "A document that says of itself that it describes what the database does, and did not — for the one identity a buyer actually asks about. The mechanism is the exhaustive prober's mocked helpers, so the row reported what a mock admits rather than what a member can do. The larger loss was the guarantee built on it: a matrix that cannot see an authority change cannot make that change appear in review, which is the entire argument for committing it. Fixed by measuring a real member, and the fix promptly produced its own defect — attempts sharing one transaction, so a successful DELETE destroyed the row the later SELECT measured. Found by trying the mutation rather than reasoning about it."
+    },
+    {
+      "id": "F-55",
+      "what": "the login page told users there was no password to leak, and three HTTP requests showed there was",
+      "to": ["blog", "docs", "faq"],
+      "angle": "A review asked which of two documents was stale and expected an hour of paperwork. Measuring first turned it into a defect: password sign-up and the password grant both work through the publishable key, so a security claim on the first screen a user sees was simply false — and no configuration key can make it true, because Supabase does not expose one. The durable lesson is that copy arguing a position is a claim like any other, and this one was checkable in three requests that nobody had run. Also records a claim the same review offered about a competitor that did NOT survive checking, which is the honest half of taking review input."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",
