@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluate, render } from './access-matrix.mjs';
+import { evaluate, render, applyMemberTruth } from './access-matrix.mjs';
 
 /** A clean two-identity report: a member reaches the row, an outsider does not. */
 const clean = {
@@ -181,5 +181,59 @@ describe('access matrix · adjudication', () => {
     const cells = (render(r).match(/⚠ (\*\*REACHABLE\*\*|blocked but should be allowed)/g) ?? [])
       .length;
     expect(cells).toBe(evaluate(r, []).concerns.filter((c) => c.kind === 'anomaly').length);
+  });
+});
+
+describe('correctMemberRow — F-54, the row that was reporting a mock', () => {
+  // The generator's preamble promises this artifact describes what the database DOES. For the
+  // member row it described what rlsautotest's mocked helpers admit, which on four commands is a
+  // different answer. These prove the correction, without a database, by injecting both facts.
+
+  const reportFor = (cmd: string, exp: boolean) => ({
+    tables: [
+      { table: 'project', policied: [cmd], idgrid: { [cmd]: { authorized: { exp, pass: true } } } },
+    ],
+  });
+
+  it('an admin-gated command stops claiming a member may do it', () => {
+    const r = reportFor('DELETE', true); // what the mocked prober said
+    applyMemberTruth(
+      r,
+      new Map([['project:DELETE', 'refused']]),
+      new Map([['project:DELETE', { authority: 'above-member', policies: ['project_delete'] }]]),
+    );
+    expect(r.tables[0].idgrid.DELETE.authorized).toEqual({ exp: false, pass: true });
+  });
+
+  it('a member-gated command is left saying yes, because that is true', () => {
+    const r = reportFor('SELECT', true);
+    applyMemberTruth(
+      r,
+      new Map([['project:SELECT', 'allowed']]),
+      new Map([['project:SELECT', { authority: 'member', policies: ['project_select'] }]]),
+    );
+    expect(r.tables[0].idgrid.SELECT.authorized).toEqual({ exp: true, pass: true });
+  });
+
+  it('MUTATION: a member who gets through an admin-gated command is an ANOMALY, not a tick', () => {
+    // The case the mocked row could never express: the policy asks for admin and a member succeeds.
+    const r = reportFor('DELETE', true);
+    applyMemberTruth(
+      r,
+      new Map([['project:DELETE', 'allowed']]),
+      new Map([['project:DELETE', { authority: 'above-member', policies: ['project_delete'] }]]),
+    );
+    expect(r.tables[0].idgrid.DELETE.authorized.pass).toBe(false);
+  });
+
+  it('a command whose authority cannot be read is left exactly as the generator reported it', () => {
+    // The policy gate fails on it separately. Re-rendering it here would hide that.
+    const r = reportFor('DELETE', true);
+    applyMemberTruth(
+      r,
+      new Map([['project:DELETE', 'refused']]),
+      new Map([['project:DELETE', { authority: 'unclassified', policies: ['project_delete'] }]]),
+    );
+    expect(r.tables[0].idgrid.DELETE.authorized).toEqual({ exp: true, pass: true });
   });
 });

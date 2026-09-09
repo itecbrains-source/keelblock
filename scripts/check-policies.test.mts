@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { planProbes, reconcileEmitted, checkPositiveControls } from './check-policies.mjs';
+import {
+  planProbes,
+  reconcileEmitted,
+  checkPositiveControls,
+  classifyAuthority,
+  checkAuthorityControls,
+  parseMemberRefusedTags,
+} from './check-policies.mjs';
 
 const valid = {
   organization_member: {
@@ -188,5 +195,144 @@ describe('checkPositiveControls — AC-11, the general form of an empty fixture'
     const { problems } = checkPositiveControls({ tables: [org, member] }, {}, []);
     expect(problems.join(' ')).toContain('organization:DELETE');
     expect(problems.join(' ')).toContain('organization_member:UPDATE');
+  });
+});
+
+describe('checkAuthorityControls — F-53, the class rather than the instance', () => {
+  // The trial's defect was a correct tenant scope with the WRONG AUTHORITY: a policy asking
+  // "is this caller a member" where it should ask "is this caller an admin". The schema guard
+  // cannot see it (both expressions name the tenant key) and the generated prober cannot see it
+  // (it mocks both helpers to the same constant). Only the intent layer can, and only if somebody
+  // remembered to write the assertion. This is the rule that stops it being remembered.
+
+  const rows = (...r: Array<[string, string, string, string | null]>) =>
+    r.map(([table, cmd, policy, fn]) => ({ table, cmd, policy, fn, permissive: true }));
+
+  it('a policy calling is_org_admin requires a member to be refused', () => {
+    const req = classifyAuthority(rows(['project', 'DELETE', 'project_delete', 'is_org_admin']));
+    expect(req.get('project:DELETE')?.authority).toBe('above-member');
+  });
+
+  it('a policy calling only is_org_member requires nothing — a member is meant to succeed', () => {
+    const req = classifyAuthority(rows(['project', 'SELECT', 'project_select', 'is_org_member']));
+    expect(req.get('project:SELECT')?.authority).toBe('member');
+  });
+
+  it('an owner comparison is above member too, though it names no is_org_ helper', () => {
+    const req = classifyAuthority(
+      rows(['organization', 'DELETE', 'organization_delete', 'org_role_of']),
+    );
+    expect(req.get('organization:DELETE')?.authority).toBe('above-member');
+  });
+
+  it('a policy calling NO helper is unclassified, and unclassified fails', () => {
+    // Fail closed. A policy the rule cannot read is not a policy the rule may wave through — that
+    // is F-41 and F-48, where a check was satisfied by the absence of the thing it looked for.
+    const req = classifyAuthority(rows(['thing', 'SELECT', 'thing_select', null]));
+    expect(req.get('thing:SELECT')?.authority).toBe('unclassified');
+    const { problems } = checkAuthorityControls(req, new Set());
+    expect(problems.join(' ')).toMatch(/thing:SELECT/);
+  });
+
+  it('permissive policies are OR-ed, so the WEAKEST one decides what a member can do', () => {
+    const req = classifyAuthority(
+      rows(
+        ['project', 'DELETE', 'strict', 'is_org_admin'],
+        ['project', 'DELETE', 'lax', 'is_org_member'],
+      ),
+    );
+    expect(req.get('project:DELETE')?.authority).toBe('member');
+  });
+
+  it('MUTATION: an above-member command with no member-refused control is named', () => {
+    const req = classifyAuthority(rows(['project', 'DELETE', 'project_delete', 'is_org_admin']));
+    const { problems } = checkAuthorityControls(req, new Set());
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('project:DELETE');
+  });
+
+  it('the same command with the control present is fine', () => {
+    const req = classifyAuthority(rows(['project', 'DELETE', 'project_delete', 'is_org_admin']));
+    const { problems, required } = checkAuthorityControls(req, new Set(['project:DELETE']));
+    expect(problems).toEqual([]);
+    expect(required).toBe(1);
+  });
+
+  it('a control claiming a refusal a MEMBER-level command cannot produce is reported', () => {
+    // The consistency half. If project:DELETE is downgraded to is_org_member and its assertion
+    // still passes, the assertion is not asserting what its name says.
+    const req = classifyAuthority(rows(['project', 'DELETE', 'project_delete', 'is_org_member']));
+    const { problems } = checkAuthorityControls(req, new Set(['project:DELETE']));
+    expect(problems.join(' ')).toMatch(/project:DELETE/);
+  });
+
+  it('a control for a command that has no policy at all is reported', () => {
+    const { problems } = checkAuthorityControls(new Map(), new Set(['ghost:UPDATE']));
+    expect(problems.join(' ')).toMatch(/ghost:UPDATE/);
+  });
+
+  it('is not vacuous: with no commands and no controls there is nothing to report', () => {
+    const { problems, required } = checkAuthorityControls(new Map(), new Set());
+    expect(problems).toEqual([]);
+    expect(required).toBe(0);
+  });
+});
+
+describe('parseMemberRefusedTags — read the run, not the source', () => {
+  // TAP is an output format, and the tags are collected from a run that actually happened. Reading
+  // the .sql files instead would count an assertion that is commented out.
+  it('collects a tag from a passing assertion', () => {
+    const tap = 'ok 10 - ROLE: a member cannot delete [member-refused project:DELETE]';
+    expect([...parseMemberRefusedTags(tap)]).toEqual(['project:DELETE']);
+  });
+
+  it('IGNORES a failing assertion — a red test proves nothing and covers nothing', () => {
+    const tap = 'not ok 10 - ROLE: a member cannot delete [member-refused project:DELETE]';
+    expect([...parseMemberRefusedTags(tap)]).toEqual([]);
+  });
+
+  it('does not mistake a TAP directive for coverage, whatever it spells', () => {
+    const tap = 'ok 10 - a member cannot delete [member-refused project:DELETE] # SKIP not yet';
+    const todoish = 'ok 11 - a member cannot delete [member-refused project:DELETE] # nope';
+    expect([...parseMemberRefusedTags(todoish)]).toEqual([]);
+    expect([...parseMemberRefusedTags(tap)]).toEqual([]);
+  });
+
+  it('collects several, across lines', () => {
+    const tap = [
+      '1..3',
+      'ok 1 - one [member-refused organization:UPDATE]',
+      'ok 2 - untagged assertion',
+      'ok 3 - three [member-refused organization_member:DELETE]',
+    ].join('\n');
+    expect([...parseMemberRefusedTags(tap)].sort()).toEqual([
+      'organization:UPDATE',
+      'organization_member:DELETE',
+    ]);
+  });
+});
+
+describe('parseMemberRefusedTags — a wrapped description', () => {
+  // How the first four controls were written and lost: pgTAP emits a description containing a
+  // newline as an `ok` line plus `#` continuations, and the tag was on the continuation.
+  it('reads a tag off a continuation line, because it belongs to the assertion above it', () => {
+    const tap = [
+      'ok 13 - a member cannot remove anybody',
+      '#    [member-refused org_member:DELETE]',
+    ].join('\n');
+    expect([...parseMemberRefusedTags(tap)]).toEqual(['org_member:DELETE']);
+  });
+
+  it('a FAILING assertion does not get to claim its continuations either', () => {
+    const tap = [
+      'not ok 13 - a member cannot remove anybody',
+      '#  [member-refused org_member:DELETE]',
+    ].join('\n');
+    expect([...parseMemberRefusedTags(tap)]).toEqual([]);
+  });
+
+  it('a continuation after a plain line is not attributed to an earlier assertion', () => {
+    const tap = ['ok 1 - fine', '1..1', '#  [member-refused ghost:DELETE]'].join('\n');
+    expect([...parseMemberRefusedTags(tap)]).toEqual([]);
   });
 });

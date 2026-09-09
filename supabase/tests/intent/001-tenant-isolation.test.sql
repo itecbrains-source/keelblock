@@ -5,7 +5,7 @@
 -- suite reported as clean).
 
 begin;
-select plan(14);
+select plan(17);
 
 -- ── fixture: two organizations, three users ──────────────────────────────────
 insert into auth.users (id, instance_id, aud, role, email) values
@@ -80,7 +80,7 @@ select throws_ok(
   $$insert into public.organization_member (organization_id, user_id, role)
     values ('aaaaaaaa-0000-0000-0000-00000000000a','22222222-2222-2222-2222-222222222222','member')$$,
   '42501', null,
-  'ROLE: a plain member cannot add members');
+  'ROLE: a plain member cannot add members [member-refused organization_member:INSERT]');
 
 -- MEASURED: a failing USING on UPDATE does NOT raise -- it matches zero rows and reports
 -- `UPDATE 0`. So the privilege-escalation case must be asserted on the DATA, not on an exception.
@@ -92,7 +92,7 @@ select is(
     where user_id = '33333333-3333-3333-3333-333333333333'
       and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'),
   'member',
-  'ROLE: a member cannot promote themselves -- the attempt is a silent no-op, the row is unchanged');
+  'ROLE: a member cannot promote themselves -- the attempt is a silent no-op, the row is unchanged [member-refused organization_member:UPDATE]');
 
 -- DEF-020's adversarial trial (F-53) landed exactly one defect, here: `project_delete` was
 -- changed from `is_org_admin` to `is_org_member`, and the whole suite stayed green. Nothing
@@ -106,7 +106,39 @@ select is(
   (select count(*)::int from public.project
     where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'),
   1,
-  'ROLE: a plain member cannot delete their organization''s projects -- deleting is an admin act');
+  'ROLE: a plain member cannot delete their organization''s projects -- deleting is an admin act [member-refused project:DELETE]');
+
+-- The three controls below were NAMED by the authority rule (F-53) and did not exist. Each is a
+-- command whose policy asks for more than membership, where nothing proved a member of the owning
+-- organization is refused -- so swapping its helper for is_org_member would have gone unnoticed
+-- exactly as `project` DELETE did. Asserted on the DATA, because a failing USING filters to zero
+-- rows rather than raising.
+update public.organization set name = 'seized'
+  where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+select is(
+  (select name from public.organization where id = 'aaaaaaaa-0000-0000-0000-00000000000a'),
+  'Org A',
+  'ROLE: a member cannot rename their own organization -- administering it is an admin act
+   [member-refused organization:UPDATE]');
+
+delete from public.organization where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+select is(
+  (select count(*)::int from public.organization
+    where id = 'aaaaaaaa-0000-0000-0000-00000000000a'),
+  1,
+  'ROLE: a member cannot delete their own organization -- that is the owner alone
+   [member-refused organization:DELETE]');
+
+delete from public.organization_member
+  where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'
+    and user_id = '11111111-1111-1111-1111-111111111111';
+select is(
+  (select count(*)::int from public.organization_member
+    where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'
+      and user_id = '11111111-1111-1111-1111-111111111111'),
+  1,
+  'ROLE: a member cannot remove anybody, the owner least of all -- RLS refuses before the
+   owner-authority trigger is ever consulted [member-refused organization_member:DELETE]');
 
 -- ── as anon ─────────────────────────────────────────────────────────────────
 set local role anon;

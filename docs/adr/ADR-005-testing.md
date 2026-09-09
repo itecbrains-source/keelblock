@@ -42,3 +42,38 @@ genuine differentiator; adopting the generator means the exhaustive half is free
 **Negative:** a Python dependency in a JavaScript project's CI, and a tool that must never touch
 production (it seeds and executes real queries before rolling back). Mitigated by confining it to a
 throwaway local/CI database and pinning the version through the freshness gate like anything else.
+
+## Amendment — 2026-09-09: the transfer this ADR implied but never named
+
+The decision above says the generated layer "is exhaustive and cannot judge". F-53 made that
+sentence concrete and more serious than it reads, and the sharper form belongs here because it is a
+**coverage transfer**, and this repository's rule is that a transfer is named, never assumed.
+
+The generated prober **mocks `is_org_member` and `is_org_admin` to constants** — that is what makes
+it exhaustive across identities without a fixture per role. The consequence is not that it judges
+badly. It is that for one class of question it **cannot answer at all**: where the security of a
+policy depends on _which_ helper it calls, the two helpers are literally indistinguishable to it. A
+policy asking "is this caller an admin" and the same policy asking "is this caller a member" produce
+an identical generated suite, both green.
+
+So, stated as a transfer:
+
+> **Every policy whose security depends on which membership helper it calls is covered by the intent
+> layer alone.** The generated layer contributes nothing to it — not weak evidence, none.
+
+That was true from the first commit and cost nothing until it cost something: the adversarial trial
+swapped one helper for the other on `project` DELETE and every layer stayed green, because the only
+layer that could have seen it had no rule saying which commands it owed an assertion for.
+
+It does now. `checkAuthorityControls` in `scripts/check-policies.mjs` reads which functions each
+policy depends on — from `pg_depend`, the catalog's own answer — and requires the intent run to
+carry a passing assertion refusing a **member of the owning organization** for every command that
+needs more than membership. The transfer is therefore enforced rather than described, which is the
+difference between this amendment and the sentence it sharpens.
+
+**One limit, stated rather than left to be discovered.** The rule derives what is required from the
+authority the policy _currently declares_. Downgrade a policy and delete its assertion in the same
+change and the rule falls silent, because it now believes the command was always member-level. What
+is meant to catch that is `docs/ACCESS-MATRIX.md` — a committed artifact whose diff has to appear in
+review (F-26). For that to work the matrix must report what a **real** member can do, and F-54
+records that today it does not.

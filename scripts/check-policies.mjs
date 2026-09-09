@@ -182,6 +182,207 @@ export function checkPositiveControls(report, notProbeable, unreliable) {
   return { problems, checked };
 }
 
+/**
+ * Helpers that answer a question ABOVE plain membership. `org_role_of` is here because
+ * `organization_delete` compares its result to `'owner'` rather than delegating to a boolean — the
+ * same reason that cell is listed UNRELIABLE for the generated prober.
+ */
+/**
+ * Which functions each policy actually depends on, from `pg_depend` — the catalog's own answer,
+ * rather than a regex over `pg_get_expr`. LEFT JOIN so a policy that calls no helper still appears
+ * and is classified `unclassified`, instead of vanishing from the rule meant to read it.
+ *
+ * Shared with `scripts/access-matrix.mjs`, which needs the same fact to say what a member is MEANT
+ * to be able to do. One question, one resolver.
+ *
+ * @param {string} db
+ * @returns {Array<{table: string, cmd: string, policy: string, fn: string | null, permissive: boolean}>}
+ */
+export function readPolicyHelpers(db) {
+  const out = execFileSync(
+    'psql',
+    [
+      db,
+      '-tAF|',
+      '-c',
+      `select c.relname, case p.polcmd when 'r' then 'SELECT' when 'a' then 'INSERT'
+              when 'w' then 'UPDATE' when 'd' then 'DELETE' else 'ALL' end,
+              p.polname, coalesce(pr.proname,''), p.polpermissive
+         from pg_policy p
+         join pg_class c on c.oid = p.polrelid
+         left join pg_depend d
+           on d.classid = 'pg_policy'::regclass and d.objid = p.oid
+          and d.refclassid = 'pg_proc'::regclass
+         left join pg_proc pr on pr.oid = d.refobjid
+        where c.relnamespace = 'public'::regnamespace`,
+    ],
+    { encoding: 'utf8' },
+  );
+  return out
+    .split('\n')
+    .filter((l) => l.trim())
+    .map((l) => {
+      const [table, cmd, policy, fn, permissive] = l.split('|');
+      return { table, cmd, policy, fn: fn || null, permissive: permissive === 't' };
+    });
+}
+
+const AUTHORITY_HELPERS = new Set(['is_org_admin', 'org_role_of']);
+const MEMBER_HELPERS = new Set(['is_org_member']);
+
+/** The tag a member-refused control carries, and the only thing that counts as one. */
+export const MEMBER_REFUSED_TAG = /\[member-refused ([a-z_]+):([A-Z]+)\]/;
+
+/**
+ * F-53 · the CLASS, where the intent assertion closed only the instance.
+ *
+ * The trial's defect was a correct tenant scope with the wrong AUTHORITY — a policy asking "is this
+ * caller a member" where it should ask "is this caller an admin". Neither of the other two layers
+ * can see that. The schema guard reads the catalog and both expressions name the tenant key. The
+ * generated prober MOCKS `is_org_member` and `is_org_admin` to constants, so the two are literally
+ * indistinguishable to it: it verifies wiring, never authority. That leaves the intent layer alone,
+ * and the intent layer had no rule saying which commands it owed an assertion for.
+ *
+ * So: for every policied command whose policy consults an authority helper, the intent run must
+ * carry a passing assertion in which a MEMBER OF THE OWNING TENANT is refused. A negative control
+ * per command, with its subject inside the tenant — which is exactly the shape "correct scope,
+ * wrong authority" produces, and it would have caught `project` DELETE with nobody anticipating it.
+ *
+ * Read from `pg_depend`, not from the expression text: the catalog already records which functions
+ * a policy depends on, so this is the parser's own answer rather than a regex over `pg_get_expr`.
+ *
+ * @param {Array<{table: string, cmd: string, policy: string, fn: string | null, permissive: boolean}>} rows
+ *   one row per (policy, function it calls); a policy calling nothing appears once with `fn: null`.
+ * @returns {Map<string, {authority: 'above-member'|'member'|'unclassified', policies: string[]}>}
+ */
+export function classifyAuthority(rows) {
+  /** @type {Map<string, Map<string, Set<string|null>>>} */
+  const byCmd = new Map();
+  for (const r of rows) {
+    const key = `${r.table}:${r.cmd}`;
+    if (!byCmd.has(key)) byCmd.set(key, new Map());
+    const policies = byCmd.get(key);
+    if (!policies.has(r.policy)) policies.set(r.policy, new Set());
+    policies.get(r.policy).add(r.fn);
+  }
+
+  /** @type {Map<string, {authority: 'above-member'|'member'|'unclassified', policies: string[]}>} */
+  const out = new Map();
+  for (const [key, policies] of byCmd) {
+    const verdicts = [...policies.values()].map((fns) => {
+      const named = [...fns].filter(Boolean);
+      if (named.some((f) => MEMBER_HELPERS.has(f))) return 'member';
+      if (named.some((f) => AUTHORITY_HELPERS.has(f))) return 'above-member';
+      return 'unclassified';
+    });
+    // Permissive policies are OR-ed, so the WEAKEST one decides what a member can actually do.
+    // Anything the rule cannot read fails closed rather than being waved through (F-41, F-48).
+    const authority = verdicts.includes('unclassified')
+      ? 'unclassified'
+      : verdicts.includes('member')
+        ? 'member'
+        : 'above-member';
+    out.set(key, { authority, policies: [...policies.keys()].sort() });
+  }
+  return out;
+}
+
+/**
+ * Collect the controls the intent run actually produced.
+ *
+ * From TAP rather than from the `.sql` files, and only from lines that PASSED: a commented-out
+ * assertion is still in the source, and a failing one proves nothing. An assertion carrying a TAP
+ * DIRECTIVE is not coverage either — a directive is how TAP says "this did not really run", which
+ * is the same shape as a suite that is green because it ran nothing (F-13). Any directive
+ * disqualifies, rather than a list of the two spellings: naming them would be a shorter rule and a
+ * weaker one, and it would put a debt-marker word in a file the deferral linter reads.
+ *
+ * TAP is an output format with no parser installed; matching its lines is not the source-text
+ * regex the standing rule is about, which is why `classifyAuthority` reads `pg_depend` instead of
+ * `pg_get_expr`.
+ *
+ * @param {string} tap
+ * @returns {Set<string>}
+ */
+export function parseMemberRefusedTags(tap) {
+  const found = new Set();
+  // A description long enough to wrap arrives as an `ok` line followed by `#` continuations, and a
+  // reader that only looks at the first line silently loses the tag — which is how the first four
+  // of these were written and lost. The continuation belongs to the assertion above it, so it is
+  // read with it. A `not ok` claims its own continuations in exactly the same way, and both are
+  // discarded together.
+  let passing = false;
+  for (const line of tap.split('\n')) {
+    if (/^(not )?ok\b/.test(line)) {
+      // A directive sits on the `ok` line itself; a wrapped description arrives as separate lines
+      // that begin with `#`. So a `#` HERE is a directive, whatever it spells.
+      passing = /^ok\b/.test(line) && !/\s#\s*\w/.test(line);
+    } else if (!/^#/.test(line)) {
+      passing = false;
+      continue;
+    }
+    if (!passing) continue;
+    const m = line.match(MEMBER_REFUSED_TAG);
+    if (m) found.add(`${m[1]}:${m[2]}`);
+  }
+  return found;
+}
+
+/**
+ * @param {Map<string, {authority: string, policies: string[]}>} required
+ * @param {Set<string>} covered
+ * @returns {{problems: string[], required: number, satisfied: number}}
+ */
+export function checkAuthorityControls(required, covered) {
+  const problems = [];
+  let need = 0,
+    satisfied = 0;
+
+  for (const [key, { authority, policies }] of required) {
+    if (authority === 'unclassified') {
+      problems.push(
+        `${key}: its policy (${policies.join(', ')}) consults no membership helper this rule ` +
+          `knows, so the authority it requires cannot be read. Teach the rule the helper, or the ` +
+          `command is unreviewed — a rule that shrugs at what it cannot parse is not a rule.`,
+      );
+      continue;
+    }
+    if (authority !== 'above-member') {
+      if (covered.has(key)) {
+        problems.push(
+          `${key}: an assertion claims a member is REFUSED here, but the policy ` +
+            `(${policies.join(', ')}) admits any member — so either the assertion is not asserting ` +
+            `what its name says, or the policy was weakened and the name is now the only thing ` +
+            `still saying otherwise. This is F-53's defect exactly.`,
+        );
+      }
+      continue;
+    }
+    need++;
+    if (covered.has(key)) {
+      satisfied++;
+      continue;
+    }
+    problems.push(
+      `${key}: its policy (${policies.join(', ')}) requires more than membership, and no intent ` +
+        `assertion proves a member of the owning organization is refused. Swap the helper for ` +
+        `is_org_member and nothing goes red — which is how F-53 happened. Add an assertion tagged ` +
+        `[member-refused ${key}].`,
+    );
+  }
+
+  for (const key of covered) {
+    if (!required.has(key)) {
+      problems.push(
+        `a control is tagged [member-refused ${key}], and no policy grants that command. The ` +
+          `assertion is proving a refusal nothing could ever permit, which is green against an ` +
+          `empty schema.`,
+      );
+    }
+  }
+  return { problems, required: need, satisfied };
+}
+
 function main() {
   if (!existsSync(RLSA)) {
     console.error('rlsautotest is not installed. Run:');
@@ -308,6 +509,34 @@ function main() {
 
   const run = spawnSync('supabase', ['test', 'db'], { stdio: 'inherit' });
 
+  // F-53 · a member-refused control per authority-gated command. Only meaningful over a green run:
+  // a tag on a failing assertion is not coverage, and reporting "no control" for a command whose
+  // assertion just failed would bury the real message under a derived one.
+  let authority = { problems: [], required: 0, satisfied: 0 };
+  if (run.status === 0) {
+    try {
+      const rows = readPolicyHelpers(DB);
+
+      // Run the INTENT files only, for their raw TAP. The generated suite mocks the helpers, so a
+      // control there could not tell a member from an admin even if one were written.
+      execFileSync('psql', [DB, '-qc', 'create extension if not exists pgtap'], { stdio: 'pipe' });
+      const intent = readdirSync('supabase/tests/intent')
+        .filter((f) => f.endsWith('.test.sql'))
+        .sort();
+      let tap = '';
+      for (const f of intent) {
+        tap += execFileSync('psql', [DB, '-tAq', '-f', `supabase/tests/intent/${f}`], {
+          encoding: 'utf8',
+        });
+      }
+      authority = checkAuthorityControls(classifyAuthority(rows), parseMemberRefusedTags(tap));
+    } catch (e) {
+      console.error('policy: the authority-control rule could not be evaluated.');
+      console.error(`  ${e instanceof Error ? e.message : String(e)}`);
+      authority = { problems: ['the rule did not run'], required: 0, satisfied: 0 };
+    }
+  }
+
   // Clean up after the test framework, because it changes what the NEXT gate sees.
   //
   // The generated suite opens with `create extension if not exists pgtap`, and whether that survives
@@ -326,6 +555,18 @@ function main() {
       'policy: pgtap could not be removed after the run. If `generated` now reports stale types,',
     );
     console.error('  that is why, and the schema has not changed.');
+  }
+  if (authority.problems.length) {
+    console.error(
+      '\npolicy: FAILED — a command needs more than membership, and nothing proves a member is refused.\n',
+    );
+    for (const p of authority.problems) console.error(`  ${p}\n`);
+    process.exit(2);
+  }
+  if (run.status === 0) {
+    console.log(
+      `policy: ${authority.satisfied}/${authority.required} authority-gated command(s) carry a member-refused control (F-53)`,
+    );
   }
   process.exit(run.status ?? 1);
 }

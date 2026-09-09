@@ -325,6 +325,12 @@
       "what": "an adversary planted a one-word privilege escalation and every one of the fourteen steps stayed green",
       "to": ["blog", "docs", "faq"],
       "angle": "The trial a harness author cannot run on themselves, run anyway and reported honestly. Three blind spots had to coincide and did: the schema guard read WITH CHECK and never USING, the exhaustive prober mocks the very helpers that ARE the access control, and no test touched project DELETE. The better half is the two near-misses — defects invisible to all three gates that still failed to leak, one because PostgreSQL re-applies SELECT and INSERT policies to a row-moving UPDATE and one because a trigger caught the cascade. The schema survived on defence in depth nobody had credited, which is simultaneously reassuring about the database and damning about the gates."
+    },
+    {
+      "id": "F-54",
+      "what": "the artifact that proves the central claim was reporting a mock on its most important row, and four published cells were wrong",
+      "to": ["blog", "docs", "faq"],
+      "angle": "A document that says of itself that it describes what the database does, and did not — for the one identity a buyer actually asks about. The mechanism is the exhaustive prober's mocked helpers, so the row reported what a mock admits rather than what a member can do. The larger loss was the guarantee built on it: a matrix that cannot see an authority change cannot make that change appear in review, which is the entire argument for committing it. Fixed by measuring a real member, and the fix promptly produced its own defect — attempts sharing one transaction, so a successful DELETE destroyed the row the later SELECT measured. Found by trying the mutation rather than reasoning about it."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

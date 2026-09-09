@@ -22,6 +22,8 @@
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { runMemberProbe } from './member-probe.mjs';
+import { classifyAuthority, readPolicyHelpers } from './check-policies.mjs';
 import { join } from 'node:path';
 
 const OUT = 'docs/ACCESS-MATRIX.md';
@@ -49,6 +51,61 @@ const IDENTITIES = [
  * @param {{exp?: boolean, pass?: boolean} | undefined} cell
  */
 const isAnomaly = (cell) => Boolean(cell) && cell.pass === false;
+
+/**
+ * F-54 · replace the member row with what a member can actually do.
+ *
+ * The generator's own preamble says this artifact "describes what the database does, not what anyone
+ * believes it does". That was false for one row. `rlsautotest` mocks `is_org_member` and
+ * `is_org_admin` to constants — the thing that makes it exhaustive — so its "Authenticated · member"
+ * column reports what a MOCK admits. On four commands a real member is refused and the published
+ * matrix said ✓: `organization` UPDATE, `organization` DELETE, `organization_invitation` SELECT and
+ * `project` DELETE.
+ *
+ * That mattered beyond four wrong glyphs. F-26's whole argument for this artifact is that a policy
+ * change altering who can reach what cannot merge without the diff appearing in review — and a
+ * mocked member row is byte-identical whether a command asks for admin or for membership, which is
+ * precisely the change the adversarial trial made (F-53).
+ *
+ * `exp` is now what the policy INTENDS for a member, read from the helpers it depends on; `pass` is
+ * whether a real member measured the same. So a policy that says admin-only while a member gets
+ * through is an anomaly here, which it could not previously be.
+ *
+ * @param {any} report @param {string} db
+ */
+export function correctMemberRow(report, db) {
+  const policied = (report.tables ?? []).flatMap((t) =>
+    (t.policied ?? []).map((c) => `${t.table}:${c}`),
+  );
+  applyMemberTruth(report, runMemberProbe(db, policied), classifyAuthority(readPolicyHelpers(db)));
+}
+
+/**
+ * The decision half, pure so it can carry mutation proofs. `exp` is what the policy INTENDS for a
+ * member, read from the helpers it depends on; `pass` is whether a real member measured the same.
+ * A policy that says admin-only while a member gets through is therefore an anomaly here, which it
+ * could not previously be.
+ *
+ * @param {any} report
+ * @param {Map<string, 'allowed'|'refused'>} measured
+ * @param {Map<string, {authority: string, policies: string[]}>} intent
+ */
+export function applyMemberTruth(report, measured, intent) {
+  for (const t of report.tables ?? []) {
+    for (const cmd of t.policied ?? []) {
+      const key = `${t.table}:${cmd}`;
+      const cell = t.idgrid?.[cmd]?.authorized;
+      if (!cell) continue;
+      const authority = intent.get(key)?.authority;
+      // A command whose authority cannot be read is left exactly as the generator reported it, and
+      // the policy gate fails on it separately. Quietly re-rendering it here would hide that.
+      if (authority !== 'member' && authority !== 'above-member') continue;
+      const meantToSucceed = authority === 'member';
+      cell.exp = meantToSucceed;
+      cell.pass = (measured.get(key) === 'allowed') === meantToSucceed;
+    }
+  }
+}
 
 const sortedTables = (report) =>
   [...(report.tables ?? [])].sort((a, b) => String(a.table).localeCompare(String(b.table)));
@@ -283,6 +340,7 @@ function main() {
 
   const report = JSON.parse(readFileSync(tmp, 'utf8'));
   rmSync(tmp, { force: true });
+  correctMemberRow(report, dbUrl);
 
   const allowances = loadAllowances();
   const { problems, adjudicated } = evaluate(report, allowances);

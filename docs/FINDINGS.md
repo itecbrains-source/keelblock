@@ -1663,3 +1663,60 @@ person"; a session spawned by the author is not one, and DEF-024 makes the same 
 human half of B-11. What this establishes is narrower and still worth having: an adversary who did
 not write the harness got through it in seven attempts, and the three reasons it got through are now
 two fewer.
+
+## F-54 · The matrix that proves the claim was reporting a mock, on the row that matters most
+
+**2026-09-09 · found while closing F-53's class · fixed in `scripts/access-matrix.mjs`**
+
+`docs/ACCESS-MATRIX.md` opens by saying what it is for:
+
+> "Derived from the live policy catalog by probing each table as each identity, so it describes what
+> the database _does_, not what anyone believes it does."
+
+For three of its four rows that was true. For **Authenticated · member** — defined in its own legend
+as _"a member of the organization that owns the row"_ — it was not, and the reason is F-53's reason:
+`rlsautotest` mocks `is_org_member` and `is_org_admin` to constants, which is what makes it
+exhaustive across identities without a fixture per role. So that row reported what **a mock admits**,
+which for any admin-gated command is an admin.
+
+Measured against a real signed-in member of the owning organization, four published cells were wrong
+— every one of them claiming a member could do something a member cannot:
+
+| Command                          | Published | A real member |
+| -------------------------------- | --------- | ------------- |
+| `organization` UPDATE            | ✓         | refused       |
+| `organization` DELETE            | ✓         | refused       |
+| `organization_invitation` SELECT | ✓         | refused       |
+| `project` DELETE                 | ✓         | refused       |
+
+Two independent derivations agree on all twelve policied commands: a live probe as a real member,
+and the authority each policy declares through `pg_depend`. The artifact disagreed with both.
+
+**The wrong glyphs are the smaller half.** F-26's argument for this artifact is that a policy change
+altering who can reach what **cannot merge without the diff appearing in review** — "a reviewer who
+sees a new ✓ in the different-organization column has caught a tenant leak in a document, before it
+reaches a user". A mocked member row is **byte-identical whether a command asks for admin or for
+membership**, so that guarantee never held for the authority class. It is not a hypothesis: when the
+adversarial trial downgraded `project_delete` from `is_org_admin` to `is_org_member`, the whole suite
+passed _including_ `generated`, which regenerates this matrix and compares it byte-for-byte.
+
+**Fixed by measuring.** The member row now comes from a real member — one fixture, one identity,
+every policied command, each in a rolled-back transaction — and `exp` is what the policy _intends_
+for a member, read from the helpers it depends on. So the two can now disagree, and a policy that
+says admin-only while a member gets through renders `⚠` where it previously could not be expressed
+at all. Proven against the same defect the trial used: with `project_delete` downgraded,
+`access-matrix --check` exits 1 and reports the file STALE. Before this change it exited 0.
+
+That also closes the hole the authority rule leaves open by construction. That rule requires an
+assertion for the authority a policy _currently declares_, so downgrading a policy and deleting its
+assertion in one change makes it fall silent. The matrix does not fall silent, because it is not
+reading the policy's claim about itself.
+
+**A defect in the fix, found by testing the fix.** The first probe ran every attempt in one
+transaction, in alphabetical order. `DELETE` sorts before `SELECT` and `UPDATE`, so on the run where
+the policy was downgraded the delete **succeeded** and destroyed the row the later commands were
+measuring — and one weakened policy moved three cells, two of them to `⚠ blocked but should be
+allowed`, an anomaly the database never produced. Each attempt now runs in its own subtransaction
+that is abandoned before the next begins. A measurement whose answer depends on the order it ran is
+not a measurement, which is F-28 and F-29 in a third costume, and it was visible only because the
+mutation was tried rather than reasoned about.

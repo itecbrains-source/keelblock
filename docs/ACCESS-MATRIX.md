@@ -19,7 +19,7 @@ Row-level security: **enabled** · policies for DELETE, SELECT, UPDATE
 |---|---|---|---|---|
 | Unauthenticated | · | – | · | · |
 | Authenticated · different organization | · | – | · | · |
-| Authenticated · member | ✓ | – | ✓ | – |
+| Authenticated · member | ✓ | – | · | – |
 | Service role | · | – | · | · |
 
 ## `organization_invitation`
@@ -30,7 +30,7 @@ Row-level security: **enabled** · policies for SELECT
 |---|---|---|---|---|
 | Unauthenticated | · | – | · | · |
 | Authenticated · different organization | · | – | – | – |
-| Authenticated · member | ✓ | – | · | · |
+| Authenticated · member | · | – | · | · |
 | Service role | · | – | – | – |
 
 ## `organization_member`
@@ -41,7 +41,7 @@ Row-level security: **enabled** · policies for DELETE, INSERT, SELECT, UPDATE
 |---|---|---|---|---|
 | Unauthenticated | · | · | ⚠ **REACHABLE** | – |
 | Authenticated · different organization | · | · | · | · |
-| Authenticated · member | ✓ | ✓ | – | – |
+| Authenticated · member | ✓ | · | – | – |
 | Service role | ⚠ **REACHABLE** | – | · | · |
 
 ## `project`
@@ -52,7 +52,7 @@ Row-level security: **enabled** · policies for DELETE, INSERT, SELECT, UPDATE
 |---|---|---|---|---|
 | Unauthenticated | · | · | · | · |
 | Authenticated · different organization | · | · | · | · |
-| Authenticated · member | ✓ | ✓ | ✓ | ✓ |
+| Authenticated · member | ✓ | ✓ | ✓ | · |
 | Service role | · | – | · | · |
 
 ## Bypass surfaces

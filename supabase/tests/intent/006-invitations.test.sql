@@ -4,19 +4,24 @@
 -- here still denies exactly that; the exception is ONE security-definer function with a stated
 -- return shape, and these are the assertions that keep it narrow.
 begin;
-select plan(19);
+select plan(20);
 
 insert into auth.users (id, instance_id, aud, role, email) values
   ('d1111111-1111-1111-1111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','inviter@t'),
   ('d2222222-2222-2222-2222-222222222222','00000000-0000-0000-0000-000000000000','authenticated','authenticated','invitee@t'),
-  ('d3333333-3333-3333-3333-333333333333','00000000-0000-0000-0000-000000000000','authenticated','authenticated','stranger@t');
+  ('d3333333-3333-3333-3333-333333333333','00000000-0000-0000-0000-000000000000','authenticated','authenticated','stranger@t'),
+  -- A plain member of the INVITING organization. Added because the authority rule (F-53) found
+  -- that every refusal here was asserted against an OUTSIDER, and the invitation list is gated on
+  -- is_org_admin -- so nothing proved a member of the org cannot read who is being invited.
+  ('d4444444-4444-4444-4444-444444444444','00000000-0000-0000-0000-000000000000','authenticated','authenticated','plain@t');
 
 insert into public.organization (id, name, slug) values
   ('e1111111-0000-0000-0000-00000000000a','Invitational','spec6-inv'),
   ('e2222222-0000-0000-0000-00000000000b','Elsewhere','spec6-else');
 insert into public.organization_member values
   ('e1111111-0000-0000-0000-00000000000a','d1111111-1111-1111-1111-111111111111','owner',now()),
-  ('e2222222-0000-0000-0000-00000000000b','d3333333-3333-3333-3333-333333333333','owner',now());
+  ('e2222222-0000-0000-0000-00000000000b','d3333333-3333-3333-3333-333333333333','owner',now()),
+  ('e1111111-0000-0000-0000-00000000000a','d4444444-4444-4444-4444-444444444444','member',now());
 
 -- ── REQ-1 · an admin creates one; the token comes back exactly once ──────────
 set local role authenticated;
@@ -164,4 +169,12 @@ select is_empty(
   'holder cannot distinguish "withdrawn" from "never existed"');
 
 select * from finish();
+
+-- ── the member-refused control the authority rule required ──────────────────
+set local request.jwt.claim.sub = 'd4444444-4444-4444-4444-444444444444';
+select is_empty(
+  $$select 1 from public.organization_invitation$$,
+  'REQ-1: a plain MEMBER of the inviting organization sees no invitations either -- every other
+   refusal here is asserted against an outsider [member-refused organization_invitation:SELECT]');
+
 rollback;
