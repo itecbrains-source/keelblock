@@ -1766,3 +1766,56 @@ field ships five and proves none. The second half is not true. BoxyHQ's reposito
 `tests/e2e/settings/directory-sync.spec.ts` — they prove several. The row was not written. It was
 offered conditionally ("if it reads true"), which is the right way to offer one, and checking took
 two minutes against the claim's own source.
+
+## F-56 · B-6 was measured by removing a module, and the gates turned out to be most of the test
+
+**2026-09-09 · measured before authoring SPEC-014 · recorded, nothing removed**
+
+B-6 says any optional subsystem is removable in one commit, SPEC-014 owns it, and SPEC-014 has been
+`planned` since the first spec index. Nobody had established what removal actually costs. So the
+invitations subsystem (SPEC-006) — the most module-shaped thing in the tree — was deleted for real
+and the whole loop run against the result. Everything below was restored.
+
+**The first measurement was wrong, in the direction this session was already watching for.** Deleting
+the module's three files broke `typecheck` on `orgs/page.tsx`, and "B-6 is not satisfied" was about
+to be written down. But no real removal deletes a module and leaves its call sites — the claim was
+broader than the experiment. Redone properly, deleting the files **and** their call sites:
+
+| Gate               | Result                                                                        |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `typecheck`        | green                                                                         |
+| `build`            | green                                                                         |
+| `unit` (500 tests) | green                                                                         |
+| `policy`, `schema` | green                                                                         |
+| `locale`           | **16 orphan translation keys**                                                |
+| `unused`           | **3 dead server actions**, then a shared `useRouter` whose only caller it was |
+| `lint`             | 3 now-unused locals                                                           |
+| `promises`         | **`SPEC-006: artifact 'src/lib/orgs/invitations.ts' does not exist`**         |
+
+**The finding is that the last four columns are the removal test.** Every failure names exactly one
+leftover, in the file it is in, and stops naming it when it is gone. Removing the module completely
+meant editing five files across three shared modules — the page, the actions, the messages, the
+navigation helper — and at no point was there any archaeology: the gates produced the checklist.
+
+That is ADR-017's argument, confirmed rather than assumed. It chose directories over packages partly
+because "`knip` already fails on an unused export or dependency, which is the same question asked
+continuously". It does, and continuously turns out to be the important word — the property is being
+enforced on every push already, without SPEC-014 existing.
+
+**What SPEC-014 is therefore actually for**, which is narrower and clearer than "a deletion test":
+
+- **Doing it per module without a human**, so removability is proven rather than demonstrable.
+- **Deciding what removal means for the spec that owns the module.** `promises` is the one failure
+  that is not a leftover in code: SPEC-006 still claims an artifact that no longer exists, and a
+  complete removal has to retire the spec with the code. No other gate asks that question.
+- **Deciding what removal means for the schema.** Nothing above touched the database. The
+  `organization_invitation` table, its policies and its pgTAP file all still exist and all still
+  pass, because a migration cannot be un-run. Removability here is a **code** property, and saying
+  so is better than letting a buyer discover it.
+
+**A fourth data point for the caveat on the review series.** The same review that prompted this
+described SPEC-031 as "already specced, unblocked". It is neither: `spec/README.md` marks it
+`planned`, no `SPEC-031-*.md` exists, and its declared dependencies include SPEC-007, which is the
+`draft` blocked on the owner's REQ-7 decision. Both halves of a two-word claim, wrong, and wrong
+generously. The review's B-6 recommendation, by contrast, held up under measurement — which is the
+point of checking rather than discounting: the bias is a prior, not a verdict.
