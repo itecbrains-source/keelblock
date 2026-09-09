@@ -21,6 +21,10 @@ describe('schema guard', () => {
       'trivial-with-check',
       'untenanted-with-check',
       'null-test-with-check',
+      // F-53. The gate read polwithcheck and nothing else, so the read and delete decision was
+      // unexamined entirely -- a SELECT policy of `using (true)` passed it.
+      'untenanted-using',
+      'null-test-using',
     ]) {
       expect(sql, `${violation} has no planted case`).toContain(violation);
     }

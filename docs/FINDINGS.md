@@ -1591,3 +1591,75 @@ failure now arrives as `✗ build`, before the journey layer is reached.
 participant could not build and silently ran the journeys against `next dev`, and no assertion
 noticed. The premise is documented; it is not checked. Recorded rather than fixed here, because it is
 a different change from this one.
+
+## F-53 · An adversary planted a privilege escalation and all fourteen steps stayed green
+
+**2026-09-09 · DEF-020's adversarial trial · the hole is closed; the row stays open**
+
+SPEC-002's Definition of Done asks for something its author cannot supply: _someone other than the
+author planted a policy defect and confirmed the harness caught it._ This is that trial, run against
+the **policies** rather than the gates, by a session given the schema, the harness and one
+instruction — plant a defect the suite does not catch — and told that a miss was the outcome worth
+having.
+
+It found one, in seven attempts.
+
+```diff
+ create policy project_delete on public.project
+-  for delete to authenticated using (public.is_org_admin(organization_id));
++  for delete to authenticated using (public.is_org_member(organization_id));
+```
+
+One word. Reproduced independently rather than taken on report: as a real signed-in user whose
+`org_role_of` is `member` and whose `is_org_admin` is **false**, `delete from public.project` returns
+`DELETE 1`. A plain member destroyed a project the policy reserves for admins and owners. Then
+`npm run check`: **all 14 green, exit 0** — 136 pgTAP assertions, the schema guard, the generated
+prober, the boundary walker, every one of them satisfied.
+
+**Three independent things had to line up, and did.**
+
+1. `check-schema-guard.mjs` read `polwithcheck` and nothing else. `DELETE` has no `WITH CHECK`, so a
+   DELETE policy was never examined at all — and neither, it turns out, was any `USING` clause on any
+   command, which is a wider hole than the one the trial walked through.
+2. The generated prober **mocks** `is_org_member` and `is_org_admin` to constants, because that is
+   what makes it exhaustive. Both mock identically, so swapping one for the other is invisible to it.
+   Where the choice of helper _is_ the access control, the exhaustive layer verifies wiring and not
+   authority. The repository already says this; what it did not say is which commands were therefore
+   uncovered.
+3. Nothing exercised `project` DELETE. `grep "delete from public.project" supabase/tests/intent/`
+   returned nothing.
+
+The layer designed to catch exactly this — the intent suite, the only one that looks inside the
+helpers — had a gap precisely where the other two were blind.
+
+**The two near-misses are the more interesting half.** Both were invisible to every gate that looks at policies and
+both failed to leak anyway, for reasons nobody wrote down:
+
+- `organization_member_update`'s `WITH CHECK` was weakened to a tautology dressed as a null guard.
+  It passed every gate. It still could not move a membership row into another tenant, because
+  PostgreSQL applies the **SELECT policy's `USING` and the INSERT policy's `WITH CHECK` to the new
+  row** during a row-moving UPDATE. A policy other than the one weakened held the line.
+- `organization_delete` was changed from `org_role_of(id) = 'owner'` to `>= 'owner'`. The enum is
+  declared `('owner','admin','member')`, so `'owner'` sorts **lowest** and `>= 'owner'` admits every
+  role — an expression that reads as "owner or above" and means "anybody". It passed every gate. The
+  cascade to the owner's membership row then hit `enforce_owner_authority` and raised.
+
+So the schema survived twice on **defence in depth it was never credited with**, and the honest
+reading is that a green suite was not what protected it on those two occasions. That is worth more
+than the defect: it says the isolation is real, and it says the gates would not have told anyone.
+
+**Closed here.** An intent assertion — a plain member cannot delete their organization's projects —
+whose mutation proof is the planted diff itself: restore it and the gate exits 1 with
+`have: 0, want: 1`. And the schema guard now reads `USING` as well as `WITH CHECK`, on
+`SELECT/UPDATE/DELETE/ALL`, with the same two rules (must mention the tenant key; a bare null test on
+it is not a constraint). Proven live: a `select ... using (true)` planted on `project` takes the gate
+from green to `has a USING that never mentions the tenant: true`. That rule does **not** catch the
+trial's defect — `is_org_member(organization_id)` is a correct tenant scope and the wrong authority,
+which a catalog-shaped rule cannot distinguish — and it is added because the trial exposed that the
+entire read-and-delete decision was unexamined, which is a bigger hole than the one that was walked.
+
+**DEF-020 stays open, and this trial is not what closes it.** The row asks for "a second competent
+person"; a session spawned by the author is not one, and DEF-024 makes the same distinction for the
+human half of B-11. What this establishes is narrower and still worth having: an adversary who did
+not write the harness got through it in seven attempts, and the three reasons it got through are now
+two fewer.

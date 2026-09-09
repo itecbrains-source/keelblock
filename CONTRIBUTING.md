@@ -56,9 +56,12 @@ Three rules the gates enforce, each because of a measured defect:
 
 - **`organization_id` directly on the table**, never resolved through a join. It is what makes the
   scoped-table set derivable, which is what makes the gates possible at all.
-- **Every write policy needs a `WITH CHECK` that constrains the organization.** `USING` alone lets a
-  member write into another tenant, and the smuggled row is invisible to them ([F-4](docs/FINDINGS.md)).
-  A `WITH CHECK (true)` is not a `WITH CHECK`.
+- **Both clauses must constrain the organization, and they answer different questions.** A write
+  policy needs a `WITH CHECK`: `USING` alone lets a member write into another tenant, and the
+  smuggled row is invisible to them ([F-4](docs/FINDINGS.md)). A read or delete policy needs a
+  `USING`, because that clause _is_ the access decision — a `SELECT` with `using (true)` hands over
+  every tenant's rows while a perfectly correct `WITH CHECK` looks on ([F-53](docs/FINDINGS.md)).
+  Neither `(true)` nor `(organization_id is not null)` is a constraint in either clause.
 - **`(select auth.uid())`, not `auth.uid()`** — the subquery form is evaluated once rather than per
   row. It is also _illegal_ in a trigger `WHEN` clause, where the plain form belongs.
 

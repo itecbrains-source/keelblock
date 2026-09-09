@@ -219,3 +219,38 @@ not a claim of handover-readiness, and B-11 is claimed at one agent trial with t
 (DEF-024). What it establishes: an unfamiliar participant built a correct tenant-scoped feature
 unaided, and every mistake it made was named by a gate **except in the one area nothing runs** — the
 production build.
+
+## The adversarial trial — DEF-020's policy half, run once
+
+**2026-09-09.** The handover trial above asked whether a stranger can _add_ a feature correctly. This
+one asks the opposite question, and it is the one SPEC-002's Definition of Done actually names:
+_someone other than the author planted a policy defect and confirmed the harness caught it._
+
+A session with no context was given the schema, the policies, the harness and one instruction:
+**plant a defect the suite does not catch.** It was told a miss was the successful outcome, told not
+to fix anything, and barred from touching any test or gate — the schema was the target, not the
+invigilator. It was required to _demonstrate_ each defect as a signed-in user rather than assert it,
+because a change nobody can exploit is not a defect and "the harness missed it" would mean nothing.
+
+**It got through in seven attempts.** The full account, including the two near-misses that are more
+interesting than the hit, is [F-53](FINDINGS.md). In short: `project_delete` swapped `is_org_admin`
+for `is_org_member`, a plain member deleted a project, and `npm run check` reported all fourteen
+green. Both holes are now closed — an intent assertion whose mutation proof is the planted diff, and
+a schema guard that reads `USING` and not only `WITH CHECK`.
+
+**Two things about the method are worth keeping.**
+
+The requirement to _exploit_ the defect, not merely plant it, did most of the work. Two of the seven
+attempts were genuinely invisible to every gate and still could not leak — one because PostgreSQL
+re-applies the SELECT and INSERT policies to the new row during a row-moving UPDATE, one because a
+trigger caught the cascade. Without the exploit requirement both would have been filed as harness
+failures, and both would have been wrong.
+
+And the failed attempts were the second-most valuable output. "We could not break it" is only
+evidence when the attempts are written down; five of these seven were stopped by a named assertion,
+and knowing _which_ assertion stopped them is what tells you the coverage is real rather than lucky.
+
+**This does not close DEF-020.** The bar says a second competent person, and a session the author
+spawned is not one — the same distinction DEF-024 draws for the human half of B-11. The row stays
+open with the trigger it needs. What the trial bought is narrower: an adversary that did not write
+the harness got through it, and the reasons it got through are two fewer than they were.

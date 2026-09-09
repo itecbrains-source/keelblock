@@ -5,7 +5,7 @@
 -- nothing behind. A unit test of the surrounding string-splitting would prove nothing about the
 -- thing that actually protects the data.
 begin;
-select plan(10);
+select plan(12);
 
 create or replace function pg_temp.guard_violations() returns setof text language sql as $$
   with scoped as (
@@ -38,6 +38,17 @@ create or replace function pg_temp.guard_violations() returns setof text languag
     union all select 'null-test-with-check' from pg_policy p
       where p.polrelid = s.oid and p.polcmd in ('a','w','*') and p.polwithcheck is not null
         and pg_get_expr(p.polwithcheck, p.polrelid) ~* '^\(?\s*organization_id\s+is\s+not\s+null\s*\)?$'
+    -- The same two, on USING. WITH CHECK governs the write; USING governs the read and the delete,
+    -- and until F-53 the gate read only the first of them.
+    union all select 'untenanted-using' from pg_policy p
+      where p.polrelid = s.oid and p.polcmd in ('r','w','d','*') and p.polqual is not null
+        and pg_get_expr(p.polqual, p.polrelid) !~ (
+          case when s.relname = 'organization'
+               then '(^|[^a-z_])(organization_id|id)([^a-z_]|$)'
+               else '(^|[^a-z_])organization_id([^a-z_]|$)' end)
+    union all select 'null-test-using' from pg_policy p
+      where p.polrelid = s.oid and p.polcmd in ('r','w','d','*') and p.polqual is not null
+        and pg_get_expr(p.polqual, p.polrelid) ~* '^\(?\s*organization_id\s+is\s+not\s+null\s*\)?$'
   ) f;
 $$;
 
@@ -89,6 +100,25 @@ select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'plante
 drop policy planted_write on public.planted;
 create policy planted_write on public.planted for insert to authenticated
   with check (public.is_org_member(organization_id));
+
+-- ── the READ and DELETE decision (F-53) ──────────────────────────────────────
+-- A total read leak. Before the USING rules existed this table was reported protected, because a
+-- correct WITH CHECK was the only thing being read: you could not write another tenant's row, and
+-- you could select every one of them.
+drop policy planted_read on public.planted;
+create policy planted_read on public.planted for select to authenticated using (true);
+select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'planted: untenanted-using'),
+  'a USING of literal true is caught -- WITH CHECK protects the write, not the read');
+
+drop policy planted_read on public.planted;
+create policy planted_read on public.planted for select to authenticated
+  using (organization_id is not null);
+select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'planted: null-test-using'),
+  'a USING that only proves the tenant key is PRESENT is caught -- same shape, other clause');
+
+drop policy planted_read on public.planted;
+create policy planted_read on public.planted for select to authenticated
+  using (public.is_org_member(organization_id));
 select is((select count(*)::int from pg_temp.guard_violations()), 0,
   'a correctly protected table produces no violation');
 

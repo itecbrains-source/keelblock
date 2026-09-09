@@ -5,7 +5,7 @@
 -- suite reported as clean).
 
 begin;
-select plan(13);
+select plan(14);
 
 -- ── fixture: two organizations, three users ──────────────────────────────────
 insert into auth.users (id, instance_id, aud, role, email) values
@@ -93,6 +93,20 @@ select is(
       and organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'),
   'member',
   'ROLE: a member cannot promote themselves -- the attempt is a silent no-op, the row is unchanged');
+
+-- DEF-020's adversarial trial (F-53) landed exactly one defect, here: `project_delete` was
+-- changed from `is_org_admin` to `is_org_member`, and the whole suite stayed green. Nothing
+-- exercised project DELETE at all, and the generated prober cannot see the difference because it
+-- MOCKS both helpers to constants -- so the choice of helper, which IS the access control, was
+-- checked by nothing. Same shape as the promotion assertion above: a failing USING on DELETE
+-- matches zero rows rather than raising, so this asserts on the row, not on an exception.
+delete from public.project
+  where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+select is(
+  (select count(*)::int from public.project
+    where organization_id = 'aaaaaaaa-0000-0000-0000-00000000000a'),
+  1,
+  'ROLE: a plain member cannot delete their organization''s projects -- deleting is an admin act');
 
 -- ── as anon ─────────────────────────────────────────────────────────────────
 set local role anon;

@@ -41,7 +41,7 @@ What it catches:
 | If you…                                                | This says so                          |
 | ------------------------------------------------------ | ------------------------------------- |
 | add a table and forget row-level security              | `schema`                              |
-| write `with check (true)` because it compiles          | `schema`                              |
+| write `with check (true)` or `using (true)`            | `schema`                              |
 | reach for the service-role client to make a query work | `boundaries` (walks the import graph) |
 | cache a tenant query                                   | `boundaries`                          |
 | invent a translation key, or leave one unused          | `locale`                              |
@@ -55,8 +55,8 @@ wrong, it has been wrong before: say so rather than working around it.
 ## Recipes
 
 **Add a tenant-scoped table** — see [CONTRIBUTING.md](CONTRIBUTING.md). Three rules: `organization_id`
-on the table, RLS enabled, and a `WITH CHECK` that constrains the organization. `with check (true)`
-is not a `WITH CHECK`.
+on the table, RLS enabled, and both clauses constraining the organization — a `WITH CHECK` on writes,
+a `USING` on reads and deletes. `(true)` is not a constraint in either.
 
 **Add a mutation** — a Server Action that does validate → authorize → act, with its parameter typed
 `unknown` and parsed. It is a network boundary wearing a function's clothes

@@ -86,6 +86,32 @@ cross join lateral (
     from pg_policy p where p.polrelid = s.oid and p.polcmd in ('a','w','*')
       and p.polwithcheck is not null
       and pg_get_expr(p.polwithcheck, p.polrelid) ~* '^\\(?\\s*organization_id\\s+is\\s+not\\s+null\\s*\\)?$'
+  union all
+  -- The same two rules, applied to USING. Until DEF-020's adversarial trial (F-53) this gate read
+  -- polwithcheck and nothing else, so the ENTIRE read and delete decision was unexamined: a SELECT
+  -- policy of \`using (true)\` on a tenant table passed a gate whose stated job is "every tenant
+  -- table is protected". WITH CHECK governs what you may WRITE; USING governs what you may SEE and
+  -- DELETE, and only one of them was being read.
+  --
+  -- Honest about the limit: this does NOT catch the defect that trial actually landed, which swapped
+  -- is_org_admin for is_org_member on a DELETE. That expression mentions the tenant key and IS a
+  -- correct tenant scope -- it is the wrong AUTHORITY, a question this catalog-shaped rule cannot
+  -- ask. The intent layer answers that one, in 001-tenant-isolation.
+  select 'policy "' || p.polname || '" has a USING that never mentions the tenant: '
+         || pg_get_expr(p.polqual, p.polrelid)
+    from pg_policy p where p.polrelid = s.oid and p.polcmd in ('r','w','d','*')
+      and p.polqual is not null
+      and pg_get_expr(p.polqual, p.polrelid) !~ (
+        case when s.relname = 'organization'
+             then '(^|[^a-z_])(organization_id|id)([^a-z_]|$)'
+             else '(^|[^a-z_])organization_id([^a-z_]|$)' end
+      )
+  union all
+  select 'policy "' || p.polname || '" has a USING that constrains only that the tenant key is '
+         || 'present, not which tenant it is: ' || pg_get_expr(p.polqual, p.polrelid)
+    from pg_policy p where p.polrelid = s.oid and p.polcmd in ('r','w','d','*')
+      and p.polqual is not null
+      and pg_get_expr(p.polqual, p.polrelid) ~* '^\\(?\\s*organization_id\\s+is\\s+not\\s+null\\s*\\)?$'
 ) f
 order by 1;`;
 
