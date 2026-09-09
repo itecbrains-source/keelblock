@@ -209,7 +209,7 @@ function main() {
   );
 
   if (temp) rmSync(temp, { recursive: true, force: true });
-  console.log(`\nScaffolded ${copy.length} files into ${name}/\n`);
+  console.log(`\nScaffolded ${keep.length} files into ${name}/\n`);
   for (const line of nextSteps(name, ref)) console.log(line ? `  ${line}` : '');
 }
 
