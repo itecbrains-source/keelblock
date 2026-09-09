@@ -349,6 +349,18 @@
       "what": "two green CI jobs each proved half of the same story, and nothing crossed between them",
       "to": ["blog", "docs"],
       "angle": "F-41, F-48, F-49 and F-53 share one shape — components proven, composition unrun — so the shape was pointed FORWARD at a seam nobody had looked at: one job proved a worktree could be upgraded, another proved a generated project checks green, and neither proved a generated project could be upgraded. The prediction was that it would fail. It did not, and that is the cheaper outcome and still worth the ten minutes, because the other one was a defect a buyer finds first. Closed by making one job consume the other's output rather than by adding a third job."
+    },
+    {
+      "id": "F-58",
+      "what": "a gate's verdict depended on the machine running it, and passed locally for that reason",
+      "to": ["blog", "docs"],
+      "angle": "The gate already refused a glob because 'a glob is a description, not a path'. An absolute path is the same category error and was not refused, so a criterion citing /tmp/stranger passed on the laptop where a rehearsal had just created that directory and failed on a clean runner. The fix refuses before the existence check, because a rule that only works when the file is missing fixes nothing — and it was swept first: 119 cited paths across every spec, none of this shape, so the rule lands without turning the gate red on real rows."
+    },
+    {
+      "id": "F-59",
+      "what": "three deferrals are waiting on a release process that no spec owns, each keyed to the nearest spec with Release in its title",
+      "to": ["blog", "docs"],
+      "angle": "A trigger that fires on an adjacent event is worse than one that never fires and admits it: a spurious fire spends attention and teaches the reader to wave the next one through. Reading the spec rather than its title settled it — the release-preflight spec is the BUYER's deployment gate and mentions publishing nowhere. Two of the three rows were mine and are corrected; the third reasons explicitly to the opposite conclusion and is left alone with its root recorded, because rewriting someone else's considered choice on a draft spec is the over-reach."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

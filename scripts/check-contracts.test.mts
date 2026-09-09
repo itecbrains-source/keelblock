@@ -186,3 +186,84 @@ describe('evidence parsing', () => {
     expect(checkContracts([s], () => true)).toEqual([]);
   });
 });
+
+describe('F-58 · a cited path must be a repository artifact', () => {
+  it('MUTATION: the exact criterion that got through — an absolute path', () => {
+    // SPEC-012 AC-6 shipped citing `/tmp/stranger` and the gate passed it, because the directory
+    // existed on the machine that ran it: a rehearsal had created it ten minutes earlier. CI, with
+    // no such directory, went red. `existsSync` on an absolute path asks a question about whoever
+    // is running the gate, which is the same category error the glob rule already refuses.
+    const p = checkContracts(
+      [
+        spec({
+          evidence: [
+            {
+              ac: 'AC-6',
+              paths: ['/tmp/stranger'],
+              status: 'done',
+              cited: 'same job — the runner prints its duration and starts in `/tmp/stranger`',
+            },
+          ],
+        }),
+      ],
+      // `yes` deliberately: on the machine where this passed, the path DID exist. A rule that only
+      // works when the file is absent has not fixed anything.
+      yes,
+    );
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatch(/outside the repository/);
+  });
+
+  it('a home-relative path is the same error wearing a tilde', () => {
+    const p = checkContracts(
+      [spec({ evidence: [{ ac: 'AC-1', paths: ['~/notes.md'], status: 'done', cited: 'x' }] })],
+      yes,
+    );
+    expect(p[0]).toMatch(/outside the repository/);
+  });
+
+  it('a path escaping upward is refused, and for a second reason', () => {
+    // `../docs/TESTING.md` resolves against the gate's working directory, not against the spec
+    // file that wrote it — so the same citation means two different things depending on who reads
+    // it. Ambiguous evidence is not evidence.
+    const p = checkContracts(
+      [
+        spec({
+          evidence: [{ ac: 'AC-1', paths: ['../docs/TESTING.md'], status: 'done', cited: 'x' }],
+        }),
+      ],
+      yes,
+    );
+    expect(p[0]).toMatch(/outside the repository/);
+  });
+
+  it('is not vacuous: ordinary repository paths are untouched', () => {
+    const p = checkContracts(
+      [
+        spec({
+          evidence: [
+            { ac: 'AC-1', paths: ['scripts/check-contracts.mjs'], status: 'done', cited: 'x' },
+            { ac: 'AC-2', paths: ['supabase/tests/intent/001.sql'], status: 'done', cited: 'x' },
+          ],
+        }),
+      ],
+      yes,
+    );
+    expect(p).toEqual([]);
+  });
+
+  it('and a PLANNED criterion is still allowed to cite what does not exist yet', () => {
+    const p = checkContracts(
+      [
+        spec({
+          // `partial`, because a spec claiming `done` with an open criterion trips a different rule
+          // — correctly, and that rule caught this fixture when it was written wrong.
+          status: 'partial',
+          evidence: [{ ac: 'AC-1', paths: ['/tmp/later'], status: 'planned', cited: 'x' }],
+        }),
+      ],
+      no,
+    );
+    expect(p).toEqual([]);
+  });
+});

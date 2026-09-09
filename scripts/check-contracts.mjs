@@ -99,6 +99,24 @@ export function checkContracts(specs, exists) {
           problems.push(
             `${spec.id} ${ac} cites a glob \`${path}\` — name the file, or the claim cannot be checked`,
           );
+        } else if (/^[/~]/.test(path) || path.split('/').includes('..')) {
+          // F-58, and the same category error as the glob above: a path outside the repository is
+          // a fact about a MACHINE, not about this repository, so `exists` is asking whoever runs
+          // the gate rather than asking the evidence. SPEC-012 AC-6 shipped citing `/tmp/stranger`
+          // and passed, because a rehearsal on that machine had created the directory ten minutes
+          // earlier; CI, having no such directory, went red. Refused BEFORE the existence check,
+          // so a path that happens to exist locally cannot buy a pass.
+          //
+          // `..` is refused for a second reason as well: it resolves against the gate's working
+          // directory rather than against the spec file that wrote it, so the same citation means
+          // two different things depending on who reads it.
+          //
+          // Swept before landing: 119 cited paths across every spec, none of them this shape.
+          problems.push(
+            `${spec.id} ${ac} cites \`${path}\`, which is outside the repository. Evidence is ` +
+              `cited relative to the repository root — an absolute or escaping path is a fact ` +
+              `about the machine running this gate, and it passes or fails depending on who runs it.`,
+          );
         } else if (!exists(path)) {
           problems.push(
             `${spec.id} ${ac} is marked done and cites \`${path}\`, which does not exist. ` +

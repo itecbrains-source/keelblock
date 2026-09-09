@@ -1866,3 +1866,58 @@ did not. That is the cheaper of the two outcomes and it was still worth ten minu
 other outcome was a defect a buyer would have found first. A recurring shape is worth pointing
 forward at the seams nobody has looked at yet — and the answer "we checked, it holds" is only
 available to people who checked.
+
+## F-58 · The contracts gate asked a question about the machine running it
+
+**2026-09-09 · found by review after `7a1661a` fixed the instance by hand · fixed in `scripts/check-contracts.mjs`**
+
+`7a1661a` corrected SPEC-012's AC-6, which cited `/tmp/stranger` as its evidence. The correction was
+right and the hole it went through stayed open.
+
+The gate already refuses a glob, with the reason in its own comment: _"A glob is a description, not a
+path — and cannot be verified, so it is refused outright."_ An absolute path is the same category
+error and was not refused. `existsSync('/tmp/stranger')` is not a question about this repository; it
+is a question about whoever is running the gate, and it answered **yes** locally because a rehearsal
+had created that directory ten minutes earlier, and **no** on a clean runner. A gate whose verdict
+depends on the machine has not checked anything.
+
+Refused now before the existence check, so a path that happens to exist locally cannot buy a pass.
+`..` is refused with it, for a second reason: it resolves against the gate's working directory rather
+than against the spec file that wrote it, so the same citation means different things to different
+readers.
+
+**Swept before landing**, because a rule that turns the gate red on real rows is worse than the hole:
+the gate's own parser was run over every spec and reported **119 cited paths, none** absolute,
+home-relative or escaping. The mutation proof restores SPEC-012's pre-`7a1661a` text verbatim and
+asserts the refusal **with `exists` returning true** — a rule that only works when the file is
+missing would not have fixed this.
+
+## F-59 · Three deferrals wait on a release process no spec owns
+
+**2026-09-09 · found by review · two corrected, one left with its reasoning recorded**
+
+DEF-027's body says the blocker is publishing — _"a release act, it is outward-facing, and it is the
+owner's"_ — and its trigger read `spec-done:SPEC-016`. So when release-preflight lands, the row would
+have reported itself unblocked whether or not anything was ever published. That is the defect
+DEF-026 was split out of DEF-018 to fix, committed the next day by the person who split them.
+
+**Reading SPEC-016 rather than its title settles it.** It asks _"is it safe to put this in front of
+paying customers"_, it is _"aimed squarely at the team that bought keelblock and is deploying a
+commercial product"_, and it mentions publishing, npm and the registry **nowhere**. It is the buyer's
+deployment gate. It is not keelblock's release process.
+
+Which surfaced the larger thing: **three rows key on `spec-done:SPEC-016`** — DEF-022 (security
+advisories, which "need a release process to hang from"), DEF-023 (a dated record of what each proof
+run proved, waiting for "once releases exist"), and DEF-027. All three are waiting for keelblock to
+have a release process, and **no spec in the set owns one.** They were each keyed to the nearest spec
+whose title contains the word Release.
+
+Two were mine and are corrected to `decided:` tokens, which is the honest form when the event is an
+unobservable human act (DEF-020's precedent, and the registry's own table says so). **DEF-022 is left
+alone**: its body reasons explicitly that SPEC-016 _is_ the release process, which is a considered
+choice by someone else on a draft spec, and rewriting it on my reading would be the over-reach. It is
+named here instead, so the shared root is visible rather than fixed twice and unfixed once.
+
+The general shape: **a trigger keyed on the nearest plausible spec fires on an adjacent event.** It
+is worse than `decided:`, which never fires and admits it — a spurious fire spends attention and
+teaches the reader to wave the next one through.
