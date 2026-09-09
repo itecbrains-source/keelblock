@@ -17,6 +17,26 @@ export const STEPS = [
   // fails on a clean checkout — a gate that cannot pass on a fresh clone is a broken gate.
   { id: 'typegen', why: 'route types are generated', cmd: 'npx', args: ['next', 'typegen'] },
   { id: 'typecheck', why: 'types are sound', cmd: 'npx', args: ['tsc', '--noEmit'] },
+  // The production build. It is here because it is the only step that RENDERS a page: `tsc --noEmit`
+  // exits 0 on a component that throws, and this exits 1 naming the page and the line (F-51).
+  //
+  // It is NOT here for route types. `next typegen` above emits a byte-identical
+  // `.next/types/validator.ts`, so typecheck already performs every route-type check the default
+  // build performs — which corrects the premise F-49 recorded. The webpack build checks more (it
+  // emits an exhaustive per-route `Diff`, and rejects the named exports two pages carry for their
+  // tests); the default Turbopack build does not, and the default is what `npm run build` runs.
+  //
+  // Cost: 11-16s cold across five runs, which is less than `unit` already costs. Loop TOTAL is not
+  // quoted on purpose — three consecutive cold runs of the same tree spanned 51-120s, so machine
+  // noise dwarfs this step and any precise projection would be fiction (F-52, docs/TESTING.md).
+  // Not a gate — SPEC-003's ceiling counts `scripts/check-*.mjs` rules (status.mjs), and this is a
+  // build step, as typecheck is.
+  {
+    id: 'build',
+    why: 'the application renders in production',
+    cmd: 'npx',
+    args: ['next', 'build'],
+  },
   {
     id: 'format',
     why: 'one style, so review is about content',

@@ -62,6 +62,29 @@ describe('check runner', () => {
     expect(ids.indexOf('typegen')).toBeLessThan(ids.indexOf('typecheck'));
   });
 
+  it('a production build is one of the steps, because nothing else renders a page', () => {
+    // F-51. `tsc --noEmit` exits 0 on a page whose component throws at render; `next build` exits 1
+    // and names the page and the line. Before this step existed, the only build in the project was
+    // inside the journey layer's Playwright webServer, so that failure arrived as "the web server
+    // did not start" — a message that sends the reader to look at ports (F-49).
+    const build = STEPS.find((s) => s.id === 'build');
+    expect(build, 'no step runs `next build`').toBeDefined();
+    expect(build!.args).toContain('build');
+  });
+
+  it('build runs after typegen, for the same reason typecheck does', () => {
+    const ids = STEPS.map((s) => s.id);
+    expect(ids.indexOf('typegen')).toBeLessThan(ids.indexOf('build'));
+  });
+
+  it('the build step does not claim to need the database', () => {
+    // Measured, not assumed: `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:59999 npx next build` exits
+    // 0. Every route is partially prerendered, so the shell is built and each DB-touching part is
+    // deferred to request time. Marking it needsDb would abort the whole run on a machine with no
+    // stack, for a step that does not use one.
+    expect(STEPS.find((s) => s.id === 'build')!.needsDb).toBeUndefined();
+  });
+
   it('MUTATION: a missing system prerequisite is named, with how to install it', () => {
     // The README promises this. Without the test it is a promise, not a behavior.
     const missing = missingBinaries(REQUIRED_BINARIES, (b: string) => b !== 'psql');

@@ -1460,6 +1460,12 @@ thing that would be in it, and SPEC-003 treats the gate count as a ceiling rathe
 the trial's job is to find, not to choose. What is recorded is that the gap exists, that it was
 invisible from inside, and that the first person to look from outside hit it immediately.
 
+**Answered 2026-09-09, by running it.** The default build **accepts** the pattern — `npx next build`
+is clean on this repository, so the two protected pages are not a latent build failure and there was
+nothing to fix in them. The disagreement between the two builds is real and has a mechanism, which is
+**F-51**; the decision this finding declined to make is **F-52**, and it went the way of adding the
+step, though for a different reason than this finding supposed.
+
 ## F-50 · A fix for a documentation defect introduced a documentation defect
 
 **2026-09-08 · found by the B-11 agent trial · fixed in `CONTRIBUTING.md`**
@@ -1482,3 +1488,106 @@ The general shape is worth more than the instance. **A correction written in the
 thing it corrects tends to describe the old state in the present tense**, because its author is
 holding both versions in mind and the reader only ever sees one. The repair is to date the claim —
 "as it stood before that date" — rather than to point at "above".
+
+## F-51 · The two builds do not ask the same question, and the default one asks less
+
+**2026-09-09 · measured while answering F-49 · recorded**
+
+F-49 left it unknown whether the default build rejects the named export two protected pages carry for
+their tests. It does not. Both builds were run on the same tree, at `fa6bb44`:
+
+| Command                    | Result                                                             |
+| -------------------------- | ------------------------------------------------------------------ |
+| `npx next build`           | clean, every route generated                                       |
+| `npx next build --webpack` | `TS2344` on both pages — `Property 'Organizations' … type 'never'` |
+
+So the two protected pages are fine under the build this project actually runs, and the trial's
+report was accurate about webpack and did not generalize.
+
+**Why they differ.** They emit different validators. Webpack writes one file per route containing an
+exhaustive `checkFields<Diff<{…known exports…}, TEntry, ''>>` — a module may export _nothing else_, so
+a named export is an error. Turbopack writes a single `.next/types/validator.ts` asserting each page
+`extends AppPageConfig<Route>`, which is a shape constraint: extra exports satisfy it.
+
+**And that constraint is weaker than it looks.** Its `default` field is typed
+
+```ts
+default: React.ComponentType<{ params: Promise<ParamMap[Route]> } & any> | ((props: …& any) => …)
+```
+
+`X & any` is `any`, so the props type is unconstrained. Measured: giving a page
+`{ params: { deliberatelyWrong: number } }` — not even a Promise — builds clean. The Turbopack page
+validator cannot fail on a page's props shape.
+
+**The consequence corrects F-49's premise.** F-49 said the build "has its own route-type checking that
+the pair does not reproduce". For the default build that is false: `npx next typegen` emits a
+`validator.ts` **byte-identical** to the build's (`diff` reports no difference), and `tsconfig.json`
+includes `.next/types/**/*.ts`, so `typegen` + `tsc --noEmit` — already the first two steps of `check`
+— perform the default build's entire route-type check. The premise held only against webpack, which
+`npm run build` does not run.
+
+The practical reading: **the named-export-for-tests pattern is portable only as long as this project
+stays on Turbopack.** Nothing enforces that, and switching bundlers would surface as two type errors
+in pages nobody touched.
+
+## F-52 · Nothing rendered a page, and that — not route types — is what the build was worth
+
+**2026-09-09 · measured while deciding F-49 · fixed by adding a `build` step to `npm run check`**
+
+With F-51 removing route types as the reason to add a build, the question became whether it is worth
+anything at all. One mutation settles it. A single line added to the home page's component:
+
+```ts
+throw new Error('deliberate prerender failure');
+```
+
+| Command            | Exit | Says                                                               |
+| ------------------ | ---- | ------------------------------------------------------------------ |
+| `npx tsc --noEmit` | 0    | nothing                                                            |
+| `npx next build`   | 1    | `Error occurred prerendering page "/en"` · names the file, line 39 |
+
+Every other step in `check` is blind to it. Thirteen steps, a 135-assertion policy suite, and a page
+that throws on render was green — because no step rendered a page.
+
+**Cost, measured — and the total is the wrong number to look at.** The step's own cost is stable:
+**11-16s** across five cold runs (median ~12.6s), reported on its own line in the summary. The loop
+total is not stable. Three consecutive cold runs of the whole suite came in at **119.6s, 82.1s and
+51.1s** on the same tree — and that last one, _with_ the build in it, is faster than a 52.2s run
+measured without it the same afternoon. On a working laptop the total is dominated by what else the
+laptop is doing.
+
+So the honest form of the cost argument is not "+21%". It is: the build costs about twelve seconds,
+that is less than `unit` (15-21s) already costs, and the variance between two runs of the unchanged
+suite is several times larger than the step being added. SPEC-002 REQ-7's constraint is that the loop
+must not be "slow enough to be skipped"; nothing here moves it toward that, and a projection that
+claimed a precise new total would have been the confident-and-wrong thing this repository keeps
+catching.
+
+**It does not spend SPEC-003's ceiling.** That ceiling counts gates, and `status.mjs` computes the
+gate count by listing `scripts/check-*.mjs` — eleven files, each with a mutation proof. `check.mjs`
+already runs thirteen _steps_, five of which are build and test tools rather than rules: `typegen`,
+`typecheck`, `format`, `lint`, `unit`. A build is a sixth of those, not a twelfth gate. Reading it as
+a gate would also make `tsc --noEmit` one.
+
+**It needs no database.** `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:59999 npx next build` exits 0:
+every route is partially prerendered, so the shell is built and each tenant query is deferred to
+request time. The step is therefore not marked `needsDb`, and adds no new prerequisite to `check`.
+That the shell builds with no database reachable at all is also the sturdiest corroboration of F-38
+this repository has — the prerendered response cannot contain tenant data, because there was nowhere
+to fetch it from.
+
+**Precedent, rather than a new judgement.** `check.yml` already made this call for the journey layer,
+in a comment that argues the same thing: "the whole argument for this layer is that it sees what the
+others cannot, which is worth nothing a day late." A build-only failure landing nightly, or in CI
+only, has that shape.
+
+**What it also repairs.** Until now the only build in the project ran inside Playwright's `webServer`
+(`playwright.config.ts:36`), so a build failure reached the reader as _"the web server did not
+start"_. That is F-49's actual complaint, and a named step fixes it whatever else is true — the
+failure now arrives as `✗ build`, before the journey layer is reached.
+
+**Still open, honestly.** The journey suite's premise is a production render, stated at
+`playwright.config.ts:34`. Nothing _enforces_ that the suite ran against a build: the B-11
+participant could not build and silently ran the journeys against `next dev`, and no assertion
+noticed. The premise is documented; it is not checked. Recorded rather than fixed here, because it is
+a different change from this one.

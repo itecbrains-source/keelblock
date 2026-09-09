@@ -307,6 +307,18 @@
       "what": "the fix for a documentation defect introduced a documentation defect, and the next reader concluded the opposite of the truth",
       "to": ["blog", "docs", "faq"],
       "angle": "A correction written in the same breath as the thing it corrects describes the old state in the present tense, because its author holds both versions in mind and the reader only ever sees one. Caught because an unfamiliar participant read the page as written and reported the recipe was wrong — right about the passage, wrong about the code, which is exactly what a misleading document produces. The repair is to date the claim rather than point at \"above\"."
+    },
+    {
+      "id": "F-51",
+      "what": "the default build and the webpack build do not check the same thing, and the default one's page validator cannot fail on props",
+      "to": ["blog", "docs"],
+      "angle": "Answering an honest `unknown` produced a premise correction rather than a fix. The pattern two pages use is fine under the build we run and an error under the one we do not; the mechanism is that Turbopack emits a shape constraint where webpack emits an exhaustive one, and the shape constraint types its props as `& any`, which collapses to `any`. Measured, not read: a page declaring a non-Promise, wrongly-named params builds clean. The follow-on is that `next typegen` emits a byte-identical validator, so the gate suite already performed every route-type check the build performs — the reason to add a build had to be found somewhere else."
+    },
+    {
+      "id": "F-52",
+      "what": "thirteen green steps over a page that throws on render, because no step rendered a page",
+      "to": ["blog", "docs", "faq"],
+      "angle": "The cheapest possible mutation — one `throw` in a page component — separates `tsc --noEmit` (exit 0, silent) from `next build` (exit 1, names the file and the line). A suite can be extensive and still have a whole class outside it, and the way to find out is to break something rather than to reason about coverage. The decision that followed was made on measured numbers: +10.8s median against a 52s loop, no new database prerequisite, and no cost to a gate ceiling that counts rules rather than steps."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

@@ -21,9 +21,15 @@ npm run check      # everything except the journey layer
 npm run journey    # the journey layer, against a built app and the local stack
 ```
 
-`check` runs the journey layer in CI but not locally, for one reason: it builds the application
-first, which takes longer than every other gate combined. Locally you run it when you have changed
-something a person touches.
+`check` runs the journey layer in CI but not locally: the journey layer drives a browser, and a
+browser is the one dependency worth not requiring of every local run. Locally you run it when you
+have changed something a person touches.
+
+**Amended 2026-09-09.** This paragraph used to give the reason as the build — "it builds the
+application first, which takes longer than every other gate combined". Both halves are now false.
+`check` builds the application itself since F-52, and the build was measured at 11-16s against a rest
+of the suite nearer a minute, so it never took longer than everything else combined. The browser is
+the real reason, and it was always the real reason.
 
 ## The journey layer
 
@@ -64,6 +70,20 @@ npm run journey    ~17s   7 tests, one of which spends an auth email
 
 The journey number excludes `next build`, which the Playwright web server runs first and which
 dominates a cold run at roughly 20 seconds.
+
+**Re-timed 2026-09-09, after `next build` became a step (F-52).** Five cold runs on the machine that
+wrote this, with a warm stack:
+
+```
+build step        11-16s   its own line in the summary, median ~12.6s
+npm run check     51-120s  total, over three consecutive cold runs
+```
+
+**Quote the first number and distrust the second.** The build step's cost is stable across runs; the
+total is not, and it is not the build that moves it — one run finished the whole loop _with_ the build
+in 51s, faster than a run measured the day before without it. On a laptop doing anything else, total
+loop time is dominated by what else the laptop is doing. If you want to know whether a step is
+affordable, read that step's own line.
 
 **One test can skip, and says why.** Supabase caps auth email at two per hour project-wide
 (DEF-019), so the one journey that signs in through the form — rather than by injecting a session —
@@ -185,6 +205,12 @@ recorded this trial** — a defect is never a deferral:
 - **The gate count disagrees with itself:** `npm run check` prints 13 while `npm run status` prints
   `GATES 11`. Not fixed here — it is a naming question about which steps are gates, and worth
   deciding rather than papering over.
+
+  **Decided 2026-09-09** (the trial's report above is left as it was written). They are counting
+  different things, and both are right. `status` counts gates by listing `scripts/check-*.mjs` — a
+  rule with a mutation proof. `check` counts steps, which include build and test tools that are not
+  rules: `typegen`, `typecheck`, `format`, `lint`, `unit`, and now `build`. The numbers should be
+  expected to differ, and SPEC-003's ceiling applies to the first.
 
 ### The verdict, stated against the count
 
