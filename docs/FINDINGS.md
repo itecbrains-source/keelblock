@@ -23,6 +23,14 @@ MAINTAIN — to `anon` and `authenticated` on tables created by `postgres`. **RL
 TRUNCATE at all**, so no policy can prevent it and no policy test — generated or hand-written — can
 see it.
 
+**Refined 2026-09-09, while preparing this for publication.** The fix is narrower than the entry
+implied, and the catalogue says so: `alter default privileges` only rewrites entries for roles you
+can act for. On this repository, `pg_default_acl` for `public` now reads
+`postgres | {postgres=arwdDxtm/postgres,authenticated=m/postgres}` — anon gone — while Supabase's own
+`supabase_admin | {…,anon=arwdDxtm/…}` entry is untouched and cannot be altered from a migration.
+Every table a migration creates is created by `postgres`, so the practical exposure is closed; the
+default entry is not. The disclosure artifact states both — `docs/disclosures/anon-can-truncate.md`.
+
 **Honestly scoped:** PostgREST exposes no TRUNCATE verb (verified: 404), so this is not a remote
 zero-click. It converts any SQL injection in a `SECURITY INVOKER` function, or a leaked role
 credential, from a scoped read into total data loss. Every project inheriting Supabase's defaults has
