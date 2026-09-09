@@ -1,7 +1,7 @@
 # SPEC-013: Upgrade path
 
 > Status: `done` · Bars: **B-10** · Research: [`research/10-UPGRADE-PATH.md`](../research/10-UPGRADE-PATH.md) · ADRs: [008](../docs/adr/ADR-008-upgradability.md), [003](../docs/adr/ADR-003-data-access.md)
-> Contracts: SPEC-001, SPEC-002, SPEC-003 ·
+> Contracts: SPEC-001, SPEC-002, SPEC-003, SPEC-011 ·
 
 ## Intent
 

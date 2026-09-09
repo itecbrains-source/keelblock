@@ -29,6 +29,7 @@
  * rate, and one global window would either nag about SQL or let SEO rot for a year.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { isGeneratedProject } from './check-promises.mjs';
 
 const MANIFEST = 'research/manifest.json';
 const DAY_MS = 86_400_000;
@@ -143,6 +144,16 @@ export function checkResearch(
 }
 
 function main() {
+  // A generated project inherits keelblock's memos as history, never as homework. Measured before
+  // this guard existed: 88 days after generation a buyer's `npm run check` failed, demanding they
+  // re-read Google's SEO documentation and re-verify keelblock's competitive field scan. That is the
+  // fighting-the-boilerplate complaint the field is criticised for, shipped as a dated fuse (DEF-010).
+  if (isGeneratedProject()) {
+    console.log(
+      "research: not applicable — generated project; these memos are keelblock's to keep fresh",
+    );
+    return;
+  }
   if (!existsSync(MANIFEST)) {
     console.error(`research: ${MANIFEST} is missing`);
     process.exit(2);

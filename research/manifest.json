@@ -110,6 +110,14 @@
       "verifiedOn": "2026-09-08",
       "specs": ["SPEC-024"],
       "kind": "sourced"
+    },
+    {
+      "file": "13-SCAFFOLDING.md",
+      "area": "project scaffolding and provenance — what a generated project remembers",
+      "volatility": "moderate",
+      "verifiedOn": "2026-09-09",
+      "specs": ["SPEC-011"],
+      "kind": "measured"
     }
   ],
   "$kinds": {

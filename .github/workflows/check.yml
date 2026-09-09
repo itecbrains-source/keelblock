@@ -195,6 +195,76 @@ jobs:
           git diff --quiet HEAD -- src messages \
             || { echo "the upgrade edited files the buyer owns"; git diff --stat HEAD -- src messages; exit 1; }
 
+  # SPEC-011 / bar B-1 — five minutes, as a measurement that can go red.
+  #
+  # B-10 is the only bar in the set currently proven rather than asserted, and it is proven by a job
+  # like this one. Before this, B-1 was not unmet — it was UNFALSIFIABLE, because `create-keelblock-app`
+  # did not exist.
+  #
+  # The boundary is stated rather than assumed: the clock starts at the scaffold command and stops at
+  # a green `npm run check`. It excludes this runner provisioning itself — checking out, installing
+  # node, fetching the Supabase CLI, pulling images — because "a clean machine" for a person means
+  # they have node and docker, not that they are building a VM. What is inside the clock is what a
+  # person actually waits for, and it is what this project controls.
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 26, cache: npm }
+      - uses: actions/setup-python@v6
+        with: { python-version: '3.12' }
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.109.0 }
+      - name: pre-pull postgres-meta (registry throttling, not a code path)
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull public.ecr.aws/supabase/postgres-meta:v0.96.1 && exit 0
+            sleep $((i * 15))
+          done
+          exit 1
+
+      # From the PACKED tarball, which is byte-identical to what a registry install delivers minus
+      # the registry hop. That the registry serves it is DEF-027 and needs a publish.
+      - name: pack the scaffolder the way npm would
+        run: npm pack --silent --pack-destination /tmp > /tmp/packed.txt
+
+      - name: scaffold, install, and prove it green — timed
+        run: |
+          BUDGET=300
+          START=$(date +%s)
+
+          node "$GITHUB_WORKSPACE/scripts/create-keelblock-app.mjs" /tmp/app \
+            --from "$GITHUB_WORKSPACE" --ref "$GITHUB_SHA"
+          cd /tmp/app
+          npm install --ignore-scripts --no-audit --no-fund
+          python3 -m venv .venv && ./.venv/bin/pip install -q -r requirements.txt
+          supabase start
+          npm run check
+
+          ELAPSED=$(( $(date +%s) - START ))
+          echo "B-1: scaffold to green check took ${ELAPSED}s (budget ${BUDGET}s)"
+          echo "b1_seconds=${ELAPSED}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$ELAPSED" -gt "$BUDGET" ]; then
+            echo "B-1 claims a running application in five minutes. This took ${ELAPSED}s."
+            echo "Either the claim moves or the path gets faster — but the number is no longer a slogan."
+            exit 1
+          fi
+
+      # The other half of what the scaffolder is FOR, and the reason the memo exists: a generated
+      # project must be able to take an upgrade. Measured: a plain tarball copy cannot, because
+      # `upgrade.mjs` needs the release to resolve as a ref. This asserts the remote it was given
+      # makes that possible, without depending on a second release existing.
+      - name: the generated project can reach its origin
+        run: |
+          cd /tmp/app
+          test "$(git remote get-url upstream)" = "https://github.com/itecbrains-source/keelblock.git"
+          test -f keelblock.provenance.json
+          node -e "const p=require('/tmp/app/keelblock.provenance.json');
+                   if(!p.commit||!p.ref||p.generated!=='create-keelblock-app'){
+                     console.error('provenance incomplete',p);process.exit(1)}
+                   console.log('provenance ok:',p.ref,p.commit.slice(0,7))"
+
   audit:
     runs-on: ubuntu-latest
     steps:

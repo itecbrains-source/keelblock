@@ -130,6 +130,16 @@ If a document ever disagrees with `npm run status`, the document is wrong.
 directly) · Python 3.10+ (the policy prober). `npm run check` names any missing one rather than
 failing with a stack trace.
 
+**To start a project** (SPEC-011). The generated project records the release it came from, so it can
+take a later one — see `keelblock.provenance.json` and the two-command upgrade the scaffolder prints:
+
+```bash
+npx create-keelblock-app my-app
+```
+
+**To work on keelblock itself**, or to scaffold from a local checkout
+(`node scripts/create-keelblock-app.mjs my-app --from . --ref HEAD`):
+
 ```bash
 git clone <this repo> && cd keelblock
 npm install

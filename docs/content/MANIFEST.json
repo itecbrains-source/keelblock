@@ -453,6 +453,19 @@
       "battlecard": "A handover trial that publishes what it missed",
       "oneLine": "*Ask when they last watched somebody fail to use their documentation, and what that person got wrong.*",
       "artifacts": ["docs/FINDINGS.md"]
+    },
+    {
+      "spec": "SPEC-011",
+      "claim": "A generated project records the release and commit it came from and keeps the remote that makes those objects reachable, so it can take a later release. The five-minute claim is a CI job with a budget rather than a number in a README.",
+      "rivals": "degit sells discarding history as the feature — it downloads a tarball \"because you're not downloading the entire git history\". create-next-app initialises a fresh repository by default (--disable-git turns it off) and its CLI reference gives no upgrade guidance for a generated project at all. Read 2026-09-09; the claim is only as broad as the documentation actually opened, and does not speak for kits whose docs were not.",
+      "evidence": [
+        "research/13-SCAFFOLDING.md",
+        "scripts/create-keelblock-app.test.mts",
+        ".github/workflows/check.yml"
+      ],
+      "battlecard": "A generated project that can still take a security fix",
+      "artifacts": ["research/13-SCAFFOLDING.md"],
+      "oneLine": "_Ask what your generated project remembers about where it came from. Usually nothing — and that is why there is no upgrade._"
     }
   ],
   "documentation": {
@@ -461,7 +474,8 @@
     "SPEC-004": "docs/AUTHORIZATION.md",
     "SPEC-005": "docs/AUTHORIZATION.md",
     "SPEC-013": "docs/TESTING.md",
-    "SPEC-024": "docs/TESTING.md"
+    "SPEC-024": "docs/TESTING.md",
+    "SPEC-011": "README.md"
   },
   "$noDocumentation": {
     "SPEC-003": "The gates document themselves at the point of failure: every one names the file, the line and the fix, and AGENTS.md carries the table of what each catches. A separate page describing them would be a second copy that goes stale the first time a message is improved.",

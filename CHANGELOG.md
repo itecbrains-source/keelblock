@@ -9,13 +9,29 @@ entries are what make the rest worth believing. Full reproductions live in
 
 ## [Unreleased]
 
-The tenancy foundation, the proof harness, the gates, sign-in, organizations, invitations and the
-upgrade path (SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-006, SPEC-013), and the
-handover trial that measures whether any of it can be picked up by a stranger (SPEC-024). Billing and
-the remaining product surfaces are specced and not built — run `npm run status`, which reads the
-repository rather than this paragraph.
+The tenancy foundation, the proof harness, the gates, sign-in, organizations, invitations, the
+upgrade path and the scaffolder that produces a project able to take one (SPEC-001, SPEC-002,
+SPEC-003, SPEC-004, SPEC-005, SPEC-006, SPEC-011, SPEC-013), and the handover trial that measures
+whether any of it can be picked up by a stranger (SPEC-024). Billing and the remaining product
+surfaces are specced and not built — run `npm run status`, which reads the repository rather than
+this paragraph.
 
 ### Added
+
+- **`create-keelblock-app` (SPEC-011), and the thing it is actually for.** Bar B-1 claims a running
+  application in five minutes; before this it was not unmet but **unfalsifiable**, because the tool
+  did not exist. The interesting half is not copying files. Scaffolding and upgrading are one
+  decision seen twice, and the memo measured what happens when it is got wrong: a plain tarball copy
+  — the ordinary shape of a `create-*-app` output — dies on `scripts/upgrade.mjs`'s first command
+  with `fatal: bad object`, while the same copy with a remote pointing home takes 52 upstream-owned
+  files cleanly. B-10's job was green throughout, because its scaffold is a `git worktree` carrying
+  every ref, which no buyer will have. So a generated project records its release **and** commit,
+  keeps the remote, and is told the two-command upgrade. Five minutes is now a CI job with a budget.
+  What a generated project does **not** get was measured too, by building one and running
+  `npm run check` inside it: keelblock's review records cite keelblock's commits and cannot travel,
+  and its research and content gates would have failed a buyer's build 88 days after generation
+  demanding they re-read Google's SEO documentation — a dated fuse, fixed before shipping and the
+  answer to DEF-010.
 
 - **The handover trial (SPEC-024), and what it found.** B-11 asks whether someone who has never seen
   this repository can add a tenant-scoped feature and be told when they get it wrong. A fresh agent

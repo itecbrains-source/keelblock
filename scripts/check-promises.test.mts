@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { parseBars, parseCoverage, checkBarCoverage } from './check-promises.mjs';
+import {
+  parseBars,
+  parseCoverage,
+  checkBarCoverage,
+  reviewApplicability,
+} from './check-promises.mjs';
 
 const all = { isRegistered: () => true, isAuthored: () => true };
 const bars = [{ id: 'B-1', claim: 'scaffolds in five minutes' }];
@@ -90,5 +95,33 @@ describe('registration is read from the spec index, not from the file', () => {
       .map((f) => f.slice(0, 8));
     expect(authored.length).toBeGreaterThan(3);
     for (const id of authored) expect(isRegistered(id, index)).toBe(true);
+  });
+});
+
+describe('reviewApplicability — SPEC-011 REQ-5, decided by what is present', () => {
+  it('an ordinary keelblock checkout owes an audit, and has one', () => {
+    expect(reviewApplicability({ auditExists: true, generated: false })).toEqual({
+      applies: true,
+      reason: null,
+    });
+  });
+
+  it('MUTATION: deleting the review directory FAILS rather than skipping the rule', () => {
+    // The state this replaced: `if (existsSync(AUDIT))` alone, so removing docs/review stopped the
+    // whole review check silently. A check satisfied by absence is satisfied by failure.
+    expect(reviewApplicability({ auditExists: false, generated: false })).toEqual({
+      applies: false,
+      reason: 'missing-audit',
+    });
+  });
+
+  it('a project that SAYS it was generated is exempt, and only then', () => {
+    expect(reviewApplicability({ auditExists: false, generated: true }).reason).toBe('generated');
+  });
+
+  it('declaring yourself generated does not smuggle past an audit you do have', () => {
+    // A generated project has no records to answer; keelblock cannot become exempt by writing a
+    // provenance file, because it would still be reported as generated and read as such downstream.
+    expect(reviewApplicability({ auditExists: true, generated: true }).reason).toBe('generated');
   });
 });

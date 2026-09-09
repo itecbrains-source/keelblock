@@ -16,6 +16,7 @@
  *      defect this whole project is organized against, and it is easiest to commit in a FAQ
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { isGeneratedProject } from './check-promises.mjs';
 
 const MANIFEST = 'docs/content/MANIFEST.json';
 const FINDINGS = 'docs/FINDINGS.md';
@@ -243,6 +244,12 @@ export function checkDifferentiators(manifest, specs, battlecard, findings, exis
 }
 
 function main() {
+  // Same reason as `research`: routing keelblock's 56 findings to keelblock's blog is keelblock's
+  // editorial problem. A buyer inherits the corpus as the reasoning behind their code (DEF-010).
+  if (isGeneratedProject()) {
+    console.log('content: not applicable — generated project');
+    return;
+  }
   const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
   const findings = findingIds(readFileSync(FINDINGS, 'utf8'));
   const faq = existsSync(FAQ) ? parseFaq(readFileSync(FAQ, 'utf8')) : [];
