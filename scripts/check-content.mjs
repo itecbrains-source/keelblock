@@ -16,6 +16,7 @@
  *      defect this whole project is organized against, and it is easiest to commit in a FAQ
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { stripFences } from './prose.mjs';
 import { isGeneratedProject } from './check-promises.mjs';
 
 const MANIFEST = 'docs/content/MANIFEST.json';
@@ -29,7 +30,8 @@ export const findingIds = (md) => [...md.matchAll(/^## (F-\d+)\b/gm)].map((m) =>
 
 /** @param {string} md @returns {Array<{q: string, cites: string[]}>} */
 export function parseFaq(md) {
-  return md
+  // A fenced block showing HOW to cite an answer is not itself a citation.
+  return stripFences(md)
     .split(/^### /m)
     .slice(1)
     .map((block) => {

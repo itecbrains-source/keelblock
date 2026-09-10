@@ -2166,3 +2166,80 @@ down in prose and left it there. `src/dev-origins.test.mts` is the gate: every h
 setup instructions hand a reader must be an allowed dev origin. The general shape is that **an
 observation recorded as narrative is not a fix**, and a findings document is only worth its cost when
 something in the build can fail because of what it says.
+
+## F-66 · Gates that could not tell documentation from instruction — and one that had already bent its own prose to avoid a second one
+
+**2026-09-09 · found by probing the defect F-64 produced against itself · four fixed, one recorded and left alone**
+
+F-64's fix produced a false positive on its own docblock: a comment written to EXPLAIN the new
+locale rule quoted a `t('key')` call as its example, and check 2 reported a use of a key that does
+not exist. The extractor was reading the file rather than the code. That was fixed in place, and the
+obvious question — **which other gates do this?** — was asked and not answered.
+
+Answered here, by probing each gate with a realistic piece of documentation rather than by reading
+for the flaw. The test is the same shape in every case: put the thing the gate looks for inside a
+comment or a fenced block, where it is plainly a picture and not an instruction, and see whether the
+gate reacts.
+
+| gate                                  | probe                                                        | before                 |
+| ------------------------------------- | ------------------------------------------------------------ | ---------------------- |
+| `check-locale` · `findRawLinkImports` | ADR-010 taught by quoting the import it forbids              | **reported**           |
+| `check-deferrals`                     | a docblock explaining the `TODO`/`FIXME`/`@defer` convention | **reported ×2**        |
+| `check-contracts`                     | a spec showing the AC table format in a fence                | **reported**           |
+| `check-promises`                      | `PRODUCT.md` showing the acceptance-bar format in a fence    | **reported**           |
+| `check-content`                       | `FAQ.md` showing how to cite an answer, in a fence           | **reported**           |
+| `check-boundaries`                    | the admin import and `'use cache'` quoted in a docblock      | silent                 |
+| `check-policies`                      | —                                                            | silent by construction |
+
+`check-research`, `check-freshness` and `check-generated` read JSON and generated artifacts. They
+have no prose to misread, which is not immunity so much as never having been exposed.
+
+**The two that were silent are the finding's better half**, because neither is careful — both read
+something already structured and never see text at all. `check-boundaries` resolves the import graph
+through the TypeScript AST. `check-policies` reads TAP output rather than the `.sql` files and says
+why in as many words: _"a commented-out assertion is still in the source"_.
+
+**And that same sentence contains the sharpest thing here.** It goes on to explain why the rule
+refuses to enumerate the two TAP directive spellings: doing so _"would put a debt-marker word in a
+file the deferral linter reads"_. Somebody hit the `check-deferrals` false positive, understood it
+exactly, **steered their prose around it, and recorded the workaround instead of the defect.** The
+gate's own header already admits it "cannot scan itself" and calls that "a real blind spot". Both
+notes are correct, both are adjacent to the defect, and neither is a finding or a failing test — the
+F-65 shape, one document over.
+
+**Fixed** for the four where stripping is unambiguous, via two shared, position-preserving helpers in
+`scripts/prose.mjs`. Nothing real ever lives inside a fence or a comment for these rules — an import
+in a comment does not execute, an AC row in a fence is not a criterion — so there is no true positive
+to lose, and each fix is pinned in both directions: the documentation passes, and a real violation
+still fails **on the same line number it did before**.
+
+`stripComments` uses the compiler's scanner rather than a regular expression, and the mutation proof
+says why: the obvious `/\/\*[\s\S]*?\*\//` treats the `'/*'` inside a string literal as a comment
+opening and blanks real code to the next `*/`. That trades a loud false positive for a silent false
+negative, which is the one direction a gate must never fail in — and it is how this fix could have
+been worse than the defect.
+
+**`check-deferrals` is deliberately NOT fixed**, and the reason is the point. Its markers _live_ in
+comments — that is what a debt marker is — so stripping them would blind it completely, and the only
+alternative, narrowing the matcher so prose escapes, buys a quiet gate at the price of a missed
+`TODO`. For a debt linter, loud and wrong is the safer failure. Worth knowing before deciding: **the
+repository currently contains zero markers**, so this rule has never had a true positive to protect,
+and its only measured effect so far is one false positive and one author writing around it.
+
+**One gate goes the other way on purpose, and it is right to.** `status.mjs` scans fenced blocks for
+stale counts precisely BECAUSE they are display: its worst instance was a fenced `npm run check`
+transcript in the README, and _"a reader acts on a transcript exactly as on a sentence"_. It strips
+inline code spans instead, so that a finding about a stale count can quote one. That is the inverse
+call to the one made here, in the same repository, and both are correct — which means the rule is not
+"strip fences" but **ask whether this rule's subject can do harm from inside a picture**. A wrong
+count in a transcript misleads a reader. An example AC row in a fence misleads nobody.
+
+That distinction was tested rather than assumed: writing this entry tripped `status` on the phrase it
+originally opened with, a count of gates. The available dodge was to wrap the number in backticks,
+which `claimsIn` exempts — and taking it would have been the `check-policies` move exactly: steering
+the prose around a gate instead of answering it. The sentence was rewritten to stop asserting a count.
+
+The general shape: **a gate is a reader, and a reader that cannot tell a quotation from a statement
+will eventually correct the dictionary.** Most of these were reporting on the documentation that
+explains them, which means the cost of documenting a rule was a failing build — the exact incentive
+that leaves rules undocumented.

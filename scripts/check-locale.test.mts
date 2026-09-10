@@ -6,10 +6,10 @@ import {
   extractCalls,
   placeholderNames,
   findUnfilledArguments,
-  stripComments,
   compare,
   findRawLinkImports,
 } from './check-locale.mjs';
+import { stripComments } from './prose.mjs';
 
 const base = ['home.title', 'home.tagline', 'error.retry'];
 
@@ -86,6 +86,25 @@ describe('locale gate', () => {
 
   it('a mention in a comment is not an import', () => {
     expect(findRawLinkImports(['a.tsx'], () => "// never import from 'next/link'")).toEqual([]);
+  });
+
+  it('MUTATION: the import quoted in a BLOCK comment is not an import either', () => {
+    // This is the case the test above could not see. It passed because `// never import …` puts a
+    // non-whitespace character in front of `import`, so the anchored pattern missed it by accident
+    // rather than by design — the test and the code agreed for a reason neither of them meant.
+    // A docblock teaching ADR-010 by quoting the import it forbids is the most natural way anyone
+    // would write that comment, and it was reported as a violation of the rule it was explaining.
+    const docblock = `/*\n * ADR-010. Never write:\nimport Link from 'next/link';\n * Use '@/i18n/navigation'.\n */`;
+    expect(findRawLinkImports(['a.tsx'], () => docblock)).toEqual([]);
+  });
+
+  it('MUTATION: a real import is still caught, on the right line', () => {
+    // The direction that matters. Stripping comments to silence a false positive is only correct if
+    // the true positive survives it — and keeps its position, since the message prints one.
+    const src = `/*\n * a comment\n */\nimport Link from 'next/link';`;
+    const bad = findRawLinkImports(['a.tsx'], () => src);
+    expect(bad).toHaveLength(1);
+    expect(bad[0]).toMatch(/^a\.tsx:4 —/);
   });
 
   // ── check 4: a message's ICU arguments must be supplied by its call site ───

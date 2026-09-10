@@ -23,6 +23,7 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
+import { stripComments } from './prose.mjs';
 
 const MESSAGES = 'messages';
 const SRC = 'src';
@@ -35,17 +36,6 @@ export function flatten(obj, prefix = '') {
       ? flatten(v, `${prefix}${k}.`)
       : [`${prefix}${k}`],
   );
-}
-
-/**
- * Comments are not call sites. Without this, a docblock that quotes `t('key')` to explain a rule
- * registers as a use of that key — which is how a comment written for check 4 made check 2 report a
- * key that does not exist. Exported for tests.
- */
-export function stripComments(source) {
-  // The lookbehind keeps `https://` out of it; nothing here needs to survive being wrong about a
-  // string literal, since the only consumers are the two key extractors.
-  return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(?<![:\\])\/\/[^\n]*/g, ' ');
 }
 
 /**
@@ -174,6 +164,14 @@ export function findUnfilledArguments({ messages, calls }) {
  * nothing surfaces — until a second locale exists and every such link silently drops the prefix.
  * By then they are everywhere. Exported for tests.
  *
+ * Comments are stripped first, and this rule is the reason the helper is shared rather than local to
+ * the two key extractors. It was left reading raw lines when they were fixed, and a docblock that
+ * teaches ADR-010 by quoting the import it forbids — the most natural way anyone would write that
+ * comment — was reported as a violation of it. The old test passed only because its example was
+ * `// never import from 'next/link'`, where the `//` puts a non-whitespace character in front of
+ * `import`; a block comment or an indented example defeats it, which is a test that agreed with the
+ * code for a reason neither of them meant.
+ *
  * @param {string[]} files
  * @param {(f: string) => string} read
  * @returns {string[]}
@@ -181,7 +179,7 @@ export function findUnfilledArguments({ messages, calls }) {
 export function findRawLinkImports(files, read) {
   const bad = [];
   for (const file of files) {
-    read(file)
+    stripComments(read(file))
       .split('\n')
       .forEach((line, i) => {
         if (/^\s*import\s+.*\bfrom\s+['"]next\/link['"]/.test(line)) {

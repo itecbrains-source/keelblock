@@ -16,6 +16,7 @@
  * whole mechanism — it means the person changing B can see who depends on it without going looking.
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { stripFences } from './prose.mjs';
 
 const SPEC_DIR = 'spec';
 
@@ -36,7 +37,11 @@ const CELLS = /^\s*\|(.+)\|\s*$/;
  * @typedef {{ id: string, status: string, contracts: string[], evidence: Evidence[], reqs: string[] }} Spec
  * @param {string} id @param {string} text @returns {Spec}
  */
-export function parseSpec(id, text) {
+export function parseSpec(id, rawText) {
+  // Fenced blocks are stripped first: a spec that DOCUMENTS the AC table format by showing an
+  // example row was read as carrying that row, and reported for citing evidence nobody can open.
+  // Line numbers are preserved by the stripper, so anything reporting a position stays right.
+  const text = stripFences(rawText);
   const status = (text.match(/^> Status: `(\w+)`/m) ?? [, 'unknown'])[1];
   const contractLine = (text.match(/^> Contracts: (.+)$/m) ?? [, ''])[1];
   const contracts = [...contractLine.matchAll(/SPEC-\d+/g)].map((m) => m[0]);
