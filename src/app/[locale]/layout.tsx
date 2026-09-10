@@ -23,8 +23,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale();
 
   return (
-    <html lang={locale}>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    // The font variables belong on `<html>`, not on `<body>`, and the difference was two months of
+    // serif. `globals.css` applies `font-sans` to `html`, which resolves `var(--font-geist-sans)` at
+    // the ROOT — and `next/font` was defining that variable one level down, on `<body>`, where the
+    // root cannot see it. A custom property that is out of scope is not an error: the declaration is
+    // simply dropped and the element falls back to the browser default (F-70).
+    //
+    // It also makes the fonts consistent with every other token in this project: `--background`,
+    // `--foreground` and the rest all live on `:root`, which is this element.
+    <html lang={locale} className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="antialiased">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

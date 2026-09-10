@@ -45,5 +45,26 @@ export function safeNext(next: string | null | undefined): string {
   // by something else — the classic double-decode. Nothing legitimate needs them here.
   if (/%2f|%5c/i.test(next)) return DEFAULT_AFTER_SIGN_IN;
 
-  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  const candidate = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+
+  // **Ask the same question of the ANSWER.** This is the half that was missing, and the omission was
+  // a live open redirect: `new URL('/..//evil.example', origin)` normalises the `/..` away and leaves
+  // `pathname === '//evil.example'`. The check above therefore PASSED — the input really did resolve
+  // on-origin — and the function then returned a protocol-relative PATHNAME, which the caller
+  // re-resolves against the real origin, where `//evil.example` is a host and not a path.
+  //
+  // The fix is not `startsWith('//')`. That would work and would contradict this file's own rule two
+  // paragraphs up: a blocklist is a list of the payloads someone thought of. The rule was right and
+  // was applied to the input only; applying it to the output is the rule executed rather than
+  // amended. A generated property test over every combination of URL metacharacters found 251
+  // escaping inputs against the old version, of which the reported four were a sample.
+  let reResolved: URL;
+  try {
+    reResolved = new URL(candidate, PROBE_ORIGIN);
+  } catch {
+    return DEFAULT_AFTER_SIGN_IN;
+  }
+  if (reResolved.origin !== PROBE_ORIGIN) return DEFAULT_AFTER_SIGN_IN;
+
+  return candidate;
 }

@@ -116,7 +116,7 @@ describe('check runner', () => {
     // Shrink-only ratchet, tightened 13 → 10 when five exemptions were found past the expiry
     // written in their own "Removed when" column. Tightening it is the point: a ceiling that stays
     // where it was set records the high-water mark rather than the current state.
-    expect(exemptions.length).toBeLessThanOrEqual(10);
+    expect(exemptions.length).toBeLessThanOrEqual(9);
   });
 
   it('the isolation gates are marked as needing the database', () => {

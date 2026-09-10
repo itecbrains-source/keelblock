@@ -1,8 +1,19 @@
-# External review — 2026-09-08
+# Adversarial review — 2026-09-08
 
-An adversarial review of keel, commissioned at commit `9c0721c`, written to the standard the
-repository sets for itself: **nothing here is asserted that was not reproduced**, and every claim
-names the command that produces it.
+An adversarial review of keel, run at commit `9c0721c`, written to the standard the repository sets
+for itself: **nothing here is asserted that was not reproduced**, and every claim names the command
+that produces it.
+
+> **Not an external review, and the label is corrected rather than defended.** This was produced by
+> a session the owner ran, and DEF-020 already draws exactly that line for the handover trial — "a
+> session the author spawned is not one". Calling it external claimed independence it does not have,
+> in the one folder whose entire subject is claims that outrun their evidence. The reviewer asked for
+> the correction on themselves, which is the strongest version of the point the folder is making.
+>
+> A genuinely external review — commissioned by the owner, conducted with no access to these
+> sessions — arrived 2026-09-10 and is a separate artifact. It found defects in shipped code that
+> this one missed, including an open redirect, an application rendering in the browser default serif,
+> and environment validation that executed in no process.
 
 The brief was to assume the project fails and go looking for the reason. Read
 [`00-VERDICT.md`](00-VERDICT.md) first; it is the only document that summarises.

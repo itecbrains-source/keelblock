@@ -6,6 +6,13 @@ permanent while looking supervised.
 
 **This list may only shrink**, and a test asserts it matches `knip.json` exactly.
 
+**2026-09-10 (later) — `src/lib/env.ts` removed, by the rule added earlier the same day.** Its row
+said the module was "one import away from live, and it already validates on every server boot **once
+anything imports it**". Nothing did: F-71 measured that `env.ts` executed in no process, so the
+boot-time validation its docblock promised never happened. `src/instrumentation.ts` now imports it at
+server start, the exemption expired the moment that landed, and the `unused` gate said so on the next
+run rather than in a review six months later. The qualifier was sitting in this table the whole time.
+
 **2026-09-10 — five exemptions removed, and how they were found.** `@supabase/ssr`,
 `@supabase/supabase-js`, `server-only`, `@testing-library/react` and `@testing-library/jest-dom` were
 all past the expiry written in their own "Removed when" column: SPEC-004 shipped and wired the
@@ -19,7 +26,6 @@ those hints, so the tool's own answer to "is this exemption still needed?" stops
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | `src/lib/supabase/**`          | The three clients are written and **imported by nothing** — genuinely orphaned by the project's own no-orphan-stubs rule. They are the substrate SPEC-004 (auth) consumes, and deleting them to re-add them next week is churn. Tracked as **DEF-004**, whose trigger fires when SPEC-004 is done.                                                                                                 | SPEC-004 wires them          |
 | `stripe`                       | Declared ahead of SPEC-007 (billing). Same class.                                                                                                                                                                                                                                                                                                                                                  | SPEC-007                     |
-| `src/lib/env.ts`               | The validated-environment loader. Consumed by the Supabase server clients, which are themselves exempted under DEF-004 — so knip sees a chain that reaches nothing. Not dead: it is one import away from live, and it already validates on every server boot once anything imports it.                                                                                                             | SPEC-004, with DEF-004       |
 | `dotenv`                       | Used by tooling that reads `.env.local` outside the Next runtime.                                                                                                                                                                                                                                                                                                                                  | —                            |
 | `tailwindcss`                  | **False positive.** Consumed through `postcss.config.mjs`, which knip does not trace.                                                                                                                                                                                                                                                                                                              | knip learns PostCSS configs  |
 | `src/lib/db/database.types.ts` | **Generated**, not written — `npm run generate` produces it from the live schema, and the `generated` gate fails when it drifts. Imported only by the Supabase clients, which are themselves exempted under DEF-004, so knip sees a chain reaching nothing. It is the opposite of dead: it is the artifact that stops a renamed column from compiling cleanly and being `undefined` in production. | SPEC-004, with DEF-004       |

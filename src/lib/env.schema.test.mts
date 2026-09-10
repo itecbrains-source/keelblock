@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { stripComments } from '../../scripts/prose.mjs';
 import { validateEnv } from './env.schema';
 
 const valid = {
@@ -62,5 +64,29 @@ describe('environment validation', () => {
       NEXT_PUBLIC_SERVICE_ROLE_KEY: 'leak',
     });
     expect(!r.ok && r.problems.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('the validation actually runs — F-71', () => {
+  /**
+   * `env.ts` promises that a misconfigured deployment "fails at boot with every problem listed".
+   * The schema above proves the validator is correct; this proves something CALLS it.
+   *
+   * It did not, for the life of the module. `env.ts` was imported only by
+   * `server-only/admin.ts`, and the only things naming `createAdminClient` were fixture strings in
+   * a gate's own test — so `export const env = load()` ran in no process and the docblock described
+   * a boot that never happened. A correct validator nothing invokes is indistinguishable, from
+   * outside, from no validator.
+   */
+  it('an instrumentation hook imports the environment module', () => {
+    const hook = stripComments(readFileSync('src/instrumentation.ts', 'utf8'));
+    expect(hook, 'src/instrumentation.ts must export register()').toMatch(
+      /export\s+async\s+function\s+register\s*\(/,
+    );
+    expect(
+      hook,
+      `register() must import '@/lib/env' — it is the only hook Next.js calls once per server ` +
+        `instance before any request, and therefore the only place "at boot" can mean what env.ts says`,
+    ).toMatch(/import\(\s*'@\/lib\/env'\s*\)/);
   });
 });

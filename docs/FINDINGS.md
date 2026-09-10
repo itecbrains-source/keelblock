@@ -2387,3 +2387,97 @@ by whoever wrote the plan — and neither can fail a build. ADR-018 was the firs
 `check-policies` workaround the second (F-66). The pattern is not that this project fails to notice
 things. It is that **noticing is where the work stops**, and a document that names its own gap reads
 as diligence right up until the gap costs something.
+
+## F-70 · An open redirect in the auth callback, an application rendering in the browser default serif, and environment validation that ran in no process — none of which twelve green gates could see
+
+**2026-09-10 · found by a genuinely external review · all three fixed**
+
+A second review, commissioned by the owner and conducted without access to these sessions, reported
+defects in shipped code. Three were re-derived by execution before anything was changed. All three
+reproduced exactly.
+
+### The open redirect
+
+`safeNext` is the function that decides where the auth callback sends a browser, and the callback is
+reached by clicking a link in an email — a phishing primitive with keelblock's own domain in front
+of it.
+
+```
+"/..//evil.example"     -> "//evil.example"    resolves to https://evil.example
+".//evil.example"       -> "//evil.example"    resolves to https://evil.example
+"/..//..//evil.example" -> "//evil.example"    resolves to https://evil.example
+"/..//evil.example/x"   -> "//evil.example/x"  resolves to https://evil.example
+```
+
+**The origin check was not wrong; it was asked of the wrong thing.** `new URL('/..//evil.example',
+origin)` normalises the `/..` away and leaves `pathname === '//evil.example'`, so the input really
+did resolve on-origin and the check really did pass. The defect was the **return value** — a
+protocol-relative pathname, which the caller re-resolves against the real origin, where
+`//evil.example` is a host and not a path.
+
+The file's own docblock had already written the fix: _"resolve it and check the origin, rather than
+pattern-matching for known-bad shapes. A blocklist … is a list of the payloads someone thought of;
+this asks the question the browser will ask."_ That reasoning was right and had been applied to the
+input only. Adding `startsWith('//')` would also work and would contradict the rule two paragraphs
+above it. **Applying the rule to the output is the rule executed rather than amended.**
+
+The old test is the finding in miniature. It ended with `INVARIANT: whatever comes back cannot leave
+the origin it is resolved against`, under a comment reading _"stated as one property rather than a
+list of known payloads, because a list is always the set someone thought of"_ — and then iterated a
+list of eight. A generated property test over every combination of URL metacharacters up to four
+fragments finds **251 escaping inputs** against the old function. The reported four were a sample.
+
+### The serif
+
+Every page rendered in the browser's default serif, and **this one is mine**: `deded68` ran
+`shadcn init`, which overwrote `--font-sans: var(--font-geist-sans)` with `--font-sans:
+var(--font-sans)`. A custom property defined as itself is an invalid cycle; the declaration is
+dropped and the element falls back. In the same session I noticed the adjacent smell — `body {
+font-family: Arial }` — wrote that "the token work will resolve it", and did not look again.
+
+**The reported one-line fix was necessary and not sufficient**, which only came out by rendering the
+page. With the token corrected the built CSS read `--font-sans:var(--font-geist-sans)` and the
+browser still reported `Times`: `next/font` was defining `--font-geist-sans` on `<body>`, while
+`globals.css` applies `font-sans` to `html`, one level **up**, where the property is not in scope.
+Out-of-scope is not an error either — the declaration is simply dropped. The variables now sit on
+`<html>`, alongside every other token in the project, all of which were already on `:root`.
+
+**Nothing in this repository could have noticed.** The CSS is syntactically valid, so it compiles;
+`next build` passes, `typecheck` passes, 594 tests pass, and the font Next loads is still fetched and
+still applied — so even the network tab looks right. The only instrument that catches a page being in
+Times New Roman is a person looking at it, which is the second review's Theme 4 stated as a fact
+about this repository rather than as an opinion.
+
+### The validation that never ran
+
+`src/lib/env.ts` promises that importing it "validates and throws — so a misconfigured deployment
+fails at boot with every problem listed". Measured: its only importer is
+`src/lib/supabase/server-only/admin.ts`, and the only things naming `createAdminClient` are **fixture
+strings inside `scripts/check-boundaries.test.mts`**. `export const env = load()` executed in no
+process. Two claims in this very document — that keelblock "refuses at boot" a credential-shaped
+`NEXT_PUBLIC_` variable, and that a bad enum is "a boot error" — were false for the life of the
+module.
+
+A correct validator that nothing invokes is indistinguishable, from outside, from no validator.
+`src/instrumentation.ts` calls it in `register()`, the one hook Next runs once per server instance
+before any request. Verified by booting with `NEXT_PUBLIC_SUPABASE_URL="not-a-url"`: the server now
+refuses to start and lists the problem.
+
+**And that fix expired an exemption within the minute.** `src/lib/env.ts` was exempted in
+`knip.reasons.md` as "one import away from live, and it already validates on every server boot **once
+anything imports it**". The qualifier was the finding, sitting in the exemption table the whole time.
+The `unused` gate added hours earlier (F-68) reported the expiry on the next run; the ratchet is
+tightened 10 → 9.
+
+### What the three have in common
+
+Each was invisible to every gate for the same reason, and it is not that the gates are weak. **Every
+gate asks whether a claim is true. None asks whether the product works.** An open redirect is a
+correct function with the wrong argument; a serif page is valid CSS; a validator nobody calls is a
+passing unit test. Twelve green gates, 594 passing tests, and the front door did not open.
+
+That is the second review's Theme 3 — "no gate can fail because the project is spending too much on
+itself" — and Theme 4, "nobody has tried to use it". The measurement offered with them is 20.2% of
+commits touching `src/` and a 3.87:1 ratio of gate code to application code. This entry does not
+resolve that, and it should not: three fixes are not an answer to a structural finding. It records
+that the finding arrived with evidence and that the evidence reproduced.

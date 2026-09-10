@@ -52,8 +52,9 @@ describe('safeNext', () => {
   });
 
   it('INVARIANT: whatever comes back cannot leave the origin it is resolved against', () => {
-    // Stated as one property rather than a list of known payloads, because a list is always the set
-    // someone thought of.
+    // This test used to iterate a hand-written payload list under a comment saying "a list is always
+    // the set someone thought of" — which is what it was. It missed `/..//evil.example`, and that
+    // payload shipped. The list is kept as named regression cases; the property below is the check.
     const payloads = [
       '//evil.example',
       'https://evil.example',
@@ -63,11 +64,53 @@ describe('safeNext', () => {
       '/%2F%2Fevil.example',
       '/ok',
       null,
+      // The four that leaked, from the 2026-09-10 external review. `new URL` normalises the `/..`
+      // away and leaves a protocol-relative PATHNAME, so the origin check passed and the RETURN
+      // VALUE was the payload.
+      '/..//evil.example',
+      './/evil.example',
+      '/..//..//evil.example',
+      '/..//evil.example/x',
     ];
     for (const p of payloads) {
       expect(new URL(safeNext(p), 'https://app.example.com').origin).toBe(
         'https://app.example.com',
       );
     }
+  });
+
+  it('PROPERTY: no combination of URL metacharacters produces an off-origin result', () => {
+    // Generated rather than listed. The defect this replaces was not a payload nobody could think
+    // of — it was a payload nobody DID think of, which is the failure mode a table cannot fix.
+    // Every sequence of up to four fragments is built and resolved; the assertion is the one
+    // sentence the function exists to guarantee.
+    const FRAGMENTS = ['/', '//', '.', '..', '\\', '%2f', ':', '?', '#', 'a', 'evil.example'];
+    const ORIGIN = 'https://app.example.com';
+
+    const inputs: string[] = [];
+    const build = (prefix: string, depth: number) => {
+      if (depth === 0) return;
+      for (const f of FRAGMENTS) {
+        const next = prefix + f;
+        inputs.push(next);
+        build(next, depth - 1);
+      }
+    };
+    build('', 4);
+
+    const escaped: string[] = [];
+    for (const input of inputs) {
+      const out = safeNext(input);
+      let origin: string;
+      try {
+        origin = new URL(out, ORIGIN).origin;
+      } catch {
+        origin = '(unparseable)';
+      }
+      if (origin !== ORIGIN) escaped.push(`${JSON.stringify(input)} -> ${JSON.stringify(out)}`);
+    }
+
+    expect(inputs.length).toBeGreaterThan(10000);
+    expect(escaped.slice(0, 10), `${escaped.length} input(s) escaped the origin`).toEqual([]);
   });
 });

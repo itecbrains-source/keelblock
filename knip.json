@@ -5,12 +5,7 @@
     "scripts/*.mjs"
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{mjs,mts}"],
-  "ignore": [
-    "src/lib/supabase/**",
-    "src/lib/env.ts",
-    "src/lib/db/database.types.ts",
-    "src/components/ui/**"
-  ],
+  "ignore": ["src/lib/supabase/**", "src/lib/db/database.types.ts", "src/components/ui/**"],
   "ignoreDependencies": ["stripe", "dotenv", "tailwindcss", "shadcn"],
   "ignoreBinaries": ["psql", "supabase"]
 }
