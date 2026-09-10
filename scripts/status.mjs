@@ -18,6 +18,7 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { STEPS } from './check.mjs';
 import {
   parseDispositions,
   parseFindings,
@@ -46,8 +47,15 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
 
   return {
     findings: (read('docs/FINDINGS.md').match(/^## F-\d+/gm) ?? []).length,
+    // Two different numbers, and both are printed, because printing one made it read as a mapping
+    // to the other. SPEC-003's ceiling counts `scripts/check-*.mjs` RULES — check.mjs says so in as
+    // many words about `build`: "Not a gate … this is a build step, as typecheck is." `npm run
+    // check` runs STEPS, which includes those build steps and excludes the sub-gates check-promises
+    // spawns. Neither count is wrong; reporting one of them beside the command that produces the
+    // other was (docs/TESTING.md recorded the disagreement and deliberately left it undecided).
     gates: fs.readdirSync('scripts').filter((f) => f.startsWith('check-') && f.endsWith('.mjs'))
       .length,
+    steps: STEPS.length,
     specs,
     adrs: fs.readdirSync('docs/adr').filter((f) => f.endsWith('.md')).length,
     memos: fs.readdirSync('research').filter((f) => f.endsWith('.md')).length,
@@ -374,7 +382,7 @@ function main() {
   }
   console.log(`
   DEFERRALS  ${c.openDefs} open · ${c.closedDefs} closed
-  GATES      ${c.gates} · run \`npm run check\`
+  GATES      ${c.gates} rule(s) in scripts/ · \`npm run check\` runs ${c.steps} steps
   EVIDENCE   ${c.findings} findings · ${c.adrs} ADRs · ${c.memos} memos · ${c.sources} pinned sources${
     c.review
       ? `

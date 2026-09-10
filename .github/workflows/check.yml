@@ -7,6 +7,14 @@ on:
 # The scheduled clean-clone build lives in nightly.yml. It was weekly here, which caught time-based
 # rot up to seven days late and did not match the claim in PRODUCT.md that the proof runs every night.
 
+# The default token is broad; every job here only READS the repository. `codeql` re-grants itself
+# `security-events: write` per job, which is the shape GitHub documents — narrow at the top, widen
+# where a job genuinely needs it. Added 2026-09-10 after a derived rule started asking which
+# workflows spend a credential and found this one interpolating `secrets.GITHUB_TOKEN` with no
+# declaration at all (F-76).
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest

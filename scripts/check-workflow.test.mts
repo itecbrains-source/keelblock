@@ -261,9 +261,14 @@ describe('rules that hold across every workflow', () => {
   const all = files.map((f) => [f, load(readFileSync(`.github/workflows/${f}`, 'utf8'))] as const);
 
   it('enumerates the directory rather than a hand-written list', () => {
-    // The list this replaces named two files. A third existed.
-    expect(files.length).toBeGreaterThanOrEqual(3);
-    expect(files).toContain('deploy.yml');
+    // The list this replaces named two files while a third existed. Asserting the THIRD one's name
+    // here was the next mistake, and CI caught it: `deploy.yml` publishes keelblock.dev and is
+    // excluded from every generated project, so naming it made this suite fail inside the buyer's
+    // repository — a rule proven on this repo applied to a composition where it does not hold,
+    // which is the family it was written about. What must be true in both is the derivation.
+    expect(files.length).toBeGreaterThanOrEqual(2);
+    expect(files.every((f) => /\.ya?ml$/.test(f))).toBe(true);
+    expect(all.every(([, w]) => Object.keys(w.jobs ?? {}).length > 0)).toBe(true);
   });
 
   it('MUTATION: every install runs with --ignore-scripts, in every workflow', () => {
@@ -314,13 +319,21 @@ describe('rules that hold across every workflow', () => {
     ).toEqual([]);
   });
 
-  it('a workflow that spends a credential says which permissions it needs', () => {
-    // Not yet true of check.yml and nightly.yml, and deliberately scoped to the one that holds a
-    // secret rather than asserted everywhere at once — a gate that cannot pass on the day it lands
-    // is a gate that gets exempted (ADR-023).
-    const deploy = load(readFileSync('.github/workflows/deploy.yml', 'utf8')) as Workflow & {
-      permissions?: unknown;
-    };
-    expect(deploy.permissions, 'deploy.yml holds VERCEL_TOKEN').toBeDefined();
+  it('every workflow that spends a credential declares its permissions', () => {
+    // Derived from what each file DOES rather than from its name: any workflow interpolating a
+    // secret must narrow the token it runs with. Scoped to credential-holding workflows rather than
+    // asserted everywhere at once, because check.yml and nightly.yml do not declare one yet and a
+    // gate that cannot pass on the day it lands is a gate that gets exempted (ADR-023).
+    //
+    // In a generated project this finds nothing, and that is correct rather than vacuous: the buyer
+    // has no keelblock deploy workflow, so there is no credential to narrow.
+    const offenders: string[] = [];
+    for (const [file, w] of all) {
+      const text = readFileSync(`.github/workflows/${file}`, 'utf8');
+      const spendsSecret = /\$\{\{\s*secrets\./.test(text);
+      const declares = (w as Workflow & { permissions?: unknown }).permissions !== undefined;
+      if (spendsSecret && !declares) offenders.push(file);
+    }
+    expect(offenders, 'a workflow holding a secret must narrow its token').toEqual([]);
   });
 });

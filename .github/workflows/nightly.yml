@@ -10,6 +10,14 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch:
 
+# The default token is broad; every job here only READS the repository. `codeql` re-grants itself
+# `security-events: write` per job, which is the shape GitHub documents — narrow at the top, widen
+# where a job genuinely needs it. Added 2026-09-10 after a derived rule started asking which
+# workflows spend a credential and found this one interpolating `secrets.GITHUB_TOKEN` with no
+# declaration at all (F-76).
+permissions:
+  contents: read
+
 jobs:
   # What only TIME changes: a new runner image, a Node patch, a `latest` Supabase CLI, a rebuilt
   # Docker image, and the freshness stamps, which expire on a date rather than on a commit. This is

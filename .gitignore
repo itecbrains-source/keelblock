@@ -12,3 +12,9 @@ supabase/tests/rls/
 rls-report.json
 tsconfig.tsbuildinfo
 .rlsautotest-report.json
+
+# Playwright run output. `.last-run.json` was TRACKED until 2026-09-10, so every local
+# `npm run journey` produced a spurious diff — and docs/TESTING.md had recorded the symptom
+# ("rewritten by Playwright without a trailing newline") and fixed it by adding the file to
+# .prettierignore rather than by not tracking a generated file (F-78).
+test-results/
