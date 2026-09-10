@@ -126,6 +126,14 @@
       "verifiedOn": "2026-09-09",
       "specs": ["SPEC-012"],
       "kind": "sourced"
+    },
+    {
+      "file": "15-SITE-PIPELINE.md",
+      "area": "publishing keelblock.dev — content pipeline, Turbopack MDX constraints, and static search",
+      "volatility": "fast",
+      "verifiedOn": "2026-09-10",
+      "specs": ["SPEC-032"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {

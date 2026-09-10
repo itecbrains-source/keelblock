@@ -1,7 +1,7 @@
 # SPEC-012: Docs & the stranger walkthrough
 
 > Status: `partial` · Bars: **B-5** · Research: [`research/14-EXECUTABLE-DOCS.md`](../research/14-EXECUTABLE-DOCS.md) · ADRs: [019](../docs/adr/ADR-019-documentation-timing.md)
-> Contracts: SPEC-011, SPEC-024 ·
+> Contracts: SPEC-011, SPEC-024, SPEC-032 ·
 
 ## Intent
 

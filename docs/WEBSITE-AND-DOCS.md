@@ -10,19 +10,25 @@
 > blog machinery. The two are opposite sides of the same boundary and they do not conflict — this
 > project can publish thirty posts while shipping zero blog machinery to anyone.
 >
-> **Two things about this plan are not yet owned by anything.** Stated here rather than discovered
-> later:
+> **[SPEC-032](../spec/SPEC-032-keelblock-dev.md) claims this document, as of 2026-09-10.** Both of
+> the gaps recorded here were real until then, and the text of each is kept rather than deleted —
+> the spec's requirements are only legible next to the thing they answer.
 >
-> 1. **No spec claims this document.** SPEC-009 (marketing shell) and SPEC-012 (docs) are both about
->    what a BUYER receives, carrying bars B-8 and B-5. keelblock.dev itself — this site, this blog,
->    the published access matrix, the seven sections below — has no owning spec and no acceptance
->    criteria. It is a plan, and plans are not gated.
-> 2. **The content source is unspecified.** Nothing in the repository names MDX, markdown or any
->    other pipeline, while `docs/content/MANIFEST.json` already routes findings to `blog` and
+> 1. **~~No spec claims this document.~~** SPEC-009 (marketing shell) and SPEC-012 (docs) are both
+>    about what a BUYER receives, carrying bars B-8 and B-5. keelblock.dev itself — this site, this
+>    blog, the published access matrix, the seven sections below — had no owning spec and no
+>    acceptance criteria. It was a plan, and plans are not gated. **SPEC-032 owns it now, and
+>    deliberately claims neither B-5 nor B-8**: this site is a different artifact from anything the
+>    kit ships, and inheriting a buyer's bar for it is the confusion F-69 exists to end.
+> 2. **~~The content source is unspecified.~~** Nothing in the repository named MDX, markdown or any
+>    other pipeline, while `docs/content/MANIFEST.json` already routed findings to `blog` and
 >    `landing`. `check-content` enforces that every finding HAS a destination; nothing enforces that
->    the destination exists, so it will keep passing indefinitely while nothing is published. Decide
->    the source when a spec claims this document — and note that choosing an external CMS for it
->    would not contradict the kit's refusal, though it would want its own reasoning.
+>    the destination exists, so it kept passing while nothing was published (**F-69**).
+>    [`research/15-SITE-PIPELINE.md`](../research/15-SITE-PIPELINE.md) settled the source —
+>    `@next/mdx`, which ships in lockstep with the pinned framework — and found two constraints
+>    nobody had written down: Turbopack refuses a remark/rehype plugin passed as a function, and
+>    Pagefind needs static HTML output that ADR-024's hosting decision does not produce. The
+>    external-CMS option remains open and still wants its own reasoning; no CMS was assessed.
 
 **Baseline: [supastarter.dev](https://supastarter.dev)** — matched on quality and completeness,
 **simplified in structure, and deliberately reordered.** Docs are a deliverable (bar B-5), not
