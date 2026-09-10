@@ -54,7 +54,9 @@ reason to exist.
 Named because every one of these is a real complaint about existing kits, and _not doing them_ is a
 feature:
 
-- **Not a component library.** shadcn/ui is used; keelblock does not invent a design system to fight.
+- **Not a component library.** shadcn/ui is used — on Base UI, components vendored into
+  `src/components/ui/` and owned from the first commit (ADR-023). keelblock does not invent a design
+  system to fight.
 - **Not feature-maximal.** Supastarter ships five payment providers, an AI chatbot and i18n. That is
   their game and it is the bloat complaint. Keelblock ships one good path per concern.
 - **Not a framework.** No `keelblock.config.ts` runtime, no plugin lifecycle, no abstraction over Next or

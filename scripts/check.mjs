@@ -57,7 +57,14 @@ export const STEPS = [
     cmd: 'node',
     args: ['scripts/check-locale.mjs'],
   },
-  { id: 'unused', why: 'no dead code or unused dependencies', cmd: 'npx', args: ['knip'] },
+  {
+    id: 'unused',
+    why: 'no dead code or unused dependencies',
+    cmd: 'node',
+    // Wraps knip rather than calling it directly: knip exits 0 on a `Remove from …` configuration
+    // hint, which is knip saying an exemption has expired. That is a finding, not a footnote.
+    args: ['scripts/check-unused.mjs'],
+  },
   {
     id: 'freshness',
     why: 'nothing has quietly gone stale',

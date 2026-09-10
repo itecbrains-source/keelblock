@@ -2243,3 +2243,95 @@ The general shape: **a gate is a reader, and a reader that cannot tell a quotati
 will eventually correct the dictionary.** Most of these were reporting on the documentation that
 explains them, which means the cost of documenting a rule was a failing build — the exact incentive
 that leaves rules undocumented.
+
+## F-67 · Adopting shadcn silently killed dark mode, and the ADR that measured dark mode working had no way to notice
+
+**2026-09-10 · found while executing the shadcn adoption · fixed**
+
+ADR-018 decided the colour scheme follows the operating system and there is no toggle. It is a good
+ADR: it measured before deciding, recorded **36 `dark:` variants across 13 component files**, and
+refused two alternatives with reasons rather than postponing them.
+
+`npx shadcn init` rewrote `globals.css` and replaced the OS-keyed dark mode with shadcn's default:
+
+```
+@custom-variant dark (&:is(.dark *));
+.dark { --background: … }
+```
+
+A **class** — set by a theme toggle shadcn assumes the project has, and which ADR-018 explicitly
+refused. Nothing in this repository sets `.dark`. Verified after the install: 36 `dark:` usages
+across 13 files, and zero occurrences of anything setting that class. **Every one of them was dead.**
+
+**The failure is silent in every layer that exists.** A variant that never matches is not an error.
+The CSS compiled. `next build` passed. `typecheck` passed. All 575 tests passed. The page rendered —
+in the light palette, on a machine set to dark. There is no console warning, no screenshot diff, and
+no gate. The only artifact that would have caught it is a human looking at the page in dark mode.
+
+**Fixed** by keying the variant on the operating system and hanging the dark palette off a media
+query instead of a class. The tokens inside are upstream's and are untouched; only the selector they
+hang from is ours, which is the right layer to diverge in — the theme belongs to the project, the
+components stay CLI-replaceable (ADR-023).
+
+Proven from the compiled stylesheet rather than from the source, because the source is what was
+already believed to be right: the build now emits
+`@media (prefers-color-scheme:dark){.dark\:border-white\/15{…}}` for the variants and the same query
+for the `:root` palette, with **no `.dark` ancestor selector anywhere** in the output.
+
+**The part that outlives this bug.** ADR-018 is exactly the kind of entry the last review asked about
+— _"if this recurred tomorrow, what goes red?"_ The answer was **nothing**. It recorded a measured
+behaviour, wrote the number down, and left the number as the only thing standing between the decision
+and any CLI that rewrites a stylesheet. `src/theme.test.mts` is the mechanism it never had, and it
+asserts the _mechanism_ rather than the appearance, because the CLI will overwrite that line again on
+the next theme-touching `add`.
+
+That question was raised as a sweep nobody had sized. It found its first casualty within one session
+of being asked, without the sweep being run — which is the argument for running it.
+
+**One more instance, in the fix itself.** `theme.test.mts` forbids the string `&:is(.dark *)`, and
+the stylesheet comment written to explain _why that string is refused_ quotes it — so the rule failed
+on the comment defending it. That is **F-66's exact shape, in a third medium, in the commit that
+fixed the other two**: the shared helpers covered TypeScript comments and markdown fences, not CSS.
+`stripCssComments` closes it. The lesson is not "add a third stripper" — it is that a text-matching
+rule needs one **on the day it is written**, because the first person to document the rule is the
+first person to break it.
+
+## F-68 · Five knip exemptions had outlived the expiry written in their own row, and knip had been saying so on every run
+
+**2026-09-10 · found while adding two exemptions for shadcn · fixed**
+
+`knip.reasons.md` is a good document. Every exemption carries a **"Removed when"** column, its header
+states that _"an exemption with no expiry is how dead code becomes permanent while looking
+supervised"_, and a shrink-only ratchet asserts the list matches `knip.json` and never grows.
+
+Adding the two exemptions ADR-023 needs meant hitting that ratchet, which is the ratchet working.
+Looking for something to remove found five entries already past their own stated expiry:
+
+| exemption                                             | removed when it said         | actual state                              |
+| ----------------------------------------------------- | ---------------------------- | ----------------------------------------- |
+| `@supabase/ssr`, `@supabase/supabase-js`              | SPEC-004                     | SPEC-004 is `done`                        |
+| `server-only`                                         | "never — it is load-bearing" | the _package_ is; the _exemption_ was not |
+| `@testing-library/react`, `@testing-library/jest-dom` | the first `.dom.test.tsx`    | two exist                                 |
+
+**knip had been printing the answer on every single run.** Under _Configuration hints_:
+`@supabase/ssr  knip.json  Remove from ignoreDependencies`, once per stale entry. The gate exited 0,
+so the output was never read — green output does not get read, which is most of why this is worth
+writing down.
+
+**The ratchet could not have caught it.** It caps how many exemptions exist; it says nothing about
+whether any individual one still earns its place. A count is not coverage — F-60 and F-62 are the
+same sentence about different documents.
+
+**Fixed**: the five are gone, the two shadcn entries are added and justified, and the ratchet is
+tightened 13 → 10. Tightening is the point — a ceiling left where it was set records the high-water
+mark rather than the current state.
+
+**And the mechanism**: the `unused` gate no longer runs `knip` directly. `scripts/check-unused.mjs`
+wraps it and fails on any `Remove from …` hint, so the tool's own answer to "is this exemption still
+needed?" stops being advisory. Structural hints are deliberately not failures — `.css` reporting that
+compiled extensions are not followed is a fact about knip, not a stale row, and failing on it would
+be a gate nobody can satisfy.
+
+The general shape: **a tool that reports in two channels will be believed in only one of them.**
+knip's exit code was load-bearing and its stdout was decoration, and the decoration was where the
+answer had been sitting for weeks.

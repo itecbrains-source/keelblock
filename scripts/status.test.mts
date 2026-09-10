@@ -57,9 +57,11 @@ describe('derived status', () => {
     // spelled out. Eighteen of them, including the line in AGENTS.md that told a coding agent the
     // decision record held eleven entries when it held fifteen — an agent that believes it will not
     // go looking for the other four.
-    const p = checkCountClaims({ 'd.md': 'twelve gates guard this repository' }, c);
+    // The fixture says eleven, which was true until 2026-09-10 and is exactly the kind of number
+    // that goes stale without anyone editing the sentence containing it.
+    const p = checkCountClaims({ 'd.md': 'eleven gates guard this repository' }, c);
     expect(p).toHaveLength(1);
-    expect(p[0]).toContain('twelve gates');
+    expect(p[0]).toContain('eleven gates');
   });
 
   it('MUTATION: the number that was actually wrong on the front page is caught', () => {
@@ -82,11 +84,15 @@ describe('derived status', () => {
   });
 
   it('the numeral vocabulary covers what this repository actually writes', () => {
+    // 'twelve' is the true count since 2026-09-10: `unused` gained an implementation file
+    // (`check-unused.mjs`) so knip's expired-exemption hints could fail the build (F-68). The
+    // RUNNER still lists the same gates — what grew is the number of check-*.mjs files carrying a
+    // mutation proof, which is what this count has always measured.
     for (const word of ['six', 'eight', 'eleven', 'twelve', 'thirteen', 'sixteen', 'nineteen']) {
       expect(
         checkCountClaims({ 'd.md': `${word} gates` }, c).length,
         `"${word}" is not recognized as a number`,
-      ).toBe(word === 'eleven' ? 0 : 1); // eleven is the true gate count
+      ).toBe(word === 'twelve' ? 0 : 1); // twelve is the true gate count
     }
   });
 

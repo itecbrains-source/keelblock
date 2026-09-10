@@ -5,17 +5,12 @@
     "scripts/*.mjs"
   ],
   "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{mjs,mts}"],
-
-  "ignore": ["src/lib/supabase/**", "src/lib/env.ts", "src/lib/db/database.types.ts"],
-  "ignoreDependencies": [
-    "@supabase/ssr",
-    "@supabase/supabase-js",
-    "server-only",
-    "stripe",
-    "@testing-library/jest-dom",
-    "@testing-library/react",
-    "dotenv",
-    "tailwindcss"
+  "ignore": [
+    "src/lib/supabase/**",
+    "src/lib/env.ts",
+    "src/lib/db/database.types.ts",
+    "src/components/ui/**"
   ],
+  "ignoreDependencies": ["stripe", "dotenv", "tailwindcss", "shadcn"],
   "ignoreBinaries": ["psql", "supabase"]
 }

@@ -113,7 +113,10 @@ describe('check runner', () => {
         `${e} is exempted in knip.json but not justified in knip.reasons.md`,
       ).toContain(e);
     }
-    expect(exemptions.length).toBeLessThanOrEqual(13); // shrink-only ratchet
+    // Shrink-only ratchet, tightened 13 → 10 when five exemptions were found past the expiry
+    // written in their own "Removed when" column. Tightening it is the point: a ceiling that stays
+    // where it was set records the high-water mark rather than the current state.
+    expect(exemptions.length).toBeLessThanOrEqual(10);
   });
 
   it('the isolation gates are marked as needing the database', () => {

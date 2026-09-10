@@ -28,13 +28,10 @@ export default async function Login({ searchParams }: PageProps<'/[locale]/login
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6 py-16">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">{t('subtitle')}</p>
+        <p className="text-muted-foreground text-sm">{t('subtitle')}</p>
       </div>
       {failed ? (
-        <p
-          role="alert"
-          className="rounded-lg border border-black/10 p-3 text-sm dark:border-white/15"
-        >
+        <p role="alert" className="border-border rounded-lg border p-3 text-sm">
           {t('linkFailed')}
         </p>
       ) : null}

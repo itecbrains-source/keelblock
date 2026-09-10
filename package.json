@@ -19,13 +19,17 @@
     "journey": "playwright test"
   },
   "dependencies": {
+    "@base-ui/react": "^1.8.0",
     "@supabase/ssr": "^0.12.6",
     "@supabase/supabase-js": "^2.116.0",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.2.6",
     "next": "16.3.4",
     "next-intl": "^4.14.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
+    "shadcn": "^4.21.0",
     "stripe": "^22.6.1",
     "zod": "^4.5.4"
   },

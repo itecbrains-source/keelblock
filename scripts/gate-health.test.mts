@@ -300,6 +300,11 @@ describe('AC-10 · the claim runs on nothing paid (ADR-009, mechanized)', () => 
     psql: 'PostgreSQL licence, ships with Postgres, which the database gate needs anyway',
     supabase: 'Apache-2.0 CLI, the local stack itself',
     './.venv/bin/rlsautotest': 'rlsautotest 0.7.0, pinned in requirements.txt and free to install',
+    // Surfaced 2026-09-10, and worth knowing how. `externalTools` scans GATE SCRIPTS for spawns, so
+    // the six gates that `check.mjs` runs as `cmd: 'npx'` were outside its reach — the runner's own
+    // table is not a gate script. Moving `npx knip` into `check-unused.mjs` put npx in front of the
+    // rule for the first time. It was always invoked; nothing could see it.
+    npx: "npm's own launcher, Artistic-2.0, and already required by the six gates check.mjs runs through it",
   };
 
   it('every tool the gates invoke is declared, and every declaration is used', () => {

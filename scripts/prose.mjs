@@ -58,6 +58,46 @@ export function stripComments(source) {
 }
 
 /**
+ * Blank every `/* … *​/` comment in CSS, preserving every other character position.
+ *
+ * Added because the defect recurred immediately, in a third medium, in the commit that fixed the
+ * first two. `src/theme.test.mts` forbids the string `&:is(.dark *)` — shadcn's class-based dark
+ * variant — and the stylesheet's own comment, written to explain WHY that string is refused, made
+ * the rule fail on the file it was protecting. Exactly the shape of F-64 and of every row in F-66.
+ *
+ * The lesson is not "add a third stripper". It is that **a text-matching rule needs this on the day
+ * it is written, not after it misfires** — the misfire is not a rare edge, it is what happens the
+ * first time someone documents the rule. Whatever medium comes next needs its own entry here.
+ *
+ * Quote-aware, because a CSS string may legitimately contain the characters that open a comment —
+ * `content: "/*"` is valid CSS. Blanking from there to the next `*​/` would eat real declarations,
+ * which is the same false-negative trade `stripComments` uses the compiler's scanner to avoid.
+ */
+export function stripCssComments(source) {
+  const out = [...source];
+  let quote = null;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (quote) {
+      if (c === '\\') i++;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      continue;
+    }
+    if (c === '/' && source[i + 1] === '*') {
+      const end = source.indexOf('*/', i + 2);
+      const stop = end === -1 ? source.length : end + 2;
+      for (let j = i; j < stop; j++) if (out[j] !== '\n') out[j] = ' ';
+      i = stop - 1;
+    }
+  }
+  return out.join('');
+}
+
+/**
  * Blank every fenced code block in markdown, preserving line numbers.
  *
  * Fenced content is a picture of a thing, never the thing: a document that shows the acceptance-bar

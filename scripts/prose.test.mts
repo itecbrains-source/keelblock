@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stripComments, stripFences } from './prose.mjs';
+import { stripComments, stripCssComments, stripFences } from './prose.mjs';
 
 /**
  * The rule these helpers exist for: a gate must react to what a file INSTRUCTS, never to what it
@@ -46,6 +46,37 @@ describe('stripComments', () => {
     expect(stripComments('const r = /a\\/\\/b/; const t = `x // y`;')).toBe(
       'const r = /a\\/\\/b/; const t = `x // y`;',
     );
+  });
+});
+
+describe('stripCssComments', () => {
+  it('blanks CSS comments and preserves line numbers', () => {
+    const src = `:root {\n  /* a note */\n  --x: 1;\n}`;
+    const out = stripCssComments(src);
+    expect(out).toHaveLength(src.length);
+    expect(out.split('\n')).toHaveLength(4);
+    expect(out).toContain('--x: 1;');
+    expect(out).not.toContain('a note');
+  });
+
+  it('MUTATION: F-67 — a comment explaining why a string is refused is not that string', () => {
+    // The real one. globals.css forbids shadcn's class-based dark variant and explains why by
+    // quoting it; the rule then failed on the comment defending it, in the commit that fixed the
+    // same defect in two other media.
+    const css = `/* shadcn ships &:is(.dark *) — refused, see ADR-018 */\n@custom-variant dark (@media (prefers-color-scheme: dark));`;
+    expect(stripCssComments(css)).not.toContain('&:is(.dark *)');
+    expect(stripCssComments(css)).toContain('prefers-color-scheme');
+  });
+
+  it('MUTATION: a comment opener inside a CSS string is not a comment', () => {
+    // `content: "/*"` is valid CSS. Blanking from there to the next */ eats real declarations —
+    // the false-negative direction, same trade stripComments avoids with the compiler's scanner.
+    const src = `a::before { content: "/*"; color: red; }`;
+    expect(stripCssComments(src)).toBe(src);
+  });
+
+  it('an unterminated comment blanks to the end rather than throwing', () => {
+    expect(stripCssComments(`--x: 1; /* oops`).trimEnd()).toBe('--x: 1;');
   });
 });
 

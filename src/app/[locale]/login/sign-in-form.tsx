@@ -3,11 +3,22 @@
 import { useActionState, useState } from 'react';
 import { requestMagicLink, startOAuth, type SignInState } from './actions';
 import type { OAuthProvider } from '@/lib/auth/providers';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 /**
- * Deliberately plain. keelblock is not a component library (a stated non-goal), so this is the
- * smallest accessible form that works: a real label, a live region for the result, and a disabled
- * state while the action runs.
+ * The non-goal is unchanged and is the reason this file got SHORTER. keelblock does not BUILD a
+ * component library; it uses one whose source it owns (ADR-023). Focus rings, disabled semantics
+ * and the label association are Base UI's problem now, proven upstream, which is how B-7 —
+ * keyboard-complete and axe-clean on every surface — stops being re-proven per component here.
+ *
+ * MakerKit's rule applies: adjust through `className`, never by editing `components/ui/*`, so the
+ * primitives stay upstream-equivalent and CLI-replaceable.
+ *
+ * Colours come from tokens, so the `dark:` variants are gone rather than doubled: `text-muted-
+ * foreground` is already correct in both schemes because ADR-018 keys the palette on the operating
+ * system. Anything hard-coded here would be reintroducing the thing the tokens exist to remove.
  */
 export function SignInForm({
   providers,
@@ -39,25 +50,12 @@ export function SignInForm({
   return (
     <div className="flex flex-col gap-4">
       <form action={action} className="flex flex-col gap-3">
-        <label htmlFor="email" className="text-sm font-medium">
-          {labels.email}
-        </label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          required
-          className="rounded-lg border border-black/15 px-3 py-2 text-sm dark:border-white/20"
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-lg border border-black/15 px-3 py-2 text-sm font-medium disabled:opacity-60 dark:border-white/20"
-        >
+        <Label htmlFor="email">{labels.email}</Label>
+        <Input id="email" name="email" type="email" autoComplete="email" required />
+        <Button type="submit" disabled={pending}>
           {pending ? labels.sending : labels.submit}
-        </button>
-        <p aria-live="polite" className="min-h-5 text-sm text-black/60 dark:text-white/60">
+        </Button>
+        <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
           {state.status === 'sent'
             ? labels.sent
             : state.message === 'too soon'
@@ -69,22 +67,22 @@ export function SignInForm({
       {/* Nothing renders when no provider is configured — an OAuth button that cannot work is a
           worse affordance than none. */}
       {providers.map(({ id, label }) => (
-        <button
+        <Button
           key={id}
           type="button"
+          variant="outline"
           onClick={async () => {
             setProviderError(false);
             const result = await startOAuth(id);
             if (result.status === 'ok') window.location.assign(result.url);
             else setProviderError(true);
           }}
-          className="rounded-lg border border-black/15 px-3 py-2 text-sm dark:border-white/20"
         >
           {label}
-        </button>
+        </Button>
       ))}
       {providerError ? (
-        <p role="alert" className="text-sm">
+        <p role="alert" className="text-destructive text-sm">
           {labels.providerFailed}
         </p>
       ) : null}
