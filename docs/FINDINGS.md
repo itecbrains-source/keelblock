@@ -2335,3 +2335,55 @@ be a gate nobody can satisfy.
 The general shape: **a tool that reports in two channels will be believed in only one of them.**
 knip's exit code was load-bearing and its stdout was decoration, and the decoration was where the
 answer had been sitting for weeks.
+
+## F-69 · The site keelblock is about to build has no owning spec, and the gate that routes its content proves only that a destination was named
+
+**2026-09-10 · found by being told the wrong home for the proof page · recorded, not fixed**
+
+The proof page — the rendered access matrix, the one artifact no competitor in this field can
+publish — was handed to me as "scope inside SPEC-009". `docs/WEBSITE-AND-DOCS.md` had already
+written down why that is wrong, in the file describing the work:
+
+> **No spec claims this document.** SPEC-009 (marketing shell) and SPEC-012 (docs) are both about
+> what a BUYER receives, carrying bars B-8 and B-5. keelblock.dev itself — this site, this blog, the
+> published access matrix, the seven sections below — has no owning spec and no acceptance criteria.
+> **It is a plan, and plans are not gated.**
+
+SPEC-009 is the buyer's marketing shell. keelblock.dev is keelblock's own site. Folding one into the
+other would have put an ungated artifact inside a spec that means something else, and the section
+this page belongs in is already specified better than the instruction was: _"The proof — the live
+access matrix, rendered. The 'different organization' column is the whole pitch. Link to the CI run
+that produced it."_
+
+**The second gap is the interesting one**, and the same document states it:
+
+> `check-content` enforces that every finding HAS a destination; nothing enforces that the
+> destination exists, **so it will keep passing indefinitely while nothing is published.**
+
+Verified: the gate validates that each finding's `to` names a known kind and that the manifest and
+`FINDINGS.md` agree in both directions. It then reports how many findings are routed, and to where.
+**Not one of them has been published anywhere.** The count is accurate and the sentence it forms is
+false — F-60 and F-62's shape a third time, and this one will read as coverage for as long as the
+site does not exist.
+
+Writing that paragraph tripped the `status` gate, which is worth leaving in: the first draft quoted
+the routing totals, and the rows added by this same commit made that quote stale before it was
+committed. The dodge was available — `claimsIn` exempts inline code spans, so backticks would have
+silenced it — and taking it would have been the `check-policies` move from F-66 again. The sentence
+stopped asserting a number instead.
+
+**Recorded rather than fixed, and the reason is a rule this project already set.** The obvious gate —
+every finding routed to `blog` has a post — fails on every such row the day it lands, and ADR-023
+said a gate that cannot pass when it arrives is a gate that gets exempted. The weaker version that passes
+today (_if a destination directory exists, everything routed to it must be there_) is vacuous until
+publishing starts, and a rule that is green because it ran nothing is F-13.
+
+So the fix is not a gate. **It is a spec claiming this document**, which would give the site
+acceptance criteria and make the destination question answerable by something other than prose. That
+is the next deliverable, and it is what decision B actually needs.
+
+**The sweep's third instance this session.** Both gaps were written down, correctly and in advance,
+by whoever wrote the plan — and neither can fail a build. ADR-018 was the first (F-67), the
+`check-policies` workaround the second (F-66). The pattern is not that this project fails to notice
+things. It is that **noticing is where the work stops**, and a document that names its own gap reads
+as diligence right up until the gap costs something.

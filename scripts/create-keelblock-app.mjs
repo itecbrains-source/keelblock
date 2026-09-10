@@ -40,6 +40,16 @@ export const NOT_SHIPPED = [
       'repository\'s history" — correctly. The records are not portable, by construction.',
   },
   {
+    path: '.github/workflows/deploy.yml',
+    why:
+      "deploys keelblock.dev — keelblock's own marketing site — to keelblock's own Vercel project " +
+      '(ADR-024). It is guarded on `github.repository`, so a generated project would inherit a ' +
+      "workflow that can never run and names somebody else's repository in its condition. Not " +
+      "portable by construction, the same way the review records are not. A buyer's own deploy " +
+      'story is theirs to write, and SPEC-016 preflight already takes a named target rather than ' +
+      'inventing one for them.',
+  },
+  {
     path: 'scripts/review-register.test.mts',
     why:
       'asserts against the REAL register — "the real register answers every real finding, and the ' +

@@ -21,8 +21,11 @@ const deps = {
 
 describe('deferral registry', () => {
   it('parses the real registry', () => {
+    // Shape rather than a named row. This asserted `toContain('DEF-001')` until DEF-001 closed on
+    // 2026-09-10 — a test that broke because the thing it named worked, which is a test measuring
+    // the wrong noun. Every id it parses being well-formed is the claim that was actually meant.
     expect(entries.length).toBeGreaterThan(0);
-    expect(entries.map((e) => e.id)).toContain('DEF-001');
+    for (const e of entries) expect(e.id).toMatch(/^DEF-\d{3}$/);
   });
 
   it('every real entry is valid — reason and machine-evaluable trigger', () => {
@@ -36,14 +39,18 @@ describe('deferral registry', () => {
   // ── mutation proofs ────────────────────────────────────────────────────────
 
   it('MUTATION: a fired trigger is detected — the whole anti-rot mechanism', () => {
-    // DEF-001 fires the moment a deploy workflow appears. Without this the deferral would sit in a
-    // file looking tracked while its moment came and went.
-    const def001 = entries.find((e) => e.id === 'DEF-001')!;
+    // Whichever row currently waits on a file, rather than a row named here. The previous version
+    // named DEF-001 and its `deploy.yml`; both were correct until ADR-024 created that file and
+    // closed that row, at which point the proof of the anti-rot mechanism rotted. Reaching for the
+    // live row keeps the proof pointed at something real without anyone having to notice.
+    // Triggers arrive with their backticks: the registry cell is `file-exists:…` and the parser
+    // keeps the cell verbatim.
+    const bare = (t: string) => t.replace(/`/g, '');
+    const waiting = entries.find((e) => bare(e.trigger).startsWith('file-exists:'))!;
+    expect(waiting, 'no row waits on a file — re-point this proof').toBeDefined();
+    const file = bare(waiting.trigger).replace(/^file-exists:/, '');
     expect(
-      evaluateTrigger(def001.trigger, {
-        ...deps,
-        fileExists: (p: string) => p === '.github/workflows/deploy.yml',
-      }),
+      evaluateTrigger(waiting.trigger, { ...deps, fileExists: (p: string) => p === file }),
     ).toBe(true);
   });
 

@@ -1,0 +1,77 @@
+name: deploy
+
+# keelblock.dev — the static site. ADR-024.
+#
+# C1 only: the marketing shell, the docs, and the generated proof page. No database, no user data,
+# no migrations. The app deployment is a different workflow that does not exist yet (`deploy-app.yml`),
+# and DEF-006 and DEF-032 are keyed on THAT file rather than this one — deliberately, because "a
+# deployment exists" and "strangers can reach the login" are different events and this one is the
+# first. Firing a row about hardening a reachable login on a site with no login is F-59's defect.
+#
+# **Guarded on the secret.** The Vercel project is not linked yet; until `VERCEL_TOKEN` exists this
+# job is skipped rather than failed. A deploy workflow that goes red on every push until somebody
+# does account admin trains everyone to ignore a red deploy, which is worse than not having one.
+
+# `workflow_run`, not `push`, and the distinction is load-bearing: publishing a tree the gates
+# rejected would make the proof page a claim about a build that failed, which is the one thing this
+# site cannot be. A `needs:` cannot reach a job in another workflow, so the dependency has to be the
+# trigger itself.
+on:
+  workflow_run:
+    workflows: [check]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+# The deploy reads the repository and nothing else. `check.yml` is what decides whether the tree is
+# fit to publish; this workflow does not re-litigate that, it waits for it.
+permissions:
+  contents: read
+
+concurrency:
+  # One deploy at a time, and a superseded one is cancelled rather than queued: the last push is the
+  # only one whose output anybody wants.
+  group: deploy-site
+  cancel-in-progress: true
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    # Only keelblock's own repository publishes keelblock.dev — a scaffolded copy inherits this file
+    # and must not try. And only a green `check`: a manual dispatch is the deliberate exception, and
+    # it is deliberate because a human typed it.
+    if: >-
+      github.repository == 'itecbrains-source/keelblock' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event.workflow_run.conclusion == 'success')
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: is the account wired
+        id: wired
+        env:
+          TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        # Secrets are not available to `if:` conditions on a job, so the check is a step and every
+        # step after it is gated on the output. Empty means "not linked yet", not "broken".
+        run: |
+          if [ -n "$TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=deploy skipped::VERCEL_TOKEN is not set. ADR-024 records the topology; linking the Vercel project is an owner action."
+          fi
+
+      - uses: actions/setup-node@v5
+        if: steps.wired.outputs.ok == 'true'
+        with: { node-version: 24, cache: npm }
+
+      - run: npm ci
+        if: steps.wired.outputs.ok == 'true'
+
+      - name: deploy to production
+        if: steps.wired.outputs.ok == 'true'
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npx --yes vercel@latest pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+          npx --yes vercel@latest build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+          npx --yes vercel@latest deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"

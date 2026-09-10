@@ -33,7 +33,15 @@ describe('what a generated project is given', () => {
   it('every exclusion carries a reason, and the list may only shrink', () => {
     for (const e of NOT_SHIPPED)
       expect(e.why.length, `${e.path} has no reason`).toBeGreaterThan(40);
-    expect(NOT_SHIPPED).toHaveLength(3);
+    // 3 → 4 on 2026-09-10, and the raise is recorded rather than absorbed, because a shrink-only
+    // ratchet that quietly moves is a counter. The first three exclusions are all one category:
+    // records ABOUT keelblock that assert against keelblock's own history. `deploy.yml` is a second
+    // category that did not exist until keelblock had a deployment of its own — it publishes
+    // keelblock.dev to keelblock's Vercel project and is guarded on `github.repository`, so a
+    // generated project would inherit a workflow that can never run and names another repository
+    // in its condition. The alternative was shipping it inert, which is worse: a buyer reading
+    // their own repository would find a deploy story that is not theirs.
+    expect(NOT_SHIPPED).toHaveLength(4);
   });
 
   it('is not vacuous: an ordinary file list comes back whole', () => {
