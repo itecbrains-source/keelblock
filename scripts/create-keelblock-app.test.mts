@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import {
   NOT_SHIPPED,
   PROVENANCE_FILE,
@@ -8,6 +11,7 @@ import {
   nextSteps,
   provenanceFor,
   rewriteManifest,
+  cloneArgs,
 } from './create-keelblock-app.mjs';
 
 describe('what a generated project is given', () => {
@@ -122,4 +126,76 @@ describe('--upstream, and why it is not a testing hook', () => {
       'github.com',
     );
   });
+});
+
+describe('the network path — F-74', () => {
+  /**
+   * The ~90 lines of `main()` that no test executed are where every scaffolder defect has lived.
+   * This does not test `main()`; it tests the one line inside it that the DEFAULT invocation dies
+   * on, extracted so it can be executed at all.
+   *
+   * `npx create-keelblock-app myapp` — B-1's headline command, with no `--ref` — built
+   * `git clone --depth 1 --branch HEAD <url>`, and git answers
+   * `fatal: Remote branch HEAD not found in upstream origin`. `--branch` takes a branch or a tag;
+   * HEAD is neither.
+   */
+  it('MUTATION: no ref means no --branch, not --branch HEAD', () => {
+    const args = cloneArgs(null, 'https://example.test/repo.git', '/tmp/x');
+    expect(args).not.toContain('--branch');
+    expect(args).not.toContain('HEAD');
+    expect(args).toEqual(['clone', '--depth', '1', 'https://example.test/repo.git', '/tmp/x']);
+  });
+
+  it('a named ref is still passed through, because that is what --branch is for', () => {
+    expect(cloneArgs('v0.2.0', 'https://example.test/repo.git', '/tmp/x')).toEqual([
+      'clone',
+      '--depth',
+      '1',
+      '--branch',
+      'v0.2.0',
+      'https://example.test/repo.git',
+      '/tmp/x',
+    ]);
+  });
+
+  it('SAFETY: the argument vector is a list, so a ref cannot become a second argument', () => {
+    // execFileSync, not a shell string. A ref containing a space or a semicolon is one argument.
+    const args = cloneArgs('; rm -rf /', 'https://example.test/repo.git', '/tmp/x');
+    expect(args.filter((a) => a === '; rm -rf /')).toHaveLength(1);
+  });
+});
+
+describe('the default invocation actually runs — F-74', () => {
+  /**
+   * The combination nothing executed. CI scaffolds with `--from "$GITHUB_WORKSPACE" --ref
+   * "$GITHUB_SHA"`, so `ref` is always a string there; the DEFAULT invocation has no `--ref` and
+   * `ref` is null. Two separate git calls then received `null` — `clone --branch` and `ls-tree` —
+   * and the second only surfaced after the first was fixed and the thing was run again.
+   *
+   * Local source, so this needs no network: the null-ref path is what is under test, not the clone.
+   */
+  it('scaffolds from a local checkout with no --ref', () => {
+    const dest = mkdtempSync(join(tmpdir(), 'keelblock-t-'));
+    rmSync(dest, { recursive: true, force: true }); // the scaffolder refuses an existing directory
+    try {
+      const r = spawnSync(
+        'node',
+        ['scripts/create-keelblock-app.mjs', dest, '--from', process.cwd()],
+        { encoding: 'utf8' },
+      );
+      expect(r.status, `scaffolder exited ${r.status}\n${r.stderr}`).toBe(0);
+
+      const provenance = JSON.parse(readFileSync(join(dest, PROVENANCE_FILE), 'utf8'));
+      // A resolved commit, not the string "HEAD": a pointer in a provenance file means something
+      // different tomorrow, and `upgrade.mjs` is given this value to upgrade FROM.
+      expect(provenance.ref).toMatch(/^[0-9a-f]{40}$/);
+      expect(provenance.commit).toBe(provenance.ref);
+      expect(existsSync(join(dest, 'package.json'))).toBe(true);
+      // The exclusion list is exercised here rather than only asserted as data.
+      expect(existsSync(join(dest, '.github/workflows/deploy.yml'))).toBe(false);
+      expect(existsSync(join(dest, 'docs/review'))).toBe(false);
+    } finally {
+      rmSync(dest, { recursive: true, force: true });
+    }
+  }, 120_000);
 });

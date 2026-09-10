@@ -2545,3 +2545,75 @@ and `?next=//evil.example` arrives in the DOM as `/`.
 
 Walked rather than asserted, on the review's instruction and F-70's evidence: a passing test proves
 less than usual for a journey, and the last three defects all passed every test in the repository.
+
+## F-74 · The headline command crashed, and the two defects behind it only appeared one at a time, by running it
+
+**2026-09-10 · reported by the external review, reproduced here · fixed**
+
+`npx create-keelblock-app myapp` is B-1's headline command and the single sentence a new user is
+most likely to type. It built:
+
+```
+git clone --depth 1 --branch HEAD https://github.com/itecbrains-source/keelblock.git <tmp>
+fatal: Remote branch HEAD not found in upstream origin
+```
+
+`--branch` takes a branch or a tag. `HEAD` is neither. With no `--ref` the script defaulted the ref
+to the string `'HEAD'` and handed it to the one git subcommand that does not accept it.
+
+**Then it happened again, one layer down.** With the clone fixed, the same run died on
+`fatal: Not a valid object name null` — `git ls-tree -r --name-only null`, because "no ref" had been
+made `null` and two more call sites still passed it through. **That second defect was invisible
+until the first was fixed and the command was run again**, which is the review's Theme 4 as a
+mechanic rather than a slogan: reading found one of these, running found both.
+
+**And a third, from asserting rather than looking.** The end-to-end test checks that excluded paths
+are absent, and `docs/review/` was still there — empty. `tar -x` creates a directory for every
+archived file, the drop pass removes files, and nothing removed the directory. Every generated
+project shipped an empty `docs/review/` folder: a thing that says something used to be here, in a
+project whose entire premise is that it is the buyer's from the first commit.
+
+**Why CI could not catch any of it.** The `scaffold` job runs
+`create-keelblock-app /tmp/app --from "$GITHUB_WORKSPACE" --ref "$GITHUB_SHA"`. A ref is always
+supplied, so `ref` is never `null` there — **the default invocation is the one combination CI never
+exercises**, and it is the only one a user types. The review's note is the durable part: every defect
+in this file lives in the ~90 lines of `main()` that no test executes.
+
+**Fixed**, and the fixes are the boring half:
+
+- `cloneArgs(ref, url, dest)` is extracted and pure, so the line the default path dies on can be
+  executed by a test at all. No ref means **no `--branch`**, which is not a fallback but the correct
+  instruction: a clone with no branch takes the remote's own default.
+- `ls-tree` and `archive` both take the **resolved commit** rather than the ref. That also makes the
+  comment above them literally true instead of true by luck — the listing and the snapshot can no
+  longer be different commits.
+- The provenance file records the resolved commit when no ref was named, because `HEAD` in a
+  provenance file is a pointer that means something else tomorrow, and `upgrade.mjs` is handed that
+  value to upgrade _from_.
+- `main()` has a handler. It had none, so the first thing a new user runs failed as an
+  `execFileSync` stack trace. It now prints the failure, the command that lists valid refs, and the
+  local-checkout escape hatch — with the stack still available under `--debug`.
+- Directories left empty by exclusions are pruned, deepest first.
+
+The test that matters scaffolds **from a local checkout with no `--ref`** — the exact combination CI
+does not run — and asserts the exit status, a 40-character resolved commit in the provenance, and the
+absence of both excluded paths. It fails against every one of the three defects above.
+
+## F-75 · The relabel that corrected an overclaim missed the file a new reader opens first
+
+**2026-09-10 · found by the review seat, on its own documents · fixed**
+
+`docs/review/` was labelled an "external review". It is a session the owner ran, and DEF-020 already
+draws that line — _"a session the author spawned is not one"_. The label was corrected in
+`README.md` and **missed `HANDOVER.md`**, which is the file a new reader opens to understand the
+folder, and `ADR-015`, which opens with "An external review found…".
+
+So for one commit the folder contained a correction and a contradiction of it, two files apart. That
+is F-60's class — a reader-facing claim the repository has already refuted elsewhere — occurring
+**inside the fix for itself**, which is why this is a rule now rather than a third correction.
+`review-records.test.mts` fails if any reader-facing document describes `docs/review/` as external,
+and it reports the exact file and line. Its own docblock says "external review" twice, so it strips
+comments and fences on the day it was written, per AGENTS.md.
+
+ADR-015's substance is untouched: `keel` being unavailable was verified against the npm registry and
+RDAP, not taken from the review's word. Only the label was wrong.

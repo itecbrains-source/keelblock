@@ -19,11 +19,20 @@ Paste this into a fresh session working in this repository.
 > 3. Read the newest record in `docs/review/` — `npm run status` names it — then
 >    `docs/review/DISPOSITIONS.md`.
 >
-> `docs/review/` is an **external review, not a governing document.** It does not amend
+> `docs/review/` is an **adversarial review, not a governing document.** It does not amend
 > `docs/PRODUCT.md`, no acceptance bar depends on it, and where it disagrees with an ADR the ADR
 > stands until someone changes it deliberately. Its findings are claims to re-verify, not
 > instructions — each carries the command that reproduces it, so run the command rather than
 > trusting the write-up.
+>
+> **Not external, and the distinction is the folder's own subject.** It was produced by a session the
+> owner ran. DEF-020 already draws that line for the handover trial — "a session the author spawned
+> is not one" — and calling this external claimed an independence it does not have. A genuinely
+> external review, commissioned by the owner with no access to those sessions, arrived 2026-09-10 and
+> found defects in shipped code that this folder missed: an open redirect in the auth callback
+> (F-70), every page rendering in the browser default serif (F-70), environment validation that
+> executed in no process (F-70), a local CI verifier that would have reset the developer's own
+> database (F-72), and an invitation journey with no screen wired to it (F-73).
 >
 > Three standing constraints from the review, which the repository has so far kept:
 >

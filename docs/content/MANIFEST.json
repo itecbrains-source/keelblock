@@ -433,6 +433,18 @@
       "what": "the invitation journey dead-ended because the login screen never read the destination both server actions were already built to accept",
       "to": ["blog", "docs"],
       "angle": "Defect family A at journey scale. invite/[token] links to /login?next=/invite/<token>; requestMagicLink already read a next field off its FormData and startOAuth already took a next argument; the page never read the parameter, the form never submitted it, and the button called the action with one argument. Every part correct, the composition missing — the same shape as the OAuth button that rendered its own translation key, except the assembly here is a JOURNEY, the thing a person is actually trying to do, and a journey has no failing test when one link is missing unless somebody walks it. Fixed on both paths deliberately: a journey that survives one and not the other fails half the time. Walked in a browser rather than asserted, because the previous three defects passed every test in the repository."
+    },
+    {
+      "id": "F-74",
+      "what": "the scaffolder's headline command crashed, and the second and third defects behind it appeared only after the first was fixed and the command was run again",
+      "to": ["blog", "docs"],
+      "angle": "npx create-keelblock-app is the single sentence a new user is most likely to type, and it built `git clone --branch HEAD`, which git refuses because --branch takes a branch or a tag and HEAD is neither. The publishable mechanic is the layering: with the clone fixed, the same run died on `ls-tree null`, and with that fixed an end-to-end assertion found every generated project shipping an empty docs/review/ directory. Reading found one; running found two; asserting found three. The reason CI could not catch any of it is exact and reusable — the scaffold job always passes --ref \"$GITHUB_SHA\", so the default invocation is the one combination CI never exercises, and it is the only one a user types. Every defect in that file lives in the ~90 lines of main() that no test executes."
+    },
+    {
+      "id": "F-75",
+      "what": "the commit that corrected an overclaimed label missed the file a new reader opens first, leaving a correction and its contradiction two files apart",
+      "to": ["docs", "internal"],
+      "angle": "docs/review/ was labelled an external review; it is a session the owner ran, and DEF-020 already drew that line — 'a session the author spawned is not one'. The correction landed in README.md and missed HANDOVER.md and ADR-015. F-60's class occurring inside the fix for itself, which is the argument for making it a rule instead of a third correction: a test now fails if any reader-facing document describes the folder as external, and reports the file and line. Small, but it is the cleanest available example of why a one-time correction is not a mechanism."
     }
   ],
   "$differentiators": "Every spec that ships a competitive capability, written up the day it ships. A spec that is done or partial declares what it lets keelblock claim, what the field does instead, evidence that resolves, and a battlecard section that exists — or is listed in $noDifferentiator with a reason. Checked by scripts/check-content.mjs. This exists because SPEC-004's Server-Action rule shipped and routed nowhere: the findings pipeline keys on F-* ids, and a capability produces none by itself, so the gap could only be noticed by a person saying it out loud.",

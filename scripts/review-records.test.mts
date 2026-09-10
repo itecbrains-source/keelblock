@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { stripCssComments, stripFences } from './prose.mjs';
 import {
   checkRecords,
   checkScoreClaims,
@@ -159,5 +161,47 @@ describe('shallow history', () => {
       shallow: false,
     });
     expect(p[0]).toMatch(/not in this repository's history/);
+  });
+});
+
+describe('the review folder does not claim independence it does not have', () => {
+  /**
+   * `docs/review/` was labelled an "external review" in three places. It is a session the owner ran,
+   * and DEF-020 already draws exactly that line — "a session the author spawned is not one".
+   *
+   * The relabel was done once and **missed a file**: `HANDOVER.md`, which is what a new reader opens
+   * to understand the folder, still called it external for a commit. That is F-60's class — a
+   * reader-facing claim the repository has already refuted elsewhere — occurring inside the fix for
+   * itself, which is why it is a rule now rather than a third correction.
+   *
+   * Comments and fenced blocks are stripped on the day this is written, per AGENTS.md, because this
+   * docblock says "external review" twice and would otherwise be the first thing it catches.
+   */
+  const READER_FACING = [
+    'docs/review/README.md',
+    'docs/review/HANDOVER.md',
+    'docs/adr/ADR-015-the-name.md',
+    'AGENTS.md',
+    'README.md',
+  ];
+
+  it('no reader-facing document calls docs/review an external review', () => {
+    const offenders: string[] = [];
+    for (const file of READER_FACING) {
+      if (!existsSync(file)) continue;
+      const prose = stripFences(stripCssComments(readFileSync(file, 'utf8')));
+      prose.split('\n').forEach((line: string, i: number) => {
+        // The 2026-09-10 review IS external, so the phrase is only wrong when it describes THIS
+        // folder or this project's own earlier sessions. Anything naming the later one is fine.
+        if (!/\bexternal review\b/i.test(line)) return;
+        if (/genuinely external|not an external|labelled "external"|2026-09-10/i.test(line)) return;
+        offenders.push(`${file}:${i + 1} — ${line.trim().slice(0, 80)}`);
+      });
+    }
+    expect(
+      offenders,
+      `docs/review/ is an adversarial review by a session the owner ran, not an external one ` +
+        `(DEF-020: "a session the author spawned is not one")`,
+    ).toEqual([]);
   });
 });

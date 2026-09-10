@@ -10,8 +10,16 @@
  * So the generated project starts its OWN history and keeps a fetchable pointer home.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 /** The provenance record, and the marker that this project was generated rather than cloned. */
@@ -81,6 +89,57 @@ export function filesToCopy(tracked, excluded = NOT_SHIPPED) {
   return tracked.filter(
     (p) => !excluded.some((e) => (e.path.endsWith('/') ? p.startsWith(e.path) : p === e.path)),
   );
+}
+
+/**
+ * Remove directories left empty by the dropped files, deepest first, stopping at the project root.
+ *
+ * Deepest-first matters: `docs/review/` only becomes empty after `docs/review/records/` has gone, so
+ * a shallow-first pass would leave the parent behind. `rmdirSync` on a non-empty directory throws,
+ * which is the check — a directory that still holds something a buyer wants is never removed.
+ *
+ * @param {string} root the generated project directory
+ * @param {string[]} dropped repo-relative paths that were removed
+ */
+export function pruneEmptyDirs(root, dropped) {
+  const dirs = new Set();
+  for (const rel of dropped) {
+    let dir = dirname(rel);
+    while (dir && dir !== '.' && dir !== '/') {
+      dirs.add(dir);
+      dir = dirname(dir);
+    }
+  }
+  for (const dir of [...dirs].sort((a, b) => b.split('/').length - a.split('/').length)) {
+    try {
+      rmdirSync(join(root, dir));
+    } catch {
+      // Not empty, or already gone. Both mean leave it alone.
+    }
+  }
+}
+
+/**
+ * Pure: the `git clone` arguments for a shallow copy of the template. Exported for tests, because
+ * this is the line the default path dies on and nothing executed it.
+ *
+ * **`--branch HEAD` is not a thing.** `git clone --branch` takes a branch or a tag name; `HEAD` is
+ * neither, and git answers `fatal: Remote branch HEAD not found in upstream origin`. The default
+ * invocation — `npx create-keelblock-app myapp`, with no `--ref`, which is B-1's headline command —
+ * built exactly that and crashed before copying a file (F-74).
+ *
+ * Omitting `--branch` is not a fallback, it is the correct instruction: a clone with no branch takes
+ * the remote's own default HEAD, which is what "no ref given" means.
+ *
+ * @param {string|null} ref a tag or branch, or null for the remote's default
+ * @param {string} url
+ * @param {string} dest
+ * @returns {string[]}
+ */
+export function cloneArgs(ref, url, dest) {
+  return ref === null
+    ? ['clone', '--depth', '1', url, dest]
+    : ['clone', '--depth', '1', '--branch', ref, url, dest];
 }
 
 /**
@@ -166,20 +225,31 @@ function main() {
   // answer rather than something this script invents.
   let source = fromArg === -1 ? null : argv[fromArg + 1];
   let temp = null;
-  const ref = refArg === -1 ? 'HEAD' : argv[refArg + 1];
+  // `null` means "whatever the remote calls its default", which is a different thing from the
+  // string 'HEAD' — and conflating them is what broke the default path.
+  const ref = refArg === -1 ? null : argv[refArg + 1];
   if (!source) {
     temp = mkdtempSync(join(tmpdir(), 'keelblock-'));
-    run('git', ['clone', '--depth', '1', '--branch', ref, UPSTREAM_URL, temp], process.cwd());
+    run('git', cloneArgs(ref, UPSTREAM_URL, temp), process.cwd());
     source = temp;
   }
 
-  const commit = run('git', ['rev-parse', ref], source).trim();
+  // `rev-parse` is the opposite case: HEAD is exactly what it understands for "the current commit".
+  const commit = run('git', ['rev-parse', ref ?? 'HEAD'], source).trim();
+  // What the generated project records it came FROM. A resolved commit when no ref was named,
+  // because "HEAD" in a provenance file is a pointer that means something different tomorrow.
+  const provenanceRef = ref ?? commit;
 
   // ONE snapshot. The first version listed paths with `git ls-files` and copied their contents out
   // of the working tree, which is two different states: a file staged but not committed was listed
   // and copied, a file present but untracked was copied without being listed. `git archive` takes
   // the ref and nothing else, so what lands is exactly one commit's worth of repository.
-  const tracked = run('git', ['ls-tree', '-r', '--name-only', ref], source)
+  // The RESOLVED COMMIT, not the ref. With no `--ref` the ref is null, and `git ls-tree … null`
+  // answers `fatal: Not a valid object name null` — the second half of F-74, which surfaced only by
+  // running the thing after the first half was fixed. Using the commit also makes the sentence above
+  // literally true rather than true by coincidence: the listing and the archive below are now
+  // guaranteed to be the same commit, where a ref could in principle move between the two calls.
+  const tracked = run('git', ['ls-tree', '-r', '--name-only', commit], source)
     .trim()
     .split('\n')
     .filter(Boolean);
@@ -191,11 +261,16 @@ function main() {
     'sh',
     [
       '-c',
-      `git -C ${JSON.stringify(source)} archive --format=tar ${ref} | tar -x -C ${JSON.stringify(name)}`,
+      `git -C ${JSON.stringify(source)} archive --format=tar ${commit} | tar -x -C ${JSON.stringify(name)}`,
     ],
     { stdio: 'inherit' },
   );
   for (const rel of drop) rmSync(join(name, rel), { recursive: true, force: true });
+  // …and the directories they leave behind. `tar -x` creates a directory for every archived file,
+  // so removing all of `docs/review/`'s files left the buyer an empty `docs/review/` — a folder that
+  // says something used to be here, in a generated project whose whole point is that it is theirs
+  // from the first commit. Found by asserting it rather than by looking (F-74).
+  pruneEmptyDirs(name, drop);
 
   const pkg = JSON.parse(readFileSync(join(name, 'package.json'), 'utf8'));
   writeFileSync(
@@ -204,7 +279,7 @@ function main() {
   );
   writeFileSync(
     join(name, PROVENANCE_FILE),
-    JSON.stringify(provenanceFor({ name, ref, commit, upstream }), null, 2) + '\n',
+    JSON.stringify(provenanceFor({ name, ref: provenanceRef, commit, upstream }), null, 2) + '\n',
   );
 
   // The buyer's history starts here. Not a clone: 200 commits of a product they did not write is
@@ -221,14 +296,38 @@ function main() {
       'user.name=you',
       'commit',
       '-qm',
-      `keelblock ${ref}`,
+      `keelblock ${provenanceRef}`,
     ],
     name,
   );
 
   if (temp) rmSync(temp, { recursive: true, force: true });
   console.log(`\nScaffolded ${keep.length} files into ${name}/\n`);
-  for (const line of nextSteps(name, ref)) console.log(line ? `  ${line}` : '');
+  for (const line of nextSteps(name, provenanceRef)) console.log(line ? `  ${line}` : '');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+/**
+ * A scaffolder that fails must say what a person can do about it.
+ *
+ * `main()` had no handler, so the default path's crash — `git clone --branch HEAD`, which git
+ * refuses — surfaced as an `execFileSync` stack trace with a spawn error in it. The first thing a
+ * new user runs, failing in the least legible way available (F-74). A temp directory was also left
+ * behind on every failure after it was created.
+ *
+ * The stack still goes to stderr under `--debug`: swallowing it entirely would trade one unhelpful
+ * failure for another.
+ */
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try {
+    main();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(`\ncreate-keelblock-app failed.\n\n  ${detail.split('\n')[0]}\n`);
+    console.error('  If this was a network clone, check that the ref exists:');
+    console.error(`    git ls-remote --heads --tags ${UPSTREAM_URL}\n`);
+    console.error('  A local checkout skips the network entirely:');
+    console.error('    node scripts/create-keelblock-app.mjs <dir> --from /path/to/keelblock\n');
+    if (process.argv.includes('--debug') && error instanceof Error) console.error(error.stack);
+    process.exit(1);
+  }
+}

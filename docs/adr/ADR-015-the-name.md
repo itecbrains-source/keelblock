@@ -4,8 +4,10 @@
 
 ## Context
 
-An external review found that **`keel` is not available**, in the only three places that matter for a
-developer tool. The npm package `keel` is live and active, `create-keel-app` is published by someone
+An adversarial review found that **`keel` is not available**, in the only three places that matter
+for a developer tool. (That review was labelled "external" until 2026-09-10; it was a session the
+owner ran, and the label is corrected wherever it appears. The finding below is unaffected — it was
+verified against the npm registry and RDAP, not taken from the review's word.) The npm package `keel` is live and active, `create-keel-app` is published by someone
 else, `keel.dev` resolves, and Keel (keel.so) is a funded developer-tools company selling backends —
 the same category, publishing to the same registry.
 
