@@ -2056,3 +2056,113 @@ are expanded, `REQ-1b` is not mistaken for an endpoint, and both are pinned by t
 The general shape: **a gate is trusted for the rules it was named after, not the rules it runs.**
 Everyone had read "no REQ without an AC" — it is in SPEC-003, and every spec's Definition of Done
 repeats it — and nobody had asked which of the five sentences in that list had code behind it.
+
+## F-64 · The sign-in button rendered its own translation key, on a spec marked done, because nobody had ever set the variable that makes the button exist
+
+**2026-09-09 · found while closing DEF-018 · fixed**
+
+DEF-018 asked for one thing: register a GitHub OAuth app and prove the provider flow works. Setting
+`NEXT_PUBLIC_OAUTH_PROVIDERS=github` rendered the provider button for the first time — by anyone,
+ever — and it read, literally, `login.continueWith`.
+
+```
+messages/en.json:31       "continueWith": "Continue with {provider}"
+login/page.tsx:38         continueWith: t('continueWith'),                        ← no values
+login/sign-in-form.tsx:76 labels.continueWith.replace('{provider}', provider)
+```
+
+next-intl will not format a message with an unfilled ICU placeholder; it returns the key path. The
+`.replace()` that was meant to fill the placeholder then ran against a string that no longer
+contained one, and the key path reached the screen.
+
+**Fixed** by formatting on the server, once per provider — `t('continueWith', { provider })` inside
+the map — rather than by reaching for `t.raw()` and keeping the `.replace()`. Both make the button
+read correctly today. Only one keeps ICU doing the work, which is the whole reason the message has a
+placeholder instead of a concatenation, and it is the difference that a second locale finds out
+about rather than a reviewer.
+
+**The gate gap, which matters more than the bug.** `scripts/check-locale.mjs` ran three structural
+checks: key parity across locales, every `t('key')` resolves, every key is used. `t('continueWith')`
+**passes all three** — the key exists, it is used, and there is one locale. Nothing asked whether a
+message's placeholders were satisfied by its call site, though that is decidable from the two inputs
+the gate already parses.
+
+That is F-62's shape again: **the gate checked that the link exists, not that it works.** A fourth
+rule now runs — a message with ICU arguments must be called with them — with mutation proofs, and it
+reproduces this exact defect against the real repository when the fix is reverted. Four of the five
+ICU messages in `en.json` were already called correctly; the rule flags exactly the one that was not.
+
+Writing it produced two smaller findings of its own, both kept because both were real. The rule
+first missed `{ provider }` — object shorthand — which is to say it failed against the very call
+site it was written for. And its own docblock, which quotes `t('continueWith', { provider })` to
+explain the rule, was scraped by check 2 as a use of a key that does not exist: the extractors read
+comments. Both are fixed and tested.
+
+**The finding under the finding.** SPEC-004 is `done`, and this shipped on its sign-in surface. It
+survived because the composition had never executed: `NEXT_PUBLIC_OAUTH_PROVIDERS` is empty by
+default, `enabledOAuthProviders` returns `[]`, and `providers.map()` rendered nothing — in
+development, in CI, and in every test. Every part was built, typed and reviewed. The assembly had
+literally never run.
+
+The default is not the mistake. "A provider button that always fails because no client id exists is
+worse than no button" is correct, and it should stay. But **the right default is what made the
+defect unobservable**, and the answer to that is not to change the default — it is to render the
+surface somewhere that is not production. `sign-in-form.dom.test.tsx` now mounts the form with
+`providers={['github']}` and asserts that no button's accessible name looks like a key path. It
+costs eleven lines and it catches this outright.
+
+## F-65 · The whole app stopped hydrating in development, and the only symptom was one dead button — the second time this project has paid for it
+
+**2026-09-09 · found while closing DEF-018 · fixed**
+
+Reported as "the provider button does not respond to clicks". Reading the code found nothing: the
+component has `'use client'`, the button is `type="button"` with an `onClick`, and the action it
+calls exists. The code was correct. **React was never hydrating** — not on the login page, and not
+on any page.
+
+```
+providerFiber: []        ← no __reactFiber$ on the button
+bodyFiber:     []        ← none on <body> either
+renderers:     0         ← React never mounted a renderer
+(no page errors, every JS chunk 200)
+```
+
+The cause was one line in the dev-server log that the browser never shows:
+
+```
+⚠ Blocked cross-origin request to Next.js dev resource /_next/hmr from "127.0.0.1".
+```
+
+`next dev` serves its HMR socket and client runtime only to the origin it advertises — `localhost` —
+and treats `127.0.0.1` as a different origin. The page still arrives fully server-rendered and
+correct. It simply never comes alive.
+
+**Why it looked like one button.** Nothing throws, and the console shows only a failed WebSocket. The
+email form kept working the entire time, because a Server Action form **posts natively without
+JavaScript** — progressive enhancement doing exactly its job, and thereby hiding that JavaScript was
+dead. The provider button is the only control on that page that needs hydration, so an app-wide
+failure presented as a single unresponsive button. Verified against a production build, which
+hydrates normally: this is development-only, which is worse than it sounds, because development is
+where the defect is supposed to be found.
+
+**This is keelblock's problem, not the framework's.** `supabase status` prints
+`http://127.0.0.1:54721`, the OAuth redirect URIs are registered against that host, and the
+getting-started page uses it throughout. **Following our own instructions is what breaks
+development.**
+
+**Fixed** with `allowedDevOrigins: ['127.0.0.1', 'localhost']` in `next.config.ts`. After it:
+`[HMR] connected`, `__reactFiber$` present, zero blocked-origin lines, and the button drives the
+real flow to GitHub from a click rather than from a URL pasted into the address bar.
+
+**The part worth keeping.** This was not the first sighting. `docs/TESTING.md` already records a
+trial losing an afternoon to a form that submitted and changed nothing, with the cause named
+exactly — _"hydration was blocked because it served on `127.0.0.1` rather than `localhost`"_ — and
+found _"only by reading the dev-server log"_. It was written down as a story about how that trial
+went, and not as a fix, a rule, or a line of configuration. So it happened again, to the owner, on a
+different button, and cost the diagnosis a second time.
+
+A project whose stated position is that **a rule with no gate is not a rule** had written this one
+down in prose and left it there. `src/dev-origins.test.mts` is the gate: every host keelblock's own
+setup instructions hand a reader must be an allowed dev origin. The general shape is that **an
+observation recorded as narrative is not a fix**, and a findings document is only worth its cost when
+something in the build can fail because of what it says.

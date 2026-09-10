@@ -13,14 +13,21 @@ export function SignInForm({
   providers,
   labels,
 }: {
-  providers: OAuthProvider[];
+  /**
+   * Each provider arrives with its label already formatted. The label is NOT a template for this
+   * component to fill in: `t('continueWith', { provider })` on the server is what lets ICU do the
+   * work, and a second locale that orders the sentence differently — or picks a form based on the
+   * name — keeps working without this file changing. Doing it here with `.replace()` was F-64, and
+   * the failure was not cosmetic: next-intl refuses to format a message whose placeholder is
+   * unfilled, so `t('continueWith')` returned the key path and the button read `login.continueWith`.
+   */
+  providers: { id: OAuthProvider; label: string }[];
   labels: {
     email: string;
     submit: string;
     sending: string;
     sent: string;
     tooSoon: string;
-    continueWith: string;
     providerFailed: string;
   };
 }) {
@@ -61,19 +68,19 @@ export function SignInForm({
 
       {/* Nothing renders when no provider is configured — an OAuth button that cannot work is a
           worse affordance than none. */}
-      {providers.map((provider) => (
+      {providers.map(({ id, label }) => (
         <button
-          key={provider}
+          key={id}
           type="button"
           onClick={async () => {
             setProviderError(false);
-            const result = await startOAuth(provider);
+            const result = await startOAuth(id);
             if (result.status === 'ok') window.location.assign(result.url);
             else setProviderError(true);
           }}
           className="rounded-lg border border-black/15 px-3 py-2 text-sm dark:border-white/20"
         >
-          {labels.continueWith.replace('{provider}', provider)}
+          {label}
         </button>
       ))}
       {providerError ? (

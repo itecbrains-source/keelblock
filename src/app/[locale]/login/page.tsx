@@ -28,14 +28,17 @@ export default async function Login({ searchParams }: PageProps<'/[locale]/login
         </p>
       ) : null}
       <SignInForm
-        providers={enabledOAuthProviders(process.env.NEXT_PUBLIC_OAUTH_PROVIDERS)}
+        // Formatted here, once per provider, so the placeholder is filled by ICU rather than by a
+        // `.replace()` in the client component (F-64).
+        providers={enabledOAuthProviders(process.env.NEXT_PUBLIC_OAUTH_PROVIDERS).map(
+          (provider) => ({ id: provider, label: t('continueWith', { provider }) }),
+        )}
         labels={{
           email: t('email'),
           submit: t('submit'),
           sending: t('sending'),
           sent: t('sent'),
           tooSoon: t('tooSoon'),
-          continueWith: t('continueWith'),
           providerFailed: t('providerFailed'),
         }}
       />

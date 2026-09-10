@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { flatten, extractUsedKeys, compare, findRawLinkImports } from './check-locale.mjs';
+import {
+  flatten,
+  flattenEntries,
+  extractUsedKeys,
+  extractCalls,
+  placeholderNames,
+  findUnfilledArguments,
+  stripComments,
+  compare,
+  findRawLinkImports,
+} from './check-locale.mjs';
 
 const base = ['home.title', 'home.tagline', 'error.retry'];
 
@@ -78,7 +88,87 @@ describe('locale gate', () => {
     expect(findRawLinkImports(['a.tsx'], () => "// never import from 'next/link'")).toEqual([]);
   });
 
-  it('the real repository passes all three rules', async () => {
+  // ── check 4: a message's ICU arguments must be supplied by its call site ───
+  // Checks 1-3 all passed over F-64. This is the one that would not have.
+
+  it('flattens to key/message pairs, which check 4 needs and check 1 does not', () => {
+    expect(flattenEntries({ login: { continueWith: 'Continue with {provider}' } })).toEqual([
+      ['login.continueWith', 'Continue with {provider}'],
+    ]);
+  });
+
+  it('reads the arguments a message requires', () => {
+    expect(placeholderNames('Continue with {provider}')).toEqual(['provider']);
+    expect(placeholderNames('{org} invited you as {role}.')).toEqual(['org', 'role']);
+    expect(placeholderNames('Sign in')).toEqual([]);
+    // The leading name of a plural/select is still an argument the call site must supply.
+    expect(placeholderNames('{count, plural, one {# item} other {# items}}')).toEqual(['count']);
+  });
+
+  it('reads the arguments a call site supplies, in both object forms', () => {
+    expect(extractCalls(`t('a', { provider })`)).toEqual([{ key: 'a', args: ['provider'] }]);
+    expect(extractCalls(`t('a', { org: x?.name ?? '' })`)).toEqual([{ key: 'a', args: ['org'] }]);
+    expect(extractCalls(`t('a')`)).toEqual([{ key: 'a', args: null }]);
+  });
+
+  it('does not guess at arguments it cannot read', () => {
+    // A false failure on a legitimate call is how a rule gets deleted.
+    expect(extractCalls(`t('a', { ...values })`)).toEqual([{ key: 'a', args: 'dynamic' }]);
+    expect(extractCalls(`t('a', values)`)).toEqual([{ key: 'a', args: 'dynamic' }]);
+  });
+
+  it('MUTATION: F-64 — a message with a placeholder called without it is caught', () => {
+    // The exact shape that shipped: the key exists, it is used, there is one locale, and the button
+    // rendered the literal text `login.continueWith` to a user.
+    const p = findUnfilledArguments({
+      messages: { 'login.continueWith': 'Continue with {provider}' },
+      calls: [{ key: 'login.continueWith', args: null }],
+    });
+    expect(p.join()).toMatch(/t\('login\.continueWith'\) is called without \{provider\}/);
+    expect(p.join()).toMatch(/user sees the literal text/);
+  });
+
+  it('MUTATION: supplying only some of the arguments is caught', () => {
+    const p = findUnfilledArguments({
+      messages: { 'invite.offer': '{org} has invited you to join as {role}.' },
+      calls: [{ key: 'invite.offer', args: ['org'] }],
+    });
+    expect(p.join()).toMatch(/without \{role\}/);
+    expect(p.join()).not.toMatch(/\{org\}/);
+  });
+
+  it('a satisfied call, a message with no arguments, and an unreadable call all pass', () => {
+    const messages = { 'a.x': 'Continue with {provider}', 'a.y': 'Sign in' };
+    expect(
+      findUnfilledArguments({
+        messages,
+        calls: [
+          { key: 'a.x', args: ['provider'] },
+          { key: 'a.y', args: null },
+          { key: 'a.x', args: 'dynamic' },
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('leaves a nonexistent key to check 2 rather than reporting it twice', () => {
+    expect(findUnfilledArguments({ messages: {}, calls: [{ key: 'a.gone', args: null }] })).toEqual(
+      [],
+    );
+  });
+
+  it('a t() call quoted in a comment is not a call site', () => {
+    // Found the hard way: the docblock explaining check 4 quotes `t('continueWith', { provider })`,
+    // and check 2 promptly reported a key named `continueWith` that does not exist.
+    expect(extractUsedKeys(`// see t('ghost')\nconst t = useTranslations('a'); t('x');`)).toEqual([
+      'a.x',
+    ]);
+    expect(stripComments(`const u = 'https://x.test'; // trailing`).trim()).toBe(
+      `const u = 'https://x.test';`,
+    );
+  });
+
+  it('the real repository passes all four rules', async () => {
     const { readFileSync, readdirSync } = await import('node:fs');
     const locales = Object.fromEntries(
       readdirSync('messages')

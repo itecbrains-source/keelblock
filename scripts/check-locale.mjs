@@ -4,14 +4,22 @@
  *
  * i18n fails quietly: a missing key renders its own name, a stale key lingers forever, and a typo
  * ships. None of that breaks a build or a test, so it is found by a user in a language nobody on the
- * team reads. Three checks, all structural:
+ * team reads. Four checks, all structural:
  *
  *   1. every locale carries exactly the default locale's keys — no missing, no extra
  *   2. every `t('key')` in the source resolves to a key that exists
  *   3. every key in the messages is actually used
+ *   4. every message with ICU arguments is called with them
  *
  * Check 2 is the one that pays for the file: it turns a typo from a runtime surprise into a build
  * failure. Adapted from `boxyhq/saas-starter-kit`'s `check-locale`, which does (1).
+ *
+ * Check 4 exists because checks 1-3 all passed over F-64. `t('continueWith')` against
+ * "Continue with {provider}" satisfies every one of them — the key exists, it is used, and there is
+ * only one locale — and next-intl then refuses to format a message with an unfilled placeholder and
+ * returns the key path, so a shipped button read `login.continueWith`. That is the same shape as
+ * F-62: the gate checked that the link EXISTS, not that it WORKS. Whether a message's placeholders
+ * are satisfied by its call site is decidable from the two inputs this file already parses.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
@@ -30,11 +38,23 @@ export function flatten(obj, prefix = '') {
 }
 
 /**
+ * Comments are not call sites. Without this, a docblock that quotes `t('key')` to explain a rule
+ * registers as a use of that key — which is how a comment written for check 4 made check 2 report a
+ * key that does not exist. Exported for tests.
+ */
+export function stripComments(source) {
+  // The lookbehind keeps `https://` out of it; nothing here needs to survive being wrong about a
+  // string literal, since the only consumers are the two key extractors.
+  return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(?<![:\\])\/\/[^\n]*/g, ' ');
+}
+
+/**
  * Extract `namespace.key` pairs from source. A file declares a namespace with
  * `useTranslations('ns')` / `getTranslations('ns')`, then calls `t('key')`.
  * Exported for tests.
  */
-export function extractUsedKeys(source) {
+export function extractUsedKeys(raw) {
+  const source = stripComments(raw);
   const namespaces = [...source.matchAll(/(?:use|get)Translations\(\s*['"]([\w.]+)['"]/g)].map(
     (m) => m[1],
   );
@@ -42,6 +62,108 @@ export function extractUsedKeys(source) {
   // With no declared namespace, a t('a.b') call is already fully qualified.
   if (namespaces.length === 0) return calls;
   return calls.flatMap((key) => namespaces.map((ns) => `${ns}.${key}`));
+}
+
+/** Flatten to `[key, message]` pairs — check 4 needs the values, not just the names. */
+export function flattenEntries(obj, prefix = '') {
+  return Object.entries(obj).flatMap(([k, v]) =>
+    v && typeof v === 'object' && !Array.isArray(v)
+      ? flattenEntries(v, `${prefix}${k}.`)
+      : [[`${prefix}${k}`, v]],
+  );
+}
+
+/**
+ * The ICU arguments a message requires: `{provider}` and the leading name of `{count, plural, …}`.
+ * Exported for tests.
+ */
+export function placeholderNames(message) {
+  if (typeof message !== 'string') return [];
+  return [...new Set([...message.matchAll(/\{\s*([a-zA-Z_$][\w$]*)\s*[,}]/g)].map((m) => m[1]))];
+}
+
+/**
+ * Every `t('key', { … })` call with the argument names it passes.
+ *
+ * `args` is `null` when the call passes nothing, an array of names when it passes an object literal,
+ * and `'dynamic'` when something is passed that cannot be read statically (a spread, a variable).
+ * `'dynamic'` is not checked — a false build failure on a legitimate call would get this rule
+ * deleted, which costs more than the calls it would catch.
+ *
+ * Only plain `t(` matches, so `t.raw('key')` is exempt by construction: it is next-intl's documented
+ * opt-out of formatting and returns the message untouched. That is a real gap — "fix" F-64 with
+ * `t.raw` plus `.replace()` and this rule goes quiet — and it is named here rather than closed,
+ * because `.replace()` is the thing check 4 is arguing against, not the thing it can detect.
+ *
+ * Exported for tests.
+ */
+export function extractCalls(raw) {
+  const source = stripComments(raw);
+  const namespaces = [...source.matchAll(/(?:use|get)Translations\(\s*['"]([\w.]+)['"]/g)].map(
+    (m) => m[1],
+  );
+  const calls = [];
+  for (const m of source.matchAll(/\bt\(\s*['"]([\w.]+)['"]/g)) {
+    calls.push({ key: m[1], args: readArgs(source.slice(m.index + m[0].length)) });
+  }
+  // With no declared namespace, a t('a.b') call is already fully qualified.
+  if (namespaces.length === 0) return calls;
+  return calls.flatMap((c) => namespaces.map((ns) => ({ ...c, key: `${ns}.${c.key}` })));
+}
+
+/** The text immediately after a matched key, up to and including the argument object. */
+function readArgs(rest) {
+  const after = rest.match(/^\s*,\s*/);
+  if (!after) return null;
+  const body = balancedObject(rest.slice(after[0].length));
+  if (body === null || body.includes('...')) return 'dynamic';
+  // Nested objects collapse away so only the top level's names remain. A ternary inside a value can
+  // contribute a spurious name, which is harmless: the check asks whether the REQUIRED names are
+  // present, so an extra one can never manufacture a failure.
+  let flat = body;
+  while (/\{[^{}]*\}/.test(flat)) flat = flat.replace(/\{[^{}]*\}/g, '');
+  return flat
+    .split(',')
+    .map((part) => {
+      // `{ provider }` and `{ provider: p }` are the same argument. Missing the shorthand form was
+      // the first thing this rule got wrong, against the very call site it was written for.
+      const named = part.match(/^\s*([\w$]+)\s*:/);
+      return named ? named[1] : (part.match(/^\s*([\w$]+)\s*$/)?.[1] ?? null);
+    })
+    .filter((n) => n !== null);
+}
+
+/** The contents of a brace-balanced object literal at the start of `s`, or null if there is none. */
+function balancedObject(s) {
+  if (s[0] !== '{') return null;
+  let depth = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '{') depth++;
+    else if (s[i] === '}' && --depth === 0) return s.slice(1, i);
+  }
+  return null;
+}
+
+/**
+ * Check 4. A message whose placeholders the call site does not supply does not render — next-intl
+ * returns the key path. Pure. Exported so the rule carries a mutation proof.
+ */
+export function findUnfilledArguments({ messages, calls }) {
+  const problems = [];
+  for (const { key, args } of calls) {
+    // A key that does not exist is check 2's finding; reporting it twice helps nobody.
+    if (!(key in messages)) continue;
+    if (args === 'dynamic') continue;
+    const missing = placeholderNames(messages[key]).filter((n) => !(args ?? []).includes(n));
+    if (missing.length) {
+      problems.push(
+        `t('${key}') is called without ${missing.map((n) => `{${n}}`).join(', ')} — ` +
+          `next-intl will not format a message with an unfilled placeholder, so a user sees the ` +
+          `literal text "${key}"`,
+      );
+    }
+  }
+  return problems;
 }
 
 /**
@@ -113,24 +235,27 @@ function walk(dir, out = []) {
 }
 
 function main() {
-  const locales = Object.fromEntries(
+  const parsed = Object.fromEntries(
     readdirSync(MESSAGES)
       .filter((f) => f.endsWith('.json'))
-      .map((f) => [
-        f.replace('.json', ''),
-        flatten(JSON.parse(readFileSync(join(MESSAGES, f), 'utf8'))),
-      ]),
+      .map((f) => [f.replace('.json', ''), JSON.parse(readFileSync(join(MESSAGES, f), 'utf8'))]),
   );
+  const locales = Object.fromEntries(Object.entries(parsed).map(([l, m]) => [l, flatten(m)]));
+  const messages = Object.fromEntries(flattenEntries(parsed[DEFAULT_LOCALE] ?? {}));
   const files = walk(SRC);
-  const usedKeys = [...new Set(files.flatMap((f) => extractUsedKeys(readFileSync(f, 'utf8'))))];
+  const sources = files.map((f) => readFileSync(f, 'utf8'));
+  const usedKeys = [...new Set(sources.flatMap(extractUsedKeys))];
+  const calls = sources.flatMap(extractCalls);
   const problems = [
     ...compare({ locales, usedKeys }),
+    ...findUnfilledArguments({ messages, calls }),
     ...findRawLinkImports(files, (f) => readFileSync(f, 'utf8')),
   ];
 
   if (!problems.length) {
+    const withArgs = Object.values(messages).filter((m) => placeholderNames(m).length).length;
     console.log(
-      `locale: ok — ${Object.keys(locales).length} locale(s), ${locales[DEFAULT_LOCALE].length} keys, all used and all present`,
+      `locale: ok — ${Object.keys(locales).length} locale(s), ${locales[DEFAULT_LOCALE].length} keys, all used and all present; ${withArgs} with ICU arguments, all supplied`,
     );
     return;
   }
