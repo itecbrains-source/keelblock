@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stripComments, stripCssComments, stripFences } from './prose.mjs';
+import { stripComments, stripCssComments, stripFences, stripHtmlComments } from './prose.mjs';
 
 /**
  * The rule these helpers exist for: a gate must react to what a file INSTRUCTS, never to what it
@@ -124,5 +124,32 @@ describe('stripFences', () => {
 
   it('a tilde fence closes on tildes, not on backticks', () => {
     expect(stripFences('~~~\nhidden\n```\nstill hidden\n~~~\nout')).not.toContain('hidden');
+  });
+});
+
+describe('stripHtmlComments', () => {
+  it('blanks HTML comments and preserves line numbers', () => {
+    const src = 'a\n<!-- hidden\n  still hidden -->\nb';
+    const out = stripHtmlComments(src);
+    expect(out).toHaveLength(src.length);
+    expect(out.split('\n')).toHaveLength(4);
+    expect(out).not.toContain('hidden');
+    expect(out.split('\n')[3]).toBe('b');
+  });
+
+  it('MUTATION: the fifth medium — a forbidden phrase inside an HTML comment is not a use of it', () => {
+    // Found by the lens, not by this file misfiring: a markdown rule's docblock CLAIMED comments
+    // were stripped while calling two strippers that do not know what `<!-- -->` is.
+    const md = '<!-- never call it an external review -->\nThe adversarial review says so.';
+    expect(stripHtmlComments(md)).not.toContain('external review');
+    expect(stripHtmlComments(md)).toContain('The adversarial review says so.');
+  });
+
+  it('an unterminated comment blanks to the end rather than throwing', () => {
+    expect(stripHtmlComments('keep me\n<!-- oops').trimEnd()).toBe('keep me');
+  });
+
+  it('a lone angle bracket is not a comment', () => {
+    expect(stripHtmlComments('a < b and c > d')).toBe('a < b and c > d');
   });
 });

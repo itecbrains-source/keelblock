@@ -98,6 +98,35 @@ export function stripCssComments(source) {
 }
 
 /**
+ * Blank every `<!-- … -->` comment in markdown/HTML, preserving every other character position.
+ *
+ * The fifth medium, and the first time the class was found by someone else. A rule scanning markdown
+ * for a forbidden phrase had a docblock claiming comments were stripped "on the day this is written,
+ * per AGENTS.md" — and the strippers it called were `stripFences` and `stripCssComments`, neither of
+ * which knows what `<!-- -->` is. What actually protected that docblock was an accident of which
+ * files the rule happened to scan. **A claimed mitigation that does not apply is worse than an
+ * absent one**, because it stops anyone looking.
+ *
+ * AGENTS.md's own instruction is why this lives here: "If your medium is not there, add it there
+ * rather than working around it locally."
+ */
+export function stripHtmlComments(source) {
+  const out = [...source];
+  let i = 0;
+  while (i < source.length) {
+    if (source.startsWith('<!--', i)) {
+      const end = source.indexOf('-->', i + 4);
+      const stop = end === -1 ? source.length : end + 3;
+      for (let j = i; j < stop; j++) if (out[j] !== '\n') out[j] = ' ';
+      i = stop;
+      continue;
+    }
+    i++;
+  }
+  return out.join('');
+}
+
+/**
  * Blank every fenced code block in markdown, preserving line numbers.
  *
  * Fenced content is a picture of a thing, never the thing: a document that shows the acceptance-bar

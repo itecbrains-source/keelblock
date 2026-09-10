@@ -63,7 +63,11 @@ jobs:
         if: steps.wired.outputs.ok == 'true'
         with: { node-version: 24, cache: npm }
 
-      - run: npm ci
+      # `--ignore-scripts`, and this is the workflow that most needs it: it is the only one holding
+      # a production credential (VERCEL_TOKEN, above) and a postinstall script runs with it in the
+      # environment. check.yml and nightly.yml carried the flag at all three of their install sites;
+      # the rule was known and applied everywhere except here (ADR-007).
+      - run: npm ci --ignore-scripts
         if: steps.wired.outputs.ok == 'true'
 
       - name: deploy to production

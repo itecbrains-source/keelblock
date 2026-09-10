@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { parse } from 'yaml';
 
 /**
@@ -10,9 +10,17 @@ import { parse } from 'yaml';
  * SPEC-003 rule 5: a `toContain` over raw YAML is satisfied by a mention in a comment, so a
  * text-matching gate can pass on a workflow that does the opposite of what it claims.
  *
- * This exists because the workflow has never executed — there is no remote yet. Under keelblock's own R3
+ * **The original justification has expired, and is replaced rather than deleted.** It read: "This
+ * exists because the workflow has never executed — there is no remote yet. Under keelblock's own R3
  * rule an unrun workflow is not a working gate, so until it runs, this is the strongest available
- * evidence, and it is deliberately structural rather than textual.
+ * evidence." That was true when written and stopped being true at the first push; there are now
+ * dozens of runs and `git ls-remote` answers.
+ *
+ * It still earns its place, for a different reason: a run proves the workflow did what it did THAT
+ * TIME, on that event, in that job. It cannot prove that every install disables lifecycle scripts or
+ * that every job needing history asks for it — a green run is consistent with a rule being absent
+ * from the job that did not run. Structural assertions cover the whole file; runs cover one path
+ * through it. Keeping the stale sentence would have been the defect this file exists to catch.
  */
 type Step = { run?: string; uses?: string; if?: string; with?: Record<string, unknown> };
 type Workflow = {
@@ -228,5 +236,91 @@ describe('the upgrade job cannot pass on an upgrade that delivered nothing', () 
       raw.replace(/\s+- name: the upgrade actually delivered something[\s\S]*?exit 1; \}\n/, '\n'),
     );
     expect(runs('upgrade', without).join('\n')).not.toMatch(/--diff-filter=A/);
+  });
+});
+
+/**
+ * Rules that hold across EVERY job of EVERY workflow, rather than one job of one file.
+ *
+ * The gate above reads `check.yml` and `nightly.yml`, and mostly narrows to `runs('check')`. That
+ * was enough while there were two workflows doing similar things, and it stopped being enough
+ * twice on the same day:
+ *
+ *   · `nightly.yml`'s clean-clone job had no `fetch-depth: 0`, so the nightly had been red since
+ *     2026-09-09 with the review gate saying so in its own error text. The lesson was recorded in
+ *     `check.yml`'s checkout — citing the run that taught it — and not applied one file over.
+ *   · `deploy.yml` ran plain `npm ci` while holding `VERCEL_TOKEN`. It is the only workflow with a
+ *     production credential and the only one whose install ran lifecycle scripts, and no gate read
+ *     it at all: it appeared in `scripts/` only inside the scaffolder's exclusion list.
+ *
+ * Both are the same shape — a rule proven on one component and never applied to the composition —
+ * so these enumerate the directory instead of naming files.
+ */
+describe('rules that hold across every workflow', () => {
+  const files = readdirSync('.github/workflows').filter((f) => /\.ya?ml$/.test(f));
+  const all = files.map((f) => [f, load(readFileSync(`.github/workflows/${f}`, 'utf8'))] as const);
+
+  it('enumerates the directory rather than a hand-written list', () => {
+    // The list this replaces named two files. A third existed.
+    expect(files.length).toBeGreaterThanOrEqual(3);
+    expect(files).toContain('deploy.yml');
+  });
+
+  it('MUTATION: every install runs with --ignore-scripts, in every workflow', () => {
+    const offenders: string[] = [];
+    for (const [file, w] of all) {
+      for (const [job, def] of Object.entries(w.jobs ?? {})) {
+        for (const step of def.steps ?? []) {
+          const run = String(step.run ?? '');
+          if (/\bnpm (ci|install)\b/.test(run) && !run.includes('--ignore-scripts')) {
+            offenders.push(`${file}:${job} — ${run.split('\n')[0].trim()}`);
+          }
+        }
+      }
+    }
+    expect(
+      offenders,
+      'a postinstall script is a live supply-chain vector, and worst in a job holding a credential (ADR-007)',
+    ).toEqual([]);
+  });
+
+  it('MUTATION: every job that runs the review gate checks out full history', () => {
+    // `npm run check` reaches check-promises, whose review rule needs real ancestry. A default
+    // checkout fetches one commit and the gate fails with a message naming this exact fix.
+    const offenders: string[] = [];
+    for (const [file, w] of all) {
+      for (const [job, def] of Object.entries(w.jobs ?? {})) {
+        const steps = def.steps ?? [];
+        // Against THIS repository. A job that scaffolds a new project and checks that one is a
+        // different question: `isGeneratedProject()` short-circuits the review block before it ever
+        // reaches the history guard (check-promises.mjs), because a generated project has no record
+        // series to verify. `check.yml:scaffold` is that job, it is green, and exempting it by the
+        // MECHANISM rather than by name is what keeps this rule from being a list of exceptions.
+        const runsHere = steps.some(
+          (s) =>
+            /npm run check|check-promises|review-records/.test(String(s.run ?? '')) &&
+            !/create-keelblock-app/.test(String(s.run ?? '')),
+        );
+        if (!runsHere) continue;
+        const checkout = steps.find((s) => String(s.uses ?? '').startsWith('actions/checkout'));
+        if (String(checkout?.with?.['fetch-depth'] ?? '') !== '0') {
+          offenders.push(`${file}:${job}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      'set `fetch-depth: 0` — the review rule verifies that each record names a commit that exists',
+    ).toEqual([]);
+  });
+
+  it('a workflow that spends a credential says which permissions it needs', () => {
+    // Not yet true of check.yml and nightly.yml, and deliberately scoped to the one that holds a
+    // secret rather than asserted everywhere at once — a gate that cannot pass on the day it lands
+    // is a gate that gets exempted (ADR-023).
+    const deploy = load(readFileSync('.github/workflows/deploy.yml', 'utf8')) as Workflow & {
+      permissions?: unknown;
+    };
+    expect(deploy.permissions, 'deploy.yml holds VERCEL_TOKEN').toBeDefined();
   });
 });

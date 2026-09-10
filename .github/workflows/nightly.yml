@@ -19,6 +19,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        # Full history, for the same reason check.yml carries it — and this job did not, which is
+        # why the nightly has been red since 2026-09-09. The review-record rule verifies that each
+        # record names a commit that EXISTS, and a default checkout fetches one, so every record
+        # cites a sha this clone has never heard of. The gate's own message names the fix: "Set
+        # `fetch-depth: 0` on the checkout step for any job that runs this gate."
+        #
+        # The lesson was learned at run 34261942642, written into check.yml's checkout, and not
+        # applied here. A rule recorded in one file and not the other is F-75's shape at the
+        # workflow layer, and `check-workflow.test.mts` now asserts it across every job of every
+        # workflow rather than one job of one file.
+        with: { fetch-depth: 0 }
       - uses: actions/setup-node@v5
         with: { node-version: 26, cache: npm }
       # postinstall scripts are a live supply-chain attack vector (ADR-007).
@@ -79,5 +90,11 @@ jobs:
         with: { node-version: 26 }
       - run: npm install --no-save --no-audit --ignore-scripts
       - run: git --no-pager diff --stat -- package-lock.json || true
+      # `.next/` is gitignored, so `PageProps` — which lives in `.next/types/routes.d.ts` — does not
+      # exist on a clean checkout. Without this, `tsc` failed with `Cannot find name 'PageProps'` on
+      # EVERY run, and because a failed step halts the job, `npm test` below never executed once.
+      # The job has never done the thing it exists for. `continue-on-error` hid it: the workflow
+      # stayed green while its only detector reported a permanent false positive.
+      - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npm test

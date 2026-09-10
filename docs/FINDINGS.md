@@ -2617,3 +2617,102 @@ comments and fences on the day it was written, per AGENTS.md.
 
 ADR-015's substance is untouched: `keel` being unavailable was verified against the npm registry and
 RDAP, not taken from the review's word. Only the label was wrong.
+
+## F-76 · The nightly had been red for a day, and the job that would have told anyone had never once executed its own purpose
+
+**2026-09-10 · found by the lens seat · fixed**
+
+Two defects in `nightly.yml`, in different jobs, both invisible to every gate because **no gate reads
+CI state**. `PRODUCT.md` claims the proof runs "every push and every night"; the live badge read
+`failing`; and `npm run check` and `npm run status` cannot see either.
+
+### The clean-clone job, red since 2026-09-09
+
+The review rule verifies that each record names a commit that **exists**, and `actions/checkout`
+fetches one commit by default. Reproduced by isolation rather than inferred — a shallow clone of this
+repository fails, a full clone passes:
+
+```
+git clone --depth 1 file://<repo> shallow && node scripts/check-promises.mjs
+  [review] the repository history is shallow, so no record's commit can be verified.
+  Set `fetch-depth: 0` on the checkout step for any job that runs this gate.
+```
+
+**The gate names its own fix in its error text.** That fix was applied to `check.yml`, with a comment
+citing run 34261942642 — the run that taught it — and not applied to `nightly.yml`. A lesson recorded
+in one file and not the other, which is F-75's shape one layer up.
+
+### The range-drift job, which has never run its own reason for existing
+
+`nightly.yml` ran `npx tsc --noEmit` with no `next typegen`. `.next/` is gitignored, so `PageProps`
+— which lives in `.next/types/routes.d.ts` — does not exist on a clean checkout:
+
+```
+git archive HEAD | tar -x -C drift && npx tsc --noEmit
+  src/app/[locale]/login/page.tsx(23,55): error TS2304: Cannot find name 'PageProps'.
+npx next typegen && npx tsc --noEmit   -> exit 0
+```
+
+A failed step halts the job, so **`npm test` — the step that IS the job's purpose — never ran once**.
+And `continue-on-error: true` meant the workflow stayed green while its only detector reported a
+permanent false positive. The job existed to answer "does the new dependency resolution still
+behave"; it has never asked.
+
+The lens ran the real thing in a clean clone: `next typegen && tsc` clean, 610/610 tests pass. **There
+was no drift.** A detector reporting a constant false failure over a genuinely clean signal is worse
+than no detector, because the noise is indistinguishable from the answer.
+
+`continue-on-error` is left in place: its recorded reasoning — "a range moving under us is news, not
+a broken build, and a nightly that cries wolf about somebody else's release gets muted within a week"
+— is sound, and now that the job actually runs, whether it should be able to fail is a real decision
+with real data rather than a guess. **Named as open rather than resolved quietly.**
+
+### The gate that should have caught both
+
+`check-workflow.test.mts` read two files and mostly one job of one of them. `deploy.yml` — the only
+workflow holding a production credential — was read by **no gate at all**, and appeared in `scripts/`
+only inside the scaffolder's exclusion list. It ran plain `npm ci` with `VERCEL_TOKEN` in the
+environment, while `check.yml` and `nightly.yml` used `--ignore-scripts` at all three of their
+install sites. The rule was known, applied everywhere it did not matter most, and ungated.
+
+Now the rules that are universal enumerate the workflow directory instead of naming files: every
+install disables lifecycle scripts, and every job that runs the review gate against **this**
+repository checks out full history. Both carry mutation proofs.
+
+The second rule immediately reported `check.yml:scaffold`, which is a **true exemption**: that job
+runs `npm run check` inside a generated project, where `isGeneratedProject()` short-circuits the
+review block before it reaches the history guard. It is exempted by that mechanism rather than by
+name — a rule narrowed by a list of exceptions stops being a rule.
+
+## F-77 · The rule written to stop a label recurring had three blind spots, and its docblock claimed a mitigation it was not applying
+
+**2026-09-10 · found by the lens seat, on the rule from F-75 · fixed**
+
+F-75 added a rule so the "external review" relabel could not be missed a third time. It shipped with
+one `it()`, no mutation proof — in a repository whose B-4 reads "every gate has a proof it can fail"
+— and the lens wrote four probes against it. Two passed that should have failed:
+
+- **A date exempted anything.** The exemption was `/…|2026-09-10/i`, and **dating the folder is the
+  most natural sentence anyone would write about it**. `docs/review is an external review, dated
+2026-09-10` was exempt. Now naming the folder on a line is decisive and no date rescues it.
+- **The file list was typed by hand.** Five files; ten markdown files mention `docs/review`; eight
+  went unscanned, including `CONTRIBUTING.md` and `CHANGELOG.md`. **"The relabel missed a file",
+  recurring inside the rule written to prevent it**, because the rule enumerated files the same way
+  the relabel had. The list is now derived from `git ls-files`.
+- **The docblock claimed comments were stripped "per AGENTS.md"** and called `stripFences` and
+  `stripCssComments`. The files it scans are **markdown**, whose comment syntax is `<!-- -->`, which
+  neither knows about. What actually protected that docblock was an accident of which files the rule
+  happened to scan. **A claimed mitigation that does not apply is worse than an absent one**, because
+  it stops anyone from looking. `stripHtmlComments` now exists in `prose.mjs` — the fifth medium, and
+  AGENTS.md's own instruction is why it lives there rather than being worked around locally.
+
+**And a sixth occurrence, caught before commit.** The widened rule's first run over the whole
+repository reported three lines of F-75's own write-up, which quote the old label to explain what was
+wrong with it. That is the use/mention distinction this entire defect family is about, so the rule
+now makes it mechanical: a phrase inside quotes or backticks is a **mention**, not a use. This is the
+first time the class was caught by the mechanism instead of by a person.
+
+Six occurrences now: F-64, F-66, F-67, F-70, this rule's docblock, and this rule's first run. The
+AGENTS.md entry added yesterday says a text-matching rule needs a stripper on the day it is written.
+It is not enough on its own — **the rule also has to be told what counts as quoting**, and it has to
+be pointed at every file rather than a remembered few.

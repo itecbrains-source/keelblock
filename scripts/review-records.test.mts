@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
-import { stripCssComments, stripFences } from './prose.mjs';
+import { readFileSync } from 'node:fs';
+import { stripFences, stripHtmlComments } from './prose.mjs';
+import { execFileSync } from 'node:child_process';
 import {
   checkRecords,
   checkScoreClaims,
@@ -166,42 +167,121 @@ describe('shallow history', () => {
 
 describe('the review folder does not claim independence it does not have', () => {
   /**
-   * `docs/review/` was labelled an "external review" in three places. It is a session the owner ran,
-   * and DEF-020 already draws exactly that line — "a session the author spawned is not one".
+   * `docs/review/` was labelled an "external review". It is a session the owner ran, and DEF-020
+   * already draws that line — "a session the author spawned is not one".
    *
-   * The relabel was done once and **missed a file**: `HANDOVER.md`, which is what a new reader opens
-   * to understand the folder, still called it external for a commit. That is F-60's class — a
-   * reader-facing claim the repository has already refuted elsewhere — occurring inside the fix for
-   * itself, which is why it is a rule now rather than a third correction.
+   * The first version of this rule had three defects, all found by the lens seat rather than by it
+   * misfiring, and all three are the rule's own subject matter:
    *
-   * Comments and fenced blocks are stripped on the day this is written, per AGENTS.md, because this
-   * docblock says "external review" twice and would otherwise be the first thing it catches.
+   *   · It exempted any line containing `2026-09-10`, and dating the folder is the most natural
+   *     sentence anyone would write about it. Now a line naming `docs/review` is an offender
+   *     REGARDLESS of the date, and the date only exempts lines that are talking about the later,
+   *     genuinely external review.
+   *   · It hand-listed five files. Ten markdown files mention `docs/review`; eight went unscanned.
+   *     "The relabel missed a file" recurring inside the rule written to prevent it — so the file
+   *     list is now derived from the repository instead of typed.
+   *   · Its docblock claimed comments were stripped "per AGENTS.md" while calling two strippers
+   *     that do not know what `<!-- -->` is. A claimed mitigation that does not apply is worse than
+   *     an absent one. `stripHtmlComments` now exists, and this file uses it.
    */
-  const READER_FACING = [
-    'docs/review/README.md',
-    'docs/review/HANDOVER.md',
-    'docs/adr/ADR-015-the-name.md',
-    'AGENTS.md',
-    'README.md',
-  ];
+  const OFFENCE = /\bexternal review\b/i;
+  /** Lines that are legitimately about the 2026-09-10 review, or are correcting the label itself. */
+  const EXEMPT = /not an external review|genuinely external|labelled "external"|2026-09-10/i;
 
-  it('no reader-facing document calls docs/review an external review', () => {
-    const offenders: string[] = [];
-    for (const file of READER_FACING) {
-      if (!existsSync(file)) continue;
-      const prose = stripFences(stripCssComments(readFileSync(file, 'utf8')));
-      prose.split('\n').forEach((line: string, i: number) => {
-        // The 2026-09-10 review IS external, so the phrase is only wrong when it describes THIS
-        // folder or this project's own earlier sessions. Anything naming the later one is fine.
-        if (!/\bexternal review\b/i.test(line)) return;
-        if (/genuinely external|not an external|labelled "external"|2026-09-10/i.test(line)) return;
-        offenders.push(`${file}:${i + 1} — ${line.trim().slice(0, 80)}`);
-      });
-    }
+  /** Every tracked markdown file. Derived, because typing the list is the defect being fixed. */
+  const markdownFiles = (): string[] =>
+    execFileSync('git', ['ls-files', '*.md'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+
+  /**
+   * A QUOTED phrase is a mention, not a use — the distinction this whole defect family is about.
+   * `F-75 says the folder "was labelled an external review"` is reporting what a document said; it
+   * is not the document saying it. Without this the rule fires on the finding that documents the
+   * rule, which it did, on its first widened run — the sixth occurrence of the class and the first
+   * one caught before it was committed.
+   *
+   * Applied to the WHOLE document, not per line, and position-preserving like the strippers it sits
+   * beside. Markdown wraps: an inline code span opened on one line routinely closes on the next, and
+   * a line-scoped version misses exactly those — which it did, on this file's own write-up, one run
+   * after the use/mention rule was added to fix the previous miss.
+   */
+  const unquote = (text: string) =>
+    text.replace(/"[^"]*"|`[^`]*`|“[^”]*”/g, (m) => m.replace(/[^\n]/g, ' '));
+
+  /** Pure, so the rule carries proofs that do not need files on disk. Exported shape: offenders. */
+  const scan = (file: string, text: string): string[] => {
+    const rawLines = stripHtmlComments(stripFences(text)).split('\n');
+    const scanLines = unquote(stripHtmlComments(stripFences(text))).split('\n');
+    const out: string[] = [];
+    scanLines.forEach((line: string, i: number) => {
+      const raw = rawLines[i] ?? '';
+      if (!OFFENCE.test(line)) return;
+      // Naming the folder on the same line is decisive: no date rescues it.
+      const namesFolder = /docs\/review/.test(raw);
+      if (!namesFolder && EXEMPT.test(raw)) return;
+      out.push(`${file}:${i + 1} — ${raw.trim().slice(0, 80)}`);
+    });
+    return out;
+  };
+
+  it('no markdown file in the repository calls docs/review an external review', () => {
+    const offenders = markdownFiles().flatMap((f) => scan(f, readFileSync(f, 'utf8')));
     expect(
       offenders,
       `docs/review/ is an adversarial review by a session the owner ran, not an external one ` +
         `(DEF-020: "a session the author spawned is not one")`,
     ).toEqual([]);
+  });
+
+  it('scans every markdown file that mentions the folder, not a hand-written five', () => {
+    const mentioning = markdownFiles().filter((f) =>
+      readFileSync(f, 'utf8').includes('docs/review'),
+    );
+    // The list this replaced named five. The defect was that it named any.
+    expect(mentioning.length).toBeGreaterThan(5);
+  });
+
+  // ── mutation proofs · B-4: every gate has a proof it can fail ───────────────
+
+  it('MUTATION: the plain phrase is caught', () => {
+    expect(scan('README.md', 'keel had an external review in September.')).toHaveLength(1);
+  });
+
+  it('MUTATION: a date does not rescue a line that names the folder', () => {
+    // The blind spot the lens found. "docs/review is an external review, 2026-09-10" was exempt.
+    const line = '`docs/review/` is an external review, dated 2026-09-10.';
+    expect(scan('docs/review/HANDOVER.md', line)).toHaveLength(1);
+  });
+
+  it('MUTATION: a file outside the old hand-written list is caught', () => {
+    expect(scan('CONTRIBUTING.md', 'See the external review for context.')).toHaveLength(1);
+  });
+
+  it('the 2026-10 review is genuinely external and may be called so', () => {
+    expect(
+      scan('docs/FINDINGS.md', '**2026-09-10 · reported by the external review · fixed**'),
+    ).toEqual([]);
+    expect(
+      scan('docs/review/README.md', '> **Not an external review**, and the label is corrected.'),
+    ).toEqual([]);
+  });
+
+  it('MUTATION: the phrase inside an HTML comment is not a use of it', () => {
+    // The third defect: markdown comments were not stripped, and the docblock said they were.
+    expect(scan('AGENTS.md', '<!-- never write external review here -->')).toEqual([]);
+  });
+
+  it('MUTATION: a quoted mention is not a use, but an unquoted one still is', () => {
+    // The sixth occurrence, caught before commit: F-75's write-up quotes the old label to explain
+    // what was wrong with it, and the widened rule reported all three lines.
+    expect(scan('docs/FINDINGS.md', 'It was labelled an "external review" until today.')).toEqual(
+      [],
+    );
+    expect(
+      scan('docs/FINDINGS.md', 'It was labelled an external review until today.'),
+    ).toHaveLength(1);
+  });
+
+  it('a fenced example is not a claim either', () => {
+    expect(scan('README.md', '```\\nexternal review\\n```')).toEqual([]);
   });
 });
