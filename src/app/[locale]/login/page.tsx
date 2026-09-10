@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import { SignInForm } from './sign-in-form';
 import { enabledOAuthProviders } from '@/lib/auth/providers';
+import { safeNext } from '@/lib/auth/redirect';
 
 /**
  * The sign-in surface — SPEC-004 REQ-7.
@@ -24,6 +25,17 @@ export default async function Login({ searchParams }: PageProps<'/[locale]/login
   const params = await searchParams;
   const failed = params?.error === 'link';
 
+  // Where to go AFTER signing in. `invite/[token]` links here as `/login?next=/invite/<token>`, and
+  // this page never read it — so accepting an invitation as a signed-out user dead-ended on the home
+  // page with the invitation abandoned (F-73). Both server actions were already wired for it:
+  // `requestMagicLink` reads a `next` field and `startOAuth` takes a `next` argument. Only the UI
+  // never spoke to them.
+  //
+  // Sanitised HERE as well as in the actions, and the duplication is deliberate: this value is
+  // rendered into a hidden input, so it becomes part of the page's HTML. The action's check protects
+  // the redirect; this one keeps attacker-controlled text out of the document in the first place.
+  const next = safeNext(typeof params?.next === 'string' ? params.next : null);
+
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6 py-16">
       <div>
@@ -41,6 +53,7 @@ export default async function Login({ searchParams }: PageProps<'/[locale]/login
         providers={enabledOAuthProviders(process.env.NEXT_PUBLIC_OAUTH_PROVIDERS).map(
           (provider) => ({ id: provider, label: t('continueWith', { provider }) }),
         )}
+        next={next}
         labels={{
           email: t('email'),
           submit: t('submit'),

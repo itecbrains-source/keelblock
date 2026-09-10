@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
  */
 export function SignInForm({
   providers,
+  next,
   labels,
 }: {
   /**
@@ -33,6 +34,12 @@ export function SignInForm({
    * unfilled, so `t('continueWith')` returned the key path and the button read `login.continueWith`.
    */
   providers: { id: OAuthProvider; label: string }[];
+  /**
+   * Where to land after signing in, already sanitised by the page. Carried through BOTH paths —
+   * the hidden field for the email link, the argument for the provider button — because a journey
+   * that survives one and not the other is a journey that fails half the time (F-73).
+   */
+  next: string;
   labels: {
     email: string;
     submit: string;
@@ -50,6 +57,9 @@ export function SignInForm({
   return (
     <div className="flex flex-col gap-4">
       <form action={action} className="flex flex-col gap-3">
+        {/* Hidden rather than a closure variable: `requestMagicLink` is a Server Action reachable
+            by a direct POST, so it parses its own input and reads this from the FormData. */}
+        <input type="hidden" name="next" value={next} />
         <Label htmlFor="email">{labels.email}</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />
         <Button type="submit" disabled={pending}>
@@ -73,7 +83,7 @@ export function SignInForm({
           variant="outline"
           onClick={async () => {
             setProviderError(false);
-            const result = await startOAuth(id);
+            const result = await startOAuth(id, next);
             if (result.status === 'ok') window.location.assign(result.url);
             else setProviderError(true);
           }}

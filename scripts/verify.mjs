@@ -27,7 +27,13 @@ const FULL = process.argv.includes('--full');
 const has = (bin) => spawnSync(bin, ['--version'], { stdio: 'ignore' }).error?.code !== 'ENOENT';
 
 /** Steps that are slow or destructive locally. Run them with --full. */
-const HEAVY = [{ match: /^npm ci/, why: 'removes and reinstalls node_modules (~500MB)' }];
+const HEAVY = [
+  { match: /^npm ci/, why: 'removes and reinstalls node_modules (~500MB)' },
+  // Destructive is the other half of this list's stated purpose and it had no entry. `db reset`
+  // drops and recreates every table. In CI that is a throwaway container; on a laptop it is the
+  // developer's own data, and the honest default is to name it rather than run it (F-72).
+  { match: /supabase db reset/, why: "drops and recreates the local database's schema and data" },
+];
 
 /**
  * `uses:` actions mapped to what can honestly be done on a laptop.
@@ -81,9 +87,53 @@ export const ACTION_HANDLERS = {
   },
 };
 
-/** Pure: decide what to do with one step. Exported so it can carry mutation proofs. */
-export function planStep(step, { full = false, handlers = ACTION_HANDLERS } = {}) {
+/**
+ * One step's plan. Declared rather than inferred: the branches legitimately differ — a skipped step
+ * has a reason and no command, a run step has a command and sometimes a cwd — and letting the union
+ * be inferred makes every caller narrow a shape that is really one thing with optional parts.
+ *
+ * @typedef {object} StepPlan
+ * @property {string} kind        `run` or `uses`
+ * @property {string} state       ran · local · asserted · skipped · failed
+ * @property {string} label       what to print
+ * @property {string} [detail]    why, when it did not simply run
+ * @property {string[]} [cmd]     what to spawn, when there is something to spawn
+ * @property {string} [cwd]       where to spawn it — the workflow's `working-directory` (F-72)
+ */
+
+/**
+ * Pure: decide what to do with one step. Exported so it can carry mutation proofs.
+ *
+ * `dirExists` is injected rather than read directly so the working-directory rule below can be
+ * proven without creating directories in a test.
+ *
+ * @returns {StepPlan}
+ */
+export function planStep(
+  step,
+  { full = false, handlers = ACTION_HANDLERS, dirExists = existsSync } = {},
+) {
   if (typeof step.run === 'string') {
+    // **`working-directory:` is part of the command, not decoration.** Dropping it did not make a
+    // step run in the wrong place harmlessly — it made `supabase start && supabase db reset`, a step
+    // CI runs inside a throwaway `/tmp/scaffold`, run against the DEVELOPER'S OWN database, while
+    // this tool printed "executed exactly as CI will". A fidelity claim that is wrong in the
+    // destructive direction is worse than no fidelity claim (F-72).
+    //
+    // Reported as `skipped` when the directory is absent, which it usually will be: that is this
+    // file's own fourth state — "heavy or unavailable — named, with the reason, never silently" —
+    // and it keeps the fidelity number honest instead of inflating it with a step that did not run
+    // where CI runs it.
+    const wd = step['working-directory'];
+    if (wd && !dirExists(wd)) {
+      return {
+        kind: 'run',
+        state: 'skipped',
+        label: step.run,
+        detail: `working-directory ${wd} does not exist locally — CI creates it earlier in the job`,
+      };
+    }
+
     const heavy = HEAVY.find((h) => h.match.test(step.run.trim()));
     if (heavy && !full)
       return {
@@ -98,7 +148,13 @@ export function planStep(step, { full = false, handlers = ACTION_HANDLERS } = {}
     // step then failed inside `verify` ("running Node 25, stamp verified against 26") and passed
     // standalone, so the step whose stated purpose is that a Node major mismatched against CI's pin
     // is a failure rather than a shrug was asserting against an interpreter nothing else uses.
-    return { kind: 'run', state: 'ran', label: step.run, cmd: ['bash', '-c', step.run] };
+    return {
+      kind: 'run',
+      state: 'ran',
+      label: step.run,
+      cmd: ['bash', '-c', step.run],
+      ...(wd ? { cwd: wd } : {}),
+    };
   }
   const uses = String(step.uses ?? '');
   const key = uses.split('@')[0];
@@ -145,7 +201,12 @@ function main() {
 
       if (plan.cmd) {
         console.log(`\n── ${label}`);
-        const r = spawnSync(plan.cmd[0], plan.cmd.slice(1), { stdio: 'inherit' });
+        // `cwd` is passed through, and its absence was the defect: a step CI runs somewhere else
+        // ran here.
+        const r = spawnSync(plan.cmd[0], plan.cmd.slice(1), {
+          stdio: 'inherit',
+          ...(plan.cwd ? { cwd: plan.cwd } : {}),
+        });
         results.push({ ...plan, state: r.status === 0 ? plan.state : 'failed' });
       } else {
         const mark = { asserted: '·', skipped: '⊘', failed: '✗' }[plan.state] ?? '·';

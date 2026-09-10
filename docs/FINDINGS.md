@@ -2481,3 +2481,67 @@ itself" — and Theme 4, "nobody has tried to use it". The measurement offered w
 commits touching `src/` and a 3.87:1 ratio of gate code to application code. This entry does not
 resolve that, and it should not: three fixes are not an answer to a structural finding. It records
 that the finding arrived with evidence and that the evidence reproduced.
+
+## F-72 · `npm run verify` would have run `supabase db reset` against the developer's own database, while printing "executed exactly as CI will"
+
+**2026-09-10 · reported by the external review, reproduced here · fixed**
+
+`verify.mjs` parses `check.yml` and executes its steps, which is the right design — a hand-written
+local mimic drifts from the workflow the first time either changes. It ignored one key:
+
+```
+check.yml:188   - name: the buyer's stack, at their own schema
+check.yml:189     working-directory: /tmp/scaffold
+check.yml:190     run: supabase start && supabase db reset
+```
+
+`planStep` returned `cmd: ['bash', '-c', step.run]` with **no `cwd`**, and the runner spawned it
+without one. In CI that step runs inside a throwaway scaffolded project. Locally it would have run
+in the repository root, against the developer's own Supabase instance, dropping and recreating every
+table — and the summary line for it reads _"ran — executed exactly as CI will"_.
+
+Verified without running it, by planning the real workflow's steps and printing what would be
+spawned and where: `bash -c "supabase start && supabase db reset"` with `cwd` = the repository root.
+`verify.mjs` iterates every job, so the `upgrade` job is reached.
+
+**A fidelity claim that is wrong in the destructive direction is worse than no fidelity claim.**
+Every other honesty mechanism in that file is careful — four states, skips named with reasons, a
+printed percentage of steps genuinely executed — and the number counted a step that would have run
+in the wrong place as faithful.
+
+**Fixed** by carrying `working-directory` into `cwd`, and by reporting the step as `skipped` with its
+reason when the directory does not exist locally, which is this file's own fourth state rather than
+a new concept. `supabase db reset` is also added to `HEAVY`, whose stated purpose — "slow **or
+destructive** locally" — had no destructive entry.
+
+The test that matters is neither of those: it plans every step of the **real** workflow and asserts
+that nothing destructive resolves to this repository's own directory. A fixture would have been
+right while the workflow was wrong, which is how this got here.
+
+## F-73 · The invitation journey dead-ended, because the only thing not wired for it was the screen
+
+**2026-09-10 · reported by the external review, reproduced here · fixed and walked in a browser**
+
+`invite/[token]/page.tsx:52` sends a signed-out invitee to `/login?next=/invite/<token>`. Both
+server actions were already built for that value — `requestMagicLink` reads a `next` field off its
+FormData, `startOAuth` takes a `next` argument — and **the login page never read the parameter, the
+form never submitted it, and the button called `startOAuth(id)` with one argument.** So accepting an
+invitation while signed out landed on the home page with the invitation abandoned.
+
+Every part was correct. The composition was missing, which is defect family A again and the same
+shape as F-64: components proven, assembly unrun. This one is worse than the button, because the
+assembly here is a _journey_ — the thing a person is trying to do — and a journey has no test that
+fails when one link in it is missing unless someone walks it.
+
+**Fixed** in three places, all of which existed to be used: the page reads `searchParams.next`, the
+form submits it as a hidden field, and the provider button passes it as the argument the action
+already accepted. Both paths, deliberately — **a journey that survives one and not the other fails
+half the time**, and the email path and the provider path are equally likely.
+
+The value is sanitised at the page as well as in the actions, and the duplication is the point: the
+action's check protects the redirect, and this one keeps attacker-controlled text out of the rendered
+document. Confirmed in a browser — `?next=/invite/abc123` reaches the hidden field and the POST body,
+and `?next=//evil.example` arrives in the DOM as `/`.
+
+Walked rather than asserted, on the review's instruction and F-70's evidence: a passing test proves
+less than usual for a journey, and the last three defects all passed every test in the repository.

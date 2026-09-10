@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { planStep, summarize, ACTION_HANDLERS } from './verify.mjs';
+import { readFileSync } from 'node:fs';
+import { parse } from 'yaml';
 
 describe('local CI verifier', () => {
   it('executes a plain run step exactly as CI would — a NON-login shell', () => {
@@ -93,5 +95,64 @@ describe('local CI verifier', () => {
       .map((s) => String(s.uses ?? '').split('@')[0])
       .filter(Boolean);
     for (const a of used) expect(ACTION_HANDLERS[a], `${a} has no local handler`).toBeDefined();
+  });
+});
+
+describe('working-directory is part of the command — F-72', () => {
+  /**
+   * The defect this pins could have destroyed a developer's data, and the tool would have said it
+   * was faithful while doing it.
+   *
+   * `check.yml`'s `upgrade` job runs `supabase start && supabase db reset` with
+   * `working-directory: /tmp/scaffold` — a throwaway project CI creates earlier in the same job.
+   * `planStep` dropped the key, so the command was spawned with the repository root as its cwd,
+   * against the developer's own local database, under a summary line reading "executed exactly as
+   * CI will". A fidelity claim that is wrong in the destructive direction is worse than none.
+   */
+  const destructive = {
+    name: "the buyer's stack, at their own schema",
+    'working-directory': '/tmp/scaffold',
+    run: 'supabase start && supabase db reset',
+  };
+
+  it('MUTATION: a step whose working-directory is absent locally is skipped, not run here', () => {
+    const plan = planStep(destructive, { dirExists: () => false });
+    expect(plan.state).toBe('skipped');
+    expect(plan.cmd, 'a skipped step must carry no command to spawn').toBeUndefined();
+    expect(plan.detail).toMatch(/\/tmp\/scaffold does not exist locally/);
+  });
+
+  it('MUTATION: when the directory does exist, the command runs THERE and not here', () => {
+    const plan = planStep(destructive, { dirExists: () => true, full: true });
+    expect(plan.cwd, 'cwd must be the declared working-directory').toBe('/tmp/scaffold');
+    expect(plan.cwd).not.toBe(process.cwd());
+  });
+
+  it("a destructive command is heavy, which is the other half of that list's purpose", () => {
+    // Defence in depth: even with the directory present, `db reset` needs --full.
+    const plan = planStep(destructive, { dirExists: () => true });
+    expect(plan.state).toBe('skipped');
+    expect(plan.detail).toMatch(/drops and recreates/);
+  });
+
+  it('SAFETY: no step in the real workflow plans to run destructively in this repository', () => {
+    // The property, asserted over the actual file rather than a fixture — because the fixture is
+    // the thing that was right while the workflow was wrong.
+    const wf = parse(readFileSync('.github/workflows/check.yml', 'utf8')) as {
+      jobs: Record<string, { steps?: Record<string, unknown>[] }>;
+    };
+    const offenders: string[] = [];
+    for (const [jobName, job] of Object.entries(wf.jobs ?? {})) {
+      for (const step of job.steps ?? []) {
+        const plan = planStep(step, { full: true, dirExists: () => true });
+        const run = typeof step.run === 'string' ? step.run : '';
+        const destructiveHere =
+          /db reset|rm -rf/.test(run) && plan.cmd && (plan.cwd ?? process.cwd()) === process.cwd();
+        if (destructiveHere) offenders.push(`${jobName}: ${run.split('\n')[0]}`);
+      }
+    }
+    expect(offenders, 'a destructive CI step would run against the developer’s own tree').toEqual(
+      [],
+    );
   });
 });

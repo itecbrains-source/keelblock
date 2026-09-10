@@ -102,6 +102,28 @@ observed and what you could not confirm.
 **Tests before implementation.** Write the failing test, watch it fail, then fix it. A test written
 after the fix only proves the fix does what its author already believed.
 
+## Three rules this project paid for, so you do not have to
+
+**A rule that matches source text needs a comment stripper on the day it is written.** Not after it
+misfires — on the day. Four separate rules here have reported a violation against the comment written
+to explain them: the locale gate against its own docblock (F-64), four more gates and a markdown
+fence (F-66), a CSS rule against the stylesheet comment defending it (F-67), and a font-scope check
+against the comment saying where the fonts moved (F-70). Whoever documents a rule is the first person
+to break it, every time. `scripts/prose.mjs` exports `stripComments` (TypeScript, via the compiler's
+scanner), `stripCssComments` and `stripFences` (markdown). Use one. If your medium is not there, add
+it there rather than working around it locally.
+
+**Verify by running the thing, not by reading it.** Two independent reviewers diagnosed a broken font
+by reading CSS and both prescribed a one-line fix that would have left every page in Times New Roman;
+the actual defect was a variable defined on `<body>` and consumed at `<html>`, and it only surfaced
+when someone opened a browser (F-70). A gate can tell you a claim is true. It cannot tell you the
+product works.
+
+**A count in prose goes stale the moment reality moves.** The `status` gate enforces this and it will
+catch you. Do not reach for backticks to silence it — `claimsIn` exempts inline code spans, and using
+that exemption to keep a number is steering your prose around a gate instead of answering it. Rewrite
+the sentence so it does not assert a count.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
