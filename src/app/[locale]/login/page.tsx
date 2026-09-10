@@ -5,8 +5,19 @@ import { enabledOAuthProviders } from '@/lib/auth/providers';
 /**
  * The sign-in surface — SPEC-004 REQ-7.
  *
- * Static: nothing here reads cookies, so it prerenders. The form is a client component because it
- * needs pending state; the action it calls is a Server Action that parses its own input.
+ * The form is a client component because it needs pending state; the action it calls is a Server
+ * Action that parses its own input.
+ *
+ * This route reads `searchParams` — request data — so it does NOT fully prerender. It builds as
+ * `◐ Partial Prerender`: a static shell with the request-dependent part streamed in. The comment
+ * that used to sit here said "Static: nothing here reads cookies, so it prerenders", which was
+ * false against the line five below it: `cookies()` is not the only request state, and reading
+ * `searchParams` outside a `<Suspense>` boundary is what `next dev` reports on every request to
+ * this page. Recorded rather than quietly deleted, because the sentence was wrong on its own terms
+ * and not merely imprecise about how Next classifies the route.
+ *
+ * Whether the `error=link` read belongs behind its own `<Suspense>` boundary is a live question and
+ * is deliberately not answered here.
  */
 export default async function Login({ searchParams }: PageProps<'/[locale]/login'>) {
   const t = await getTranslations('login');

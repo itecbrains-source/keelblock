@@ -161,7 +161,9 @@ work first is one timeout away from being retried for three days.
       Stripe account yet, and a spec that ships webhook handling verified only against fixtures has
       tested its own beliefs about the payload — R3's rule, and the one this project has been caught
       by before.
-- [ ] The staleness window's direction (REQ-7) chosen by the owner rather than by the implementer.
+- [x] The staleness window's direction (REQ-7) chosen by the owner rather than by the implementer.
+      Decided, with the reasoning attached to REQ-7 and the decision pinned by AC-9, AC-10 and
+      AC-11 — the map's totality, the direction itself, and the threshold.
 
 ## Deferrals
 
