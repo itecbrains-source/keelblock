@@ -2618,7 +2618,7 @@ comments and fences on the day it was written, per AGENTS.md.
 ADR-015's substance is untouched: `keel` being unavailable was verified against the npm registry and
 RDAP, not taken from the review's word. Only the label was wrong.
 
-## F-76 · The nightly had been red for a day, and the job that would have told anyone had never once executed its own purpose
+## F-76 · The nightly had been red for a day, and the job that would have told anyone had been broken by a commit that never touched it
 
 **2026-09-10 · found by the lens seat · fixed**
 
@@ -2642,7 +2642,12 @@ git clone --depth 1 file://<repo> shallow && node scripts/check-promises.mjs
 citing run 34261942642 — the run that taught it — and not applied to `nightly.yml`. A lesson recorded
 in one file and not the other, which is F-75's shape one layer up.
 
-### The range-drift job, which has never run its own reason for existing
+### The range-drift job, which was fragile from birth and broken by an unrelated commit
+
+> **Corrected 2026-09-10, after this entry was published.** The first version of this section said
+> the job "has never run its own reason for existing" and that `npm test` "never ran once". **That is
+> false**, and the correction is kept in place rather than edited away, because how it was wrong is
+> the same defect as the finding.
 
 `nightly.yml` ran `npx tsc --noEmit` with no `next typegen`. `.next/` is gitignored, so `PageProps`
 — which lives in `.next/types/routes.d.ts` — does not exist on a clean checkout:
@@ -2653,19 +2658,59 @@ git archive HEAD | tar -x -C drift && npx tsc --noEmit
 npx next typegen && npx tsc --noEmit   -> exit 0
 ```
 
-A failed step halts the job, so **`npm test` — the step that IS the job's purpose — never ran once**.
-And `continue-on-error: true` meant the workflow stayed green while its only detector reported a
-permanent false positive. The job existed to answer "does the new dependency resolution still
-behave"; it has never asked.
+A failed step halts the job, so `npm test` — the step that IS the job's purpose — was skipped. But
+**not always, and that is the finding.** Read from the runs rather than inferred:
+
+```
+34190725649  2026-09-08 05:28  a4ac997  tsc ✓  npm test ✓   (no typegen step)
+34208941649  2026-09-08 09:14  1324075  tsc ✓  npm test ✓   (no typegen step)
+34333939540  2026-09-09 09:18  397ab17  tsc ✗  npm test skipped
+34448822227  2026-09-10 07:12  9376545  tsc ✓  npm test ✓   (typegen added)
+```
+
+The job ran its purpose twice and answered twice. **The window of failure is one run.**
+
+The cause is the part that generalises. `PageProps` entered `src/` exactly once —
+`ce01626`, SPEC-004's sign-in, 2026-09-08 16:02 UTC — and it is not an ancestor of either passing
+nightly and is an ancestor of the failing one. Before it, nothing in `src/` referenced a generated
+global, so `tsc` had nothing to miss.
+
+```
+git log --reverse -S 'PageProps' -- src/     -> ce01626, the only commit
+git merge-base --is-ancestor ce01626 a4ac997 -> NO
+git merge-base --is-ancestor ce01626 1324075 -> NO
+git merge-base --is-ancestor ce01626 397ab17 -> YES
+```
+
+So the missing step was **latent from the job's creation and became fatal on an unrelated feature
+commit**, four hours after the last nightly that passed. "Never ran" reads as a job somebody wrote
+wrong, which is a one-off. The truth is worse and more general: **a CI job that omits a build step
+passes for exactly as long as no feature needs that step, and the commit that breaks it is not the
+commit that touches it.** SPEC-004's review could not have caught this — it changed nothing in
+`nightly.yml` — and no gate could, because no gate reads CI state.
 
 The lens ran the real thing in a clean clone: `next typegen && tsc` clean, 610/610 tests pass. **There
-was no drift.** A detector reporting a constant false failure over a genuinely clean signal is worse
-than no detector, because the noise is indistinguishable from the answer.
+was no drift** on the day it failed either.
 
-`continue-on-error` is left in place: its recorded reasoning — "a range moving under us is news, not
-a broken build, and a nightly that cries wolf about somebody else's release gets muted within a week"
-— is sound, and now that the job actually runs, whether it should be able to fail is a real decision
-with real data rather than a guess. **Named as open rather than resolved quietly.**
+**How this entry was wrong, kept because it is the same defect.** The original claim was derived from
+the single failing run plus a local reproduction at `HEAD` — which is necessarily after `ce01626` —
+and generalised backwards over history nobody opened. Both seats had `gh` authenticated the whole
+time. **The evidence was three API calls away and neither of us made them.** A finding asserting that
+something "never" happened is a claim about every prior run, and it was written without reading one.
+
+`continue-on-error` is left in place, and the reason is re-derived against the corrected timeline
+rather than carried over. It did **not** hide a permanent false positive — there was nothing constant
+about it. It hid a **state change**: a job that had been answering its question stopped, on a day
+nobody pushed anything near it. That is the one thing a muted signal is least equipped to report and
+the one thing most worth reporting, and it is a stronger argument for changing the setting than the
+original reasoning was.
+
+It still stays for now. Its recorded justification — "a range moving under us is news, not a broken
+build, and a nightly that cries wolf about somebody else's release gets muted within a week" — is
+sound about the case it describes, and the case it does not describe is the one that just happened.
+Distinguishing "a dependency moved" from "this job stopped working" is a real change with a real
+design behind it, not a flag flip. **Named as open, with the argument for changing it now on the
+record.**
 
 ### The gate that should have caught both
 

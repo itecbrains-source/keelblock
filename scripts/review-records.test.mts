@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { stripFences, stripHtmlComments } from './prose.mjs';
 import { execFileSync } from 'node:child_process';
 import {
@@ -189,8 +189,17 @@ describe('the review folder does not claim independence it does not have', () =>
   const EXEMPT = /not an external review|genuinely external|labelled "external"|2026-09-10/i;
 
   /** Every tracked markdown file. Derived, because typing the list is the defect being fixed. */
-  const markdownFiles = (): string[] =>
-    execFileSync('git', ['ls-files', '*.md'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  const markdownFiles = (): string[] => {
+    // Tracked AND untracked. `git ls-files` alone sees only the index, so a mislabel in a NEW
+    // document would be caught one commit after it mattered — which is exactly when the relabel
+    // that started all this was missed. `--others --exclude-standard` adds the files that are
+    // about to be committed without adding the ones .gitignore already excludes.
+    const list = (args: string[]) =>
+      execFileSync('git', ['ls-files', ...args], { encoding: 'utf8' })
+        .split('\n')
+        .filter(Boolean);
+    return [...new Set([...list(['*.md']), ...list(['--others', '--exclude-standard', '*.md'])])];
+  };
 
   /**
    * A QUOTED phrase is a mention, not a use — the distinction this whole defect family is about.
@@ -204,19 +213,39 @@ describe('the review folder does not claim independence it does not have', () =>
    * a line-scoped version misses exactly those — which it did, on this file's own write-up, one run
    * after the use/mention rule was added to fix the previous miss.
    */
-  const unquote = (text: string) =>
-    text.replace(/"[^"]*"|`[^`]*`|“[^”]*”/g, (m) => m.replace(/[^\n]/g, ' '));
+  const blank = (m: string) => m.replace(/[^\n]/g, ' ');
+  const unquote = (text: string) => text.replace(/"[^"]*"|`[^`]*`|“[^”]*”/g, blank);
+  /**
+   * On a line that NAMES the folder, a backtick span is usually emphasis rather than reported
+   * speech, and treating every span as quoting let the claim itself pass. But a span that contains
+   * BOTH the folder and the phrase is a quoted example — someone showing the string, as F-77's
+   * write-up does — and blanking exactly those separates the two without a carve-out:
+   *
+   *   `docs/review/` is an `external review`.          two spans, prose between  -> a CLAIM
+   *   `docs/review is an external review, dated …`     one span containing both  -> an EXAMPLE
+   *
+   * Reported speech in double quotes still exempts either way.
+   */
+  const blankQuotedExamples = (text: string) =>
+    text.replace(/`[^`]*`/g, (m) =>
+      /docs\/review/.test(m) && /external review/i.test(m) ? blank(m) : m,
+    );
+  const unquoteSpeech = (text: string) =>
+    blankQuotedExamples(text).replace(/"[^"]*"|“[^”]*”/g, blank);
 
   /** Pure, so the rule carries proofs that do not need files on disk. Exported shape: offenders. */
   const scan = (file: string, text: string): string[] => {
-    const rawLines = stripHtmlComments(stripFences(text)).split('\n');
-    const scanLines = unquote(stripHtmlComments(stripFences(text))).split('\n');
+    const clean = stripHtmlComments(stripFences(text));
+    const rawLines = clean.split('\n');
+    const looseLines = unquote(clean).split('\n');
+    const strictLines = unquoteSpeech(clean).split('\n');
     const out: string[] = [];
-    scanLines.forEach((line: string, i: number) => {
-      const raw = rawLines[i] ?? '';
-      if (!OFFENCE.test(line)) return;
-      // Naming the folder on the same line is decisive: no date rescues it.
+    rawLines.forEach((raw: string, i: number) => {
+      // Naming the folder on the same line is decisive: no date rescues it, and backticks do not
+      // either — only genuine reported speech does.
       const namesFolder = /docs\/review/.test(raw);
+      const line = namesFolder ? (strictLines[i] ?? '') : (looseLines[i] ?? '');
+      if (!OFFENCE.test(line)) return;
       if (!namesFolder && EXEMPT.test(raw)) return;
       out.push(`${file}:${i + 1} — ${raw.trim().slice(0, 80)}`);
     });
@@ -279,6 +308,34 @@ describe('the review folder does not claim independence it does not have', () =>
     expect(
       scan('docs/FINDINGS.md', 'It was labelled an external review until today.'),
     ).toHaveLength(1);
+  });
+
+  it('MUTATION: backticks around the phrase do not evade the rule', () => {
+    // The residual the lens found: `unquote` treated every backtick span as quoting, so writing the
+    // claim with the phrase in code formatting passed.
+    expect(scan('docs/review/HANDOVER.md', '`docs/review/` is an `external review`.')).toHaveLength(
+      1,
+    );
+  });
+
+  it('a quoted EXAMPLE containing both the folder and the phrase is still a mention', () => {
+    const line = 'The string `docs/review is an external review, dated 2026-09-10` used to pass.';
+    expect(scan('docs/FINDINGS.md', line)).toEqual([]);
+  });
+
+  it('MUTATION: an untracked markdown file is scanned, not just the index', () => {
+    // Written first as `toContain('README.md')`, which passed against the UNFIXED listing because
+    // README.md is tracked — a proof that agreed with the code for a reason neither meant. It
+    // creates a real untracked file now, and removes it whatever happens.
+    const probe = 'ZZ-untracked-scan-probe.md';
+    writeFileSync(probe, 'See the external review for context.\n');
+    try {
+      expect(markdownFiles(), 'untracked markdown must be scanned').toContain(probe);
+      const offenders = markdownFiles().flatMap((f) => scan(f, readFileSync(f, 'utf8')));
+      expect(offenders.some((o) => o.startsWith(probe))).toBe(true);
+    } finally {
+      rmSync(probe, { force: true });
+    }
   });
 
   it('a fenced example is not a claim either', () => {

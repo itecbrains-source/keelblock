@@ -99,10 +99,14 @@ jobs:
       - run: npm install --no-save --no-audit --ignore-scripts
       - run: git --no-pager diff --stat -- package-lock.json || true
       # `.next/` is gitignored, so `PageProps` — which lives in `.next/types/routes.d.ts` — does not
-      # exist on a clean checkout. Without this, `tsc` failed with `Cannot find name 'PageProps'` on
-      # EVERY run, and because a failed step halts the job, `npm test` below never executed once.
-      # The job has never done the thing it exists for. `continue-on-error` hid it: the workflow
-      # stayed green while its only detector reported a permanent false positive.
+      # exist on a clean checkout. Without this, `tsc` fails with `Cannot find name 'PageProps'`, and
+      # because a failed step halts the job, `npm test` below is skipped.
+      #
+      # This step was missing from the job's creation and cost nothing until SPEC-004 put `PageProps`
+      # into `src/` (ce01626). The two nightlies before that commit ran `npm test` and passed; the
+      # first one after it did not. **A CI job that omits a build step passes for exactly as long as
+      # no feature needs that step**, and the commit that breaks it is not the commit that touches
+      # it — which is why nothing in SPEC-004's review could have caught this (F-76).
       - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npm test
