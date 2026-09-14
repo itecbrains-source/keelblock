@@ -58,6 +58,46 @@ npm run check      # every gate; --strict to fail on a rule that did not run
 describes, its score, and how far HEAD has moved since. A record behind HEAD is normal and is
 reported rather than failed — but it tells you whether the score you are about to quote is current.
 
+## Where the work is — paused 2026-09-14, resuming in a few days
+
+Pointers and dates only. No counts, for the reason at the top of this file.
+
+**Last shipped.** SPEC-007 REQ-1 at `bb511f8` — the entitlement row, its policy, and the status map
+that reads it. Billing moved `draft` -> `partial`. `npm run status` has the rest and is the authority.
+
+**The one part of SPEC-007 that needs no Stripe account.** AC-2: _"a parsed rule: no module on a
+request path imports the Stripe client — the same shape as the service-role boundary in
+`boundaries`."_ Measured 2026-09-14: nothing under `src/` imports `stripe`, so that rule **passes on
+the day it lands**, which is the standard ADR-023 set when it deferred the consistency gate. Every
+other open criterion here — Checkout, the webhook, idempotency, reconciliation, the portal — waits on
+an account. If you want one thing to pick up cold, it is that rule.
+
+**Parked, with exactly one question.** The storage spike behind SPEC-018: does `storage-api` assume a
+constrained role per request? Memo 16 measured everything else and could not settle this, because
+`SET LOCAL ROLE` is transaction-scoped and the connection idles between uploads. It needs one real
+upload while sampling `pg_stat_activity`, or that service's source. It decides whether a policy on
+`storage.objects` is an enforced boundary or a convention, which is the sentence SPEC-018 turns on.
+
+**Owner-gated, not a session's to do.** The three Vercel secrets; publishing `create-keelblock-app`
+(B-1's headline command still fails for any user until it is published, and F-74's fix does not reach
+anyone before that); publishing F-1; and whether `npm run status`'s score line gets a withdrawal
+marker, since the withdrawal exists nowhere in the repository.
+
+**The dated horizon.** Nothing expires within days. The cluster is late October, and the first item is
+not only about this repository:
+
+| when           | what                                                                                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **2026-10-22** | The freshness pins were verified 2026-09-07 against a 45-day limit. **Every generated project's build starts failing on that date, not just this one** — the stamp ships with the scaffold. |
+| **2026-10-23** | `DEF-016` fires — review the pinned Supabase CLI version.                                                                                                                                   |
+| **2026-12-08** | `DEF-024` fires — the human half of the handover trial.                                                                                                                                     |
+
+**Open, and not feature work.** Themes 3 and 4 of the 2026-09-10 external review. Theme 3 asks for a
+mechanism that can fail when the project overspends on itself; the marginal ratio of `scripts/` to
+`src/` was measured rising, and every candidate gate would land on the wrong side of it. Theme 4 is
+that nobody has used the product. Neither is answerable by another fix, and successive seats have
+deliberately declined to close them with tactical work.
+
 ## Two rules the review's own machinery now enforces
 
 Both live in `scripts/review-records.mjs`, inside the `promises` gate:
@@ -89,9 +129,18 @@ working tree may contain someone else's finished work as well as yours.
 
 Stated so a session acting on it does not over-trust it.
 
-The reviewer has no database. Every finding about policies, the pgTAP suites, the access matrix and
-the end-to-end flows rests on this repository's own evidence and on CI — never on the reviewer
-watching them run. Defects have been planted in the **gates**, by the reviewer, and in the
+**Corrected 2026-09-14, and the correction matters more than the original claim.** This said "the
+reviewer has no database". That was true of an earlier seat and is not true of the current one, which
+reported running the four database gates, `vitest`, the GitHub API and Playwright headless. Do not
+tell an incoming reviewer to concede those — ask what their environment actually does, because the
+answer has now changed twice and each seat has been explicit about it unprompted.
+
+What has held across every seat is narrower and worth keeping: a reviewer states what it could not
+check, every time, rather than letting a green list imply coverage. Two specific things a reviewer
+here could not see, both found later by execution: `_external-review-2026-09-10/` is in
+`.git/info/exclude`, so it is invisible to `git status` and a clean tree can be incomplete; and
+`gh run watch --exit-status` has returned 1 on a run the API reports as `success`, so the API is the
+authority and the exit code is the weaker signal. Defects have been planted in the **gates**, by the reviewer, and in the
 **policies**, by CI's Postgres image changing underneath a green suite (F-31).
 
 Neither is the thing `SPEC-002`'s Definition of Done still asks for:
