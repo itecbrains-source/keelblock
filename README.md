@@ -78,7 +78,10 @@ opaque policy functions. See [F-2](docs/FINDINGS.md).
 [`docs/FINDINGS.md`](docs/FINDINGS.md) — every finding with a reproduction:
 
 - **`anon` could TRUNCATE every tenant table** on a default Supabase project. RLS does not apply to
-  TRUNCATE, so no policy and no policy test could see it.
+  TRUNCATE, so no policy and no policy test could see it. Fixed here for `public`, which is where
+  keelblock's tenant tables live — and **still true elsewhere on a default project**: `anon` holds
+  `TRUNCATE` on seven tables across `storage`, `net` and `supabase_functions`, measured 2026-09-14.
+  The finding's remediation named one schema; the defect is a cluster-wide default.
 - **`FORCE ROW LEVEL SECURITY` does not stop the owner** on Supabase — including in the remediation
   the tooling itself recommends.
 - **A cross-tenant write is invisible to the attacker**, so a read-based isolation suite structurally

@@ -47,7 +47,11 @@ goes red. A green run is evidence rather than agreement.
 Every finding in [`docs/FINDINGS.md`](FINDINGS.md) carries a reproduction. The one with the widest
 reach: on a default Supabase project, an unauthenticated `anon` role could **`TRUNCATE` every tenant
 table** ([F-1](FINDINGS.md)). RLS does not apply to `TRUNCATE`, so no policy and no policy test could
-see it. It affects every project inheriting the same defaults.
+see it. It affects every project inheriting the same defaults — **including this one, outside
+`public`.** keelblock's fix revokes the grant in `public`, where its tenant tables are. Measured on a
+clean stack 2026-09-14, `anon` still holds `TRUNCATE` on seven tables in `storage`, `net` and
+`supabase_functions`, three of which are the bucket and object registries. Naming the schema is the
+honest version of the claim, and the first version of this answer did not.
 
 **Three of the twenty-two are our own mistakes.** They are published for the same reason as the rest.
 
