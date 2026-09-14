@@ -189,6 +189,25 @@ describe('the review folder does not claim independence it does not have', () =>
   const EXEMPT = /not an external review|genuinely external|labelled "external"|2026-09-10/i;
 
   /** Every tracked markdown file. Derived, because typing the list is the defect being fixed. */
+  /**
+   * **Markdown AND gate sources**, and the second half was nearly not done.
+   *
+   * The lens reported three present-tense instances outside `.md` and called widening optional. A
+   * grep while correcting them found **nine**, in six files — five in docblocks and two in strings
+   * PRINTED to a user's console. Nine hand-corrections with nothing holding them is the state this
+   * rule exists to end, so the rule covers `scripts/*.mjs` too.
+   *
+   * **Comments are NOT stripped in `.mjs`,** which inverts the usual rule here for a stated reason:
+   * five of the nine were docblocks, so stripping would blind it to most of what it is for. That is
+   * safe only because no `.mjs` in this repository needs to quote the phrase to explain the rule —
+   * the rule lives in a `.mts` test. If one ever does, it will fire, and the fix is to move the
+   * explanation here rather than to add an exemption.
+   *
+   * **`.test.mts` is excluded as a category, not as a carve-out for this file.** A test's business
+   * is to contain the strings the rule forbids; `check('docs/review/ is an `external review`.')`
+   * three screens down is a fixture, not a claim. Exempting "tests" is a statement about what tests
+   * are. Exempting "this file" would be the shape F-64, F-66, F-67, F-70 and F-77 are all about.
+   */
   const markdownFiles = (): string[] => {
     // Tracked AND untracked. `git ls-files` alone sees only the index, so a mislabel in a NEW
     // document would be caught one commit after it mattered — which is exactly when the relabel
@@ -198,7 +217,12 @@ describe('the review folder does not claim independence it does not have', () =>
       execFileSync('git', ['ls-files', ...args], { encoding: 'utf8' })
         .split('\n')
         .filter(Boolean);
-    return [...new Set([...list(['*.md']), ...list(['--others', '--exclude-standard', '*.md'])])];
+    const md = [...list(['*.md']), ...list(['--others', '--exclude-standard', '*.md'])];
+    const gates = [
+      ...list(['scripts/*.mjs']),
+      ...list(['--others', '--exclude-standard', 'scripts/*.mjs']),
+    ];
+    return [...new Set([...md, ...gates])];
   };
 
   /**
@@ -235,7 +259,9 @@ describe('the review folder does not claim independence it does not have', () =>
 
   /** Pure, so the rule carries proofs that do not need files on disk. Exported shape: offenders. */
   const scan = (file: string, text: string): string[] => {
-    const clean = stripHtmlComments(stripFences(text));
+    // `.mjs` keeps its comments, for the reason recorded above; markdown keeps its fence and
+    // HTML-comment stripping, because those are display rather than instruction.
+    const clean = file.endsWith('.mjs') ? text : stripHtmlComments(stripFences(text));
     const rawLines = clean.split('\n');
     const looseLines = unquote(clean).split('\n');
     const strictLines = unquoteSpeech(clean).split('\n');
@@ -252,7 +278,7 @@ describe('the review folder does not claim independence it does not have', () =>
     return out;
   };
 
-  it('no markdown file in the repository calls docs/review an external review', () => {
+  it('no document or gate in the repository calls docs/review an external review', () => {
     const offenders = markdownFiles().flatMap((f) => scan(f, readFileSync(f, 'utf8')));
     expect(
       offenders,

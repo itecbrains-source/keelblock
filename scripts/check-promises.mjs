@@ -7,7 +7,7 @@
  *   · every acceptance bar in PRODUCT.md has an owning spec, and that spec exists
  *   · every deferral has a real reason and a machine-evaluable trigger, and none has fired
  *   · every code marker names a deferral that exists
- *   · every finding of the external review is implemented, refuted or deferred
+ *   · every finding of the adversarial review is implemented, refuted or deferred
  *
  * The review rule lives here rather than in a twelfth gate on purpose. SPEC-003 makes the gate count
  * a ceiling, the review's own advice was not to add one, and an accepted external finding is a
@@ -209,7 +209,7 @@ async function main() {
     if (verdict.reason === 'missing-audit') {
       console.error(`promises: FAILED\n\n  [review] ${AUDIT} does not exist.`);
       console.error(
-        '  This is keelblock — it has an external review, and the rule that every finding is ' +
+        '  This is keelblock — it has an adversarial review, and the rule that every finding is ' +
           'answered cannot be satisfied by deleting the findings. A GENERATED project declares ' +
           `itself in keelblock.provenance.json and is exempt; this one does not.`,
       );

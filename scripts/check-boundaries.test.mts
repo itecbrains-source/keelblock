@@ -444,6 +444,61 @@ describe('Server Action authorization (SPEC-004 REQ-3)', () => {
       findUnauthorizedActions(files, read, (s, f) => resolveImport(s, f), []).length,
     ).toBeGreaterThan(0);
   });
+
+  // ── every shape an exported action is written in — S-3 / F-78 ──────────────
+  //
+  // The rule matched `export async function` and nothing else. `export const x = async () => {}`
+  // is the ORDINARY Next idiom, and it escaped completely: the gate matched the shape a careful
+  // author uses and missed the shape a newcomer or an agent reaches for first, which is exactly
+  // the population PRODUCT.md's differentiator is about.
+  //
+  // Latent rather than live when found: all ten actions in this repository use the matched form,
+  // so nothing was unauthorized. The defect was that the gate could not stop the next one — and a
+  // rule that cannot catch the common case is not a narrower rule, it is a different one.
+
+  it('MUTATION: an unauthorized ARROW action is caught', () => {
+    const src = `'use server';\nexport const wipe = async (id) => { await db.delete(id); };`;
+    expect(check(src, []).length, '`export const x = async () => {}` is the ordinary idiom').toBe(
+      1,
+    );
+  });
+
+  it('MUTATION: an unauthorized FUNCTION EXPRESSION action is caught', () => {
+    const src = `'use server';\nexport const wipe = async function (id) { await db.delete(id); };`;
+    expect(check(src, []).length).toBe(1);
+  });
+
+  it('MUTATION: a DEFAULT-exported action is caught', () => {
+    const src = `'use server';\nexport default async function wipe(id) { await db.delete(id); }`;
+    expect(check(src, []).length).toBe(1);
+  });
+
+  it('MUTATION: an action exported through an export LIST is caught', () => {
+    const src = `'use server';\nconst wipe = async (id) => { await db.delete(id); };\nexport { wipe };`;
+    expect(check(src, []).length).toBe(1);
+  });
+
+  it('an arrow action that DOES authorize is not accused', () => {
+    const src =
+      `'use server';\nimport { getCurrentUser } from '@/lib/auth/dal';\n` +
+      `export const ok = async () => { await getCurrentUser(); await db.read(); };`;
+    expect(check(src, [])).toEqual([]);
+  });
+
+  it('an action delegating to a local ARROW helper that authorizes is not accused', () => {
+    // The other half of the same root cause, and the more corrosive one: the helper map also
+    // matched declarations only, so authorizing THROUGH an arrow read as not authorizing at all.
+    // A false positive on correct code is how a gate gets exempted into uselessness (F-62).
+    const src =
+      `'use server';\nimport { getCurrentUser } from '@/lib/auth/dal';\n` +
+      `const authorize = async () => { await getCurrentUser(); };\n` +
+      `export async function safe(id) { await authorize(); await db.delete(id); }`;
+    expect(check(src, [])).toEqual([]);
+  });
+
+  it("a re-export of another module's binding is not this module's action", () => {
+    expect(check(`'use server';\nexport { something } from './other';`, [])).toEqual([]);
+  });
 });
 
 describe('findPasswordSignIn — ADR-021, a decision that cannot erode quietly', () => {

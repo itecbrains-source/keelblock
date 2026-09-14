@@ -2761,3 +2761,87 @@ Six occurrences now: F-64, F-66, F-67, F-70, this rule's docblock, and this rule
 AGENTS.md entry added yesterday says a text-matching rule needs a stripper on the day it is written.
 It is not enough on its own — **the rule also has to be told what counts as quoting**, and it has to
 be pointed at every file rather than a remembered few.
+
+## F-78 · The gate that enforces the one claim matched the shape a careful author uses and missed the shape everyone else reaches for
+
+**2026-09-13 · reported as S-3 by the external review of 2026-09-10, untracked by anyone for three days, reproduced here · fixed**
+
+`check-boundaries` refuses an exported Server Action that never reaches an authorization call, and
+its own error text says why: _"an exported action is a public POST endpoint whether or not any UI
+calls it."_ It matched one syntax.
+
+```
+scripts/check-boundaries.mjs:532
+  if (!ts.isFunctionDeclaration(node) || !node.name || !isExported(node)) return;
+```
+
+Fed a synthetic `'use server'` module with three unauthorized exports, through the real function:
+
+```
+export async function deleteOrgDecl(id)             -> FLAGGED
+export const deleteOrgArrow = async (id) => {}      -> ESCAPES
+export const deleteOrgExpr  = async function (id){} -> ESCAPES
+
+unauthorized exports: 3 | flagged by the gate: 1
+```
+
+**`export const x = async () => {}` is the ordinary Next idiom.** The gate matched the shape a
+careful author happens to use and missed the shape a newcomer — or an agent — reaches for first,
+which is precisely the population `PRODUCT.md`'s differentiator is about: _"an agent working in
+keelblock cannot silently be wrong."_
+
+**Latent, not live.** All ten actions in this repository use the matched form — seven in
+`orgs/actions.ts`, three in `login/actions.ts` — so nothing was unauthorized. The defect was that the
+gate could not stop the next one, and a rule that cannot catch the common case is not a narrower
+rule, it is a different one.
+
+**The same root cause had a second half, and it is the more corrosive one.** The map of local
+helpers used to follow delegation matched declarations only:
+
+```
+const authorize = async () => { await getCurrentUser(); };
+export async function safe(id) { await authorize(); … }   -> FLAGGED (false positive)
+```
+
+An action that _does_ authorize, through an arrow helper, read as an action that never authorizes.
+A false positive on correct code is how a gate gets exempted into uselessness — F-62's recorded
+lesson, and it would have arrived as "this rule is wrong, turn it off" rather than as a defect.
+
+**Fixed** across every shape an exported action is actually written in: declarations, `export const`
+arrows and function expressions, `export default async function`, and `const x = …; export { x }`.
+A re-export of another module's binding is deliberately not this module's action. The local-helper
+map takes arrows too. Seven mutation proofs; neutering the variable-statement branch turns two red,
+and the real repository still passes with no false positives on its ten live actions.
+
+**It sat untracked for three days**, in no finding, no deferral and no disposition, while both seats
+worked through a list that did not contain it. The review reported it; nothing in this repository
+was holding it. Per AGENTS.md a defect is not a deferral, so there was never a row to find — the
+gap was that reported-but-unrecorded has no home at all.
+
+## F-79 · The relabel correction reached nine more places than either seat found, and the tenth was found by the rule rather than by grep
+
+**2026-09-13 · found while widening F-77's rule · fixed**
+
+F-75 corrected `docs/review/` from "external review" in three documents. F-77 built a rule so it
+could not recur. The lens then found three instances outside markdown and called widening the rule
+optional — two comments in `status.mjs`, one error message in `review-register.mjs` that is **printed
+to a user's console**.
+
+Correcting those three surfaced **six more**, in five files, including a second printed message in
+`check-promises.mjs`. Nine hand-corrections with nothing holding them is the state F-77 exists to
+end, so the rule now covers `scripts/*.mjs`.
+
+**The tenth was found by the widened rule, not by me.** `review-records.mjs:2` opens "External
+review records are…" — capital E, which my case-sensitive grep for the phrase had walked straight
+past twice. The rule reads case-insensitively because it was written to, and it reported the file and
+line on its first widened run.
+
+Two boundary decisions, recorded because both could have been carve-outs:
+
+- **Comments are not stripped in `.mjs`**, inverting this project's usual rule. Five of the nine were
+  docblocks; stripping would blind the rule to most of what it is for. That is only safe because no
+  `.mjs` here needs to quote the phrase to explain the rule — the rule lives in a `.mts` test. If one
+  ever does, it will fire, and the fix is to move the explanation rather than add an exemption.
+- **`.test.mts` is excluded as a category, not as a carve-out for the rule's own file.** A test's
+  business is to contain the strings the rule forbids. Exempting "tests" is a statement about what
+  tests are; exempting "this file" is the shape F-64, F-66, F-67, F-70 and F-77 are all about.

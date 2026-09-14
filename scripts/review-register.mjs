@@ -1,5 +1,5 @@
 /**
- * An external review is a dated RECORD. Its dispositions are LIVE STATE. Keeping them in one file
+ * An adversarial review is a dated RECORD. Its dispositions are LIVE STATE. Keeping them in one file
  * is how a review goes stale: either the record gets rewritten — falsifying what was found on the
  * day — or the state ossifies and says "open" about something fixed weeks ago.
  *
@@ -123,7 +123,7 @@ export function checkRegister(findings, rows, { exists, openDefs, allDefs }) {
   for (const f of findings.filter((f) => !seen.has(f.id))) {
     problems.push(
       `${f.id} (${f.severity}) has no disposition. Every finding is implemented, refuted or ` +
-        `deferred — an external review with an unanswered finding is one nobody finished reading.`,
+        `deferred — a review with an unanswered finding is one nobody finished reading.`,
     );
   }
   return problems;

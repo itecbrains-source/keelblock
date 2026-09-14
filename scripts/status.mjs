@@ -78,7 +78,7 @@ export function census(fs = { readFileSync, readdirSync, existsSync }) {
 }
 
 /**
- * The external review's state, computed. Nothing writes it down, because a "CLOSED" banner is the
+ * The adversarial review's state, computed. Nothing writes it down, because a "CLOSED" banner is the
  * kind of sentence this command exists to stop people writing.
  */
 function reviewState() {
@@ -296,10 +296,10 @@ function walkDocs() {
   const visit = (dir) => {
     for (const name of readdirSync(dir)) {
       const p = join(dir, name);
-      // docs/review is an external review, dated and quoted. Its counts are a record of what was
+      // docs/review is an adversarial review, dated and quoted. Its counts are a record of what was
       // true on the day it was written — "fixing" them would falsify the finding, which is the
       // opposite of what this gate is for. This checks claims the project makes about ITSELF.
-      // docs/review is an external review, dated and quoted. research/ memos report their OWN
+      // docs/review is an adversarial review, dated and quoted. research/ memos report their OWN
       // results ("Seven findings; four change the specs") and carry a re-verify header. Both are
       // records of what was true on a date; "fixing" their numbers would falsify them. This gate
       // checks the claims the project makes about ITSELF, now.

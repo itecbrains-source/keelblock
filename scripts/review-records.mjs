@@ -1,5 +1,5 @@
 /**
- * External review records are **frozen dated claims about one commit each.** That is what makes them
+ * Adversarial review records are **frozen dated claims about one commit each.** That is what makes them
  * worth anything — a score corrected after the fact is a score about nothing — and it is also
  * exactly how they rot: a reader opens `04-SCORECARD.md`, reads 36/100, and believes it, three
  * records and thirty-three points later.
@@ -32,7 +32,7 @@
  * `npm run status` says how far behind it is, and a reader can decide whether that matters.
  *
  * Not a twelfth gate, for the same reason `review-register.mjs` is not: SPEC-003 makes the gate count
- * a ceiling, and the external review's own position is that eleven already exceeds what the
+ * a ceiling, and the adversarial review's own position is that eleven already exceeds what the
  * application justifies. This runs inside `promises`.
  */
 

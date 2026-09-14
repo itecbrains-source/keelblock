@@ -308,7 +308,7 @@ export const CACHE_HEADER_EXEMPT = [
  *
  * This lives in the boundaries gate rather than a twelfth script because it is the SAME question
  * REQ-4 already asks — *can a response carrying tenant data be cached?* — about the cookie that
- * identifies the tenant. SPEC-003 makes the gate count a ceiling and the external review's position
+ * identifies the tenant. SPEC-003 makes the gate count a ceiling and the adversarial review's position
  * is that eleven is already more than the application justifies.
  *
  * The defect is real and was in this repository: `setAll: (list) => …` in `server.ts`, one
@@ -491,9 +491,21 @@ export function findUnauthorizedActions(files, read, resolveFn, publicActions = 
 
     const ast = parse(source, file);
     // Local functions this module defines, so an action delegating to one is followed.
+    //
+    // `const helper = async () => {}` counts. Matching only declarations here made an action that
+    // authorizes THROUGH an arrow helper look like one that never authorizes at all — a false
+    // positive on correct code, which is how a gate gets exempted into uselessness (F-62).
     const local = new Map();
     walkAst(ast, (n) => {
       if (ts.isFunctionDeclaration(n) && n.name) local.set(n.name.getText(), n);
+      if (
+        ts.isVariableDeclaration(n) &&
+        ts.isIdentifier(n.name) &&
+        n.initializer &&
+        (ts.isArrowFunction(n.initializer) || ts.isFunctionExpression(n.initializer))
+      ) {
+        local.set(n.name.text, n.initializer);
+      }
     });
     // Each imported NAME mapped to the module it came from, so "this action calls something that
     // authorizes" can be answered per call rather than per file.
@@ -525,19 +537,64 @@ export function findUnauthorizedActions(files, read, resolveFn, publicActions = 
       return false;
     };
 
-    walkAst(ast, (node) => {
-      const isExported = (n) =>
-        ts.canHaveModifiers(n) &&
-        ts.getModifiers(n)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
-      if (!ts.isFunctionDeclaration(node) || !node.name || !isExported(node)) return;
-      const name = node.name.getText();
-      if (exempt.has(name) || reaches(node)) return;
+    const isExported = (n) =>
+      ts.canHaveModifiers(n) &&
+      ts.getModifiers(n)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+
+    const accuse = (name, fn) => {
+      if (exempt.has(name) || reaches(fn)) return;
       problems.push(
         `${file}: Server Action \`${name}\` never reaches an authorization call. An exported ` +
           `action is a public POST endpoint whether or not any UI calls it, and a page-level check ` +
           `does not extend to it. Call ${AUTHORIZERS.join(' or ')}, or declare it in ` +
           `PUBLIC_ACTIONS with a reason.`,
       );
+    };
+
+    // **Every shape an exported action is written in, not the one this project happens to use.**
+    // The rule matched `export async function` only. `export const x = async () => {}` is the
+    // ordinary Next idiom and escaped entirely — the shape a careful author avoids and a newcomer
+    // or an agent reaches for first, which is exactly the population the differentiator is about
+    // (S-3 / F-78). Latent rather than live: all ten actions in this repository use the matched
+    // form, so nothing was unauthorized. The defect was that the gate could not stop the next one.
+    walkAst(ast, (node) => {
+      // export async function name() {}
+      if (ts.isFunctionDeclaration(node) && node.name && isExported(node)) {
+        accuse(node.name.getText(), node);
+        return;
+      }
+      // export default async function [name]() {}
+      if (
+        ts.isFunctionDeclaration(node) &&
+        isExported(node) &&
+        ts.getModifiers(node)?.some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+      ) {
+        accuse(node.name?.getText() ?? 'default', node);
+        return;
+      }
+      // export const name = async () => {}  |  export const name = async function () {}
+      if (ts.isVariableStatement(node) && isExported(node)) {
+        for (const d of node.declarationList.declarations) {
+          if (!ts.isIdentifier(d.name) || !d.initializer) continue;
+          if (ts.isArrowFunction(d.initializer) || ts.isFunctionExpression(d.initializer)) {
+            accuse(d.name.text, d.initializer);
+          }
+        }
+        return;
+      }
+      // const name = async () => {}; export { name };
+      if (
+        ts.isExportDeclaration(node) &&
+        node.exportClause &&
+        ts.isNamedExports(node.exportClause)
+      ) {
+        // A re-export names another module's binding; this module's own bindings are what it owns.
+        if (node.moduleSpecifier) return;
+        for (const el of node.exportClause.elements) {
+          const fn = local.get((el.propertyName ?? el.name).text);
+          if (fn) accuse(el.name.text, fn);
+        }
+      }
     });
   }
   return problems;
