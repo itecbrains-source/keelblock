@@ -48,6 +48,10 @@
     {
       "key": "bypass:revoke_invitation(invitation uuid)",
       "reason": "BY DESIGN, and it is the counterpart to the absent write policy. An admin must be able to withdraw an outstanding invitation, and there is no UPDATE grant on the table -- deliberately, because granting one to satisfy an admin update policy would also let an admin move expires_at or clear accepted_at without passing a single rule this spec enforces. So revocation is a definer function that re-checks is_org_admin on the invitation's OWN organization and touches nothing else. It takes effect on the next read rather than at an expiry, because the preview asks the table every time and caches nothing; supabase/tests/intent/006 asserts the invitation resolves before the revocation and not after."
+    },
+    {
+      "key": "bypass:is_org_entitled(org uuid)",
+      "reason": "BY DESIGN, decided 2026-09-14 with SPEC-007 REQ-1, and it is the same shape as is_org_member rather than a new exception. It is SECURITY DEFINER because it must be usable inside a policy on a paid surface without that policy recursing through organization_entitlement's own SELECT policy -- the reason recorded for is_org_member applies unchanged. What bounds it is that it RETURNS A BOOLEAN, NEVER A ROW: the foundation migration's note is explicit that a definer function returning a row type here would be a total isolation bypass no policy and no test would see, so this one cannot leak a customer id, a subscription id or a status. And it re-checks membership internally -- `and public.is_org_member(org)` is inside the exists -- so it cannot answer about an organization the caller does not belong to even though it runs with the owner's rights. That is asserted rather than asserted-about: 007-entitlement.test.sql calls it directly as a member of org A against org B and requires false. It is EXECUTE-able by `authenticated` and revoked from `public` and `anon`, per the S-4 measurement that Postgres grants EXECUTE to PUBLIC by default."
     }
   ]
 }

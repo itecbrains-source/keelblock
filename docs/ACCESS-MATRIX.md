@@ -22,6 +22,17 @@ Row-level security: **enabled** · policies for DELETE, SELECT, UPDATE
 | Authenticated · member | ✓ | – | · | – |
 | Service role | · | – | · | · |
 
+## `organization_entitlement`
+
+Row-level security: **enabled** · policies for SELECT
+
+| Identity | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| Unauthenticated | · | – | · | · |
+| Authenticated · different organization | · | – | – | – |
+| Authenticated · member | ✓ | – | · | · |
+| Service role | · | – | – | – |
+
 ## `organization_invitation`
 
 Row-level security: **enabled** · policies for SELECT
@@ -66,6 +77,7 @@ for review, not as failures — each is either sanctioned or a finding.
 | HIGH | `create_organization(org_name text, org_slug text)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization, organization_member. |
 | CRITICAL | `invitation_preview(token text)` | SECURITY DEFINER function is EXECUTE-able by anon; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization, organization_invitation. |
 | HIGH | `invite_member(org uuid, invitee_email text, invited_role org_role)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization, organization_invitation. |
+| HIGH | `is_org_entitled(org uuid)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization_entitlement. |
 | HIGH | `is_org_member(org uuid)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization_member. |
 | HIGH | `org_role_of(org uuid)` | SECURITY DEFINER function is EXECUTE-able by authenticated; it runs as its owner and bypasses the caller's RLS; reads/writes RLS-protected organization_member. |
 | MEDIUM | `organization` | dual write path: a SECURITY DEFINER rpc (create_organization(org_name text, org_slug text)) writes this table AND authenticated holds a direct INSERT/UPDATE/DELETE grant on it. If the rpc is the intended write path (it holds the validation), the client can skip it and write the table directly -- every RLS assertion still passes. REVOKE the direct DML so the rpc is the only path; the direct-write denial then becomes an assertable boundary. |
@@ -92,6 +104,7 @@ was decided. Anything not listed here is unexplained, and unexplained fails the 
 | `bypass:invite_member(org uuid, invitee_email text, invited_role org_role)` | BY DESIGN. Minting an invitation is one transaction -- generate a 256-bit token, store only its sha256, set the expiry -- and the plaintext is returned to the caller once and never again recoverable. It is SECURITY DEFINER because there is deliberately NO insert grant and NO insert policy on organization_invitation: a single write path is what makes hashing, expiry and the admin re-check unavoidable rather than conventional. Being definer means RLS is bypassed inside it, so it re-checks is_org_admin ITSELF, and that check is what an attacker posting straight at the action meets. EXECUTE is revoked from PUBLIC and anon, granted to authenticated only. A first draft of this function trusted `if not is_org_admin(...)` while the helper returned NULL for a non-member, and the authoring test caught the mint into a foreign organization; the helper was fixed in 20260908170000. |
 | `bypass:accept_invitation(token text)` | BY DESIGN. Acceptance writes a membership row for a caller who is BY DEFINITION not yet a member, so no policy on organization_member could permit it without permitting far more. It takes one parameter -- the token -- and derives everything else: the organization and the role come from the stored row, not from the caller, so there is no argument to tamper with. It binds to auth.uid() at the moment of the call, marks the invitation spent in the same statement, and refuses a spent, revoked or expired token with the same error, so redemption is single-use and gives nothing away. EXECUTE revoked from PUBLIC and anon; granted to authenticated, because an identity to bind the membership to is the one prerequisite. |
 | `bypass:revoke_invitation(invitation uuid)` | BY DESIGN, and it is the counterpart to the absent write policy. An admin must be able to withdraw an outstanding invitation, and there is no UPDATE grant on the table -- deliberately, because granting one to satisfy an admin update policy would also let an admin move expires_at or clear accepted_at without passing a single rule this spec enforces. So revocation is a definer function that re-checks is_org_admin on the invitation's OWN organization and touches nothing else. It takes effect on the next read rather than at an expiry, because the preview asks the table every time and caches nothing; supabase/tests/intent/006 asserts the invitation resolves before the revocation and not after. |
+| `bypass:is_org_entitled(org uuid)` | BY DESIGN, decided 2026-09-14 with SPEC-007 REQ-1, and it is the same shape as is_org_member rather than a new exception. It is SECURITY DEFINER because it must be usable inside a policy on a paid surface without that policy recursing through organization_entitlement's own SELECT policy -- the reason recorded for is_org_member applies unchanged. What bounds it is that it RETURNS A BOOLEAN, NEVER A ROW: the foundation migration's note is explicit that a definer function returning a row type here would be a total isolation bypass no policy and no test would see, so this one cannot leak a customer id, a subscription id or a status. And it re-checks membership internally -- `and public.is_org_member(org)` is inside the exists -- so it cannot answer about an organization the caller does not belong to even though it runs with the owner's rights. That is asserted rather than asserted-about: 007-entitlement.test.sql calls it directly as a member of org A against org B and requires false. It is EXECUTE-able by `authenticated` and revoked from `public` and `anon`, per the S-4 measurement that Postgres grants EXECUTE to PUBLIC by default. |
 
 ---
 

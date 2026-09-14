@@ -42,6 +42,11 @@ export const PROBE_STATEMENTS = {
   'organization_member:INSERT': `insert into public.organization_member (organization_id, user_id, role) values ('${ORG}','${OWNER}','member')`,
   'organization_member:UPDATE': `update public.organization_member set role = 'owner' where user_id = '${MEMBER}'`,
   'organization_member:DELETE': `delete from public.organization_member where organization_id = '${ORG}' and user_id = '${OWNER}'`,
+  // SPEC-007. Only SELECT is policied on this table -- there are deliberately no write policies and
+  // no write grant, because an organization that can write its own entitlement grants itself a plan
+  // (ADR-006). The write commands therefore have no policy, so the probe is never asked for them and
+  // the matrix renders them as denied-by-absence rather than as a measured refusal.
+  'organization_entitlement:SELECT': `select 1 from public.organization_entitlement where organization_id = '${ORG}'`,
   'project:SELECT': `select 1 from public.project where id = '${PROJECT}'`,
   'project:INSERT': `insert into public.project (organization_id, name) values ('${ORG}','probe')`,
   'project:UPDATE': `update public.project set name = 'probed' where id = '${PROJECT}'`,
@@ -76,6 +81,10 @@ insert into public.organization_member (organization_id, user_id, role) values
 insert into public.project (id, organization_id, name) values ('${PROJECT}','${ORG}','Probe project');
 insert into public.organization_invitation (organization_id, email, role, token_hash, created_by, expires_at)
   values ('${ORG}','invitee@t','member','\\x0102'::bytea,'${OWNER}', now() + interval '7 days');
+-- SPEC-007. \`active\` rather than a neutral status on purpose: the probe measures who can READ the
+-- row, and an entitled organization is the state where reading it decides access to a paid surface.
+insert into public.organization_entitlement (organization_id, status, stripe_customer_id)
+  values ('${ORG}','active','cus_probe');
 
 create temp table probe_result(k text primary key, outcome text);
 grant all on probe_result to authenticated;

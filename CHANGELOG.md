@@ -12,11 +12,24 @@ entries are what make the rest worth believing. Full reproductions live in
 The tenancy foundation, the proof harness, the gates, sign-in, organizations, invitations, the
 upgrade path and the scaffolder that produces a project able to take one (SPEC-001, SPEC-002,
 SPEC-003, SPEC-004, SPEC-005, SPEC-006, SPEC-011, SPEC-013), and the handover trial that measures
-whether any of it can be picked up by a stranger (SPEC-024). Billing and the remaining product
+whether any of it can be picked up by a stranger (SPEC-024). Billing is **partial**: the entitlement
+row, its policy and the status map decide access today (SPEC-007 REQ-1, REQ-7), while Checkout, the
+webhook, idempotency, reconciliation and the portal wait on a Stripe account. The remaining product
 surfaces are specced and not built — run `npm run status`, which reads the repository rather than
 this paragraph.
 
 ### Added
+
+- **The entitlement row, and the map that reads it (SPEC-007 REQ-1, REQ-7).** The fifth tenant-scoped
+  table, and the first whose point is that the tenant cannot write it: `grant select` and no write
+  grant at all, so an organization cannot grant itself a plan. ADR-006's split — Stripe bills, the
+  database entitles — stops being a sentence at that line. Entitlement is read by a policy per
+  request, so a cancellation takes effect on the next read rather than at token expiry; memo 08
+  measured that window at up to an hour for a token-carried claim. The status map lives in SQL as the
+  single authority and **raises** on a status Stripe adds later, because both silent answers are a
+  decision about money nobody made. Isolation proven the same way as the other four: a generated RLS
+  suite, a 22-case intent suite, and a row in the access matrix produced by probing the live catalog
+  as each identity.
 
 - **The getting-started page, executed (SPEC-012).** B-5's proof is "a scripted walkthrough run by
   someone with no prior context, timed and recorded" — a promise about a future event, which is the

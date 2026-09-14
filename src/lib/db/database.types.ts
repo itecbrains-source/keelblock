@@ -55,6 +55,41 @@ export type Database = {
         }
         Relationships: []
       }
+      organization_entitlement: {
+        Row: {
+          created_at: string
+          entitlement_synced_at: string
+          organization_id: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entitlement_synced_at?: string
+          organization_id: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entitlement_synced_at?: string
+          organization_id?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_entitlement_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_invitation: {
         Row: {
           accepted_at: string | null
@@ -193,15 +228,29 @@ export type Database = {
         Returns: string
       }
       is_org_admin: { Args: { org: string }; Returns: boolean }
+      is_org_entitled: { Args: { org: string }; Returns: boolean }
       is_org_member: { Args: { org: string }; Returns: boolean }
       org_role_of: {
         Args: { org: string }
         Returns: Database["public"]["Enums"]["org_role"]
       }
       revoke_invitation: { Args: { invitation: string }; Returns: undefined }
+      status_entitles: {
+        Args: { s: Database["public"]["Enums"]["subscription_status"] }
+        Returns: boolean
+      }
     }
     Enums: {
       org_role: "owner" | "admin" | "member"
+      subscription_status:
+        | "trialing"
+        | "active"
+        | "past_due"
+        | "unpaid"
+        | "canceled"
+        | "incomplete"
+        | "incomplete_expired"
+        | "paused"
     }
     CompositeTypes: {
       invitation_preview_result: {
@@ -336,6 +385,16 @@ export const Constants = {
   public: {
     Enums: {
       org_role: ["owner", "admin", "member"],
+      subscription_status: [
+        "trialing",
+        "active",
+        "past_due",
+        "unpaid",
+        "canceled",
+        "incomplete",
+        "incomplete_expired",
+        "paused",
+      ],
     },
   },
 } as const

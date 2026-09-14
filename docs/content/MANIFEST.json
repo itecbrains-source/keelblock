@@ -605,6 +605,19 @@
       "battlecard": "A setup page that was known to work on this commit",
       "artifacts": ["docs/GETTING-STARTED.md"],
       "oneLine": "_Ask when their setup page last worked. Ours answers with a commit, because a job follows it._"
+    },
+    {
+      "spec": "SPEC-007",
+      "claim": "A cancellation takes effect on the next request, because the entitlement is a row read by a policy rather than a claim carried in a token.",
+      "rivals": "NOT MEASURED, and marked so rather than left to read as if it were. No competitor's billing implementation was read for this entry — unlike SPEC-001, whose argument quotes BoxyHQ's actual code. The contrast drawn is between two SHAPES: an entitlement resolved at sign-in and carried in the token or session, versus a row read by a policy per request. What is measured is keelblock's half — memo 08 measured a Supabase access token at up to an hour, which is the window the first shape has and the second does not.",
+      "evidence": [
+        "supabase/tests/intent/007-entitlement.test.sql",
+        "docs/ACCESS-MATRIX.md",
+        "supabase/migrations/20260914120000_entitlement.sql"
+      ],
+      "battlecard": "Ask where the entitlement is read, and how long a cancellation takes to bite",
+      "artifacts": ["docs/ACCESS-MATRIX.md"],
+      "oneLine": "_Stripe bills; the database entitles. The organization cannot write the row that decides what it may do — there is no write grant at all, not merely a policy that says no._"
     }
   ],
   "documentation": {
@@ -619,6 +632,7 @@
   },
   "$noDocumentation": {
     "SPEC-003": "The gates document themselves at the point of failure: every one names the file, the line and the fix, and AGENTS.md carries the table of what each catches. A separate page describing them would be a second copy that goes stale the first time a message is improved.",
-    "SPEC-006": "Covered by CONTRIBUTING.md's authoring recipes and by the invitation flow being the product surface itself. Revisit when the first task guide for invitations exists — a stranger inviting a teammate follows the UI, not a page."
+    "SPEC-006": "Covered by CONTRIBUTING.md's authoring recipes and by the invitation flow being the product surface itself. Revisit when the first task guide for invitations exists — a stranger inviting a teammate follows the UI, not a page.",
+    "SPEC-007": "Nothing a reader can use has shipped yet. What exists is the entitlement row, its policy and the status map — infrastructure with no surface, no Checkout and no webhook, so a page describing how to subscribe would document something that does not run. The decisions ARE written down, in ADR-006 and in REQ-7's owner decision, and the migration carries the reasoning at the point of use. This entry is removed and replaced with a real page when the paid surface lands, and the content gate is what will ask."
   }
 }
