@@ -2810,8 +2810,17 @@ lesson, and it would have arrived as "this rule is wrong, turn it off" rather th
 **Fixed** across every shape an exported action is actually written in: declarations, `export const`
 arrows and function expressions, `export default async function`, and `const x = …; export { x }`.
 A re-export of another module's binding is deliberately not this module's action. The local-helper
-map takes arrows too. Seven mutation proofs; neutering the variable-statement branch turns two red,
-and the real repository still passes with no false positives on its ten live actions.
+map takes arrows too. Four mutation proofs and three negative controls; neutering the
+variable-statement branch turns two red, and the real repository still passes with no false
+positives on its ten live actions.
+
+> **Corrected 2026-09-14.** This said "seven mutation proofs". There are seven _tests_ — four
+> mutation proofs and three negative controls — and the same commit's message called the diff "~400
+> lines of `scripts/`" when it was `+158 −20`. Both were mine, both were in the direction that
+> flatters the work, and neither could fail: `status`'s countable nouns do not include "mutation
+> proofs", and nothing counts a diff. **No gate is being added for either.** One over-claim is not
+> evidence for new machinery, and building some in response to a finding about over-building is the
+> move Theme 3 is about — the same commit measured 10:1 marginal spend on `scripts/` against `src/`.
 
 **It sat untracked for three days**, in no finding, no deferral and no disposition, while both seats
 worked through a list that did not contain it. The review reported it; nothing in this repository
