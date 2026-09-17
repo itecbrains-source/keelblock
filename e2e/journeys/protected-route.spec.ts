@@ -30,6 +30,7 @@ test.describe('an unauthenticated caller at a protected route', () => {
     // Real rows exist while this runs, so an empty page is evidence rather than a coincidence.
     const owner = await seed.createUser('secret-owner');
     const orgId = await seed.createOrg(owner, 'Cartographers');
+    await seed.entitle(orgId);
     await seed.createProject(owner, orgId, 'Undersea cable route');
 
     // The RESPONSE to /orgs, not the DOM afterwards.
@@ -69,6 +70,7 @@ test.describe('an unauthenticated caller at a protected route', () => {
     // 15.2.3. keelblock's refusal is not in the proxy, so it has nothing to walk past.
     const owner = await seed.createUser('forge-target');
     const orgId = await seed.createOrg(owner, 'Ironmongers');
+    await seed.entitle(orgId);
     await seed.createProject(owner, orgId, 'Forge schedule');
 
     await page.setExtraHTTPHeaders({ 'x-middleware-subrequest': 'proxy' });

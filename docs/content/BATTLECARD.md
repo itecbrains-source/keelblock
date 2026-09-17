@@ -517,7 +517,7 @@ because both silent answers are a decision about money and access that nobody ma
 
 **Evidence:** [`supabase/tests/intent/007-entitlement.test.sql`](../../supabase/tests/intent/007-entitlement.test.sql) · [`docs/ACCESS-MATRIX.md`](../../docs/ACCESS-MATRIX.md) · [`supabase/migrations/20260914120000_entitlement.sql`](../../supabase/migrations/20260914120000_entitlement.sql)
 
-**State.** SPEC-007 is `partial` · 8 requirements · 7 of 11 criteria met. Verify: `npm run check`.
+**State.** SPEC-007 is `partial` · 8 requirements · 8 of 11 criteria met. Verify: `npm run check`.
 
 **The one-line version.** _Stripe bills; the database entitles. The organization cannot write the row that decides what it may do — there is no write grant at all, not merely a policy that says no._
 

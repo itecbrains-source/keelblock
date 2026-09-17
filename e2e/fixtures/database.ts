@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 
 /**
  * The journey layer owns its data, and cannot be pointed at anything that matters.
@@ -42,11 +43,20 @@ const LOOPBACK = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/;
 
 export type SeededUser = { id: string; email: string; client: SupabaseClient };
 
+/**
+ * The statuses a journey may put an organization into. Deliberately the two ends of REQ-7's map
+ * rather than all eight — `007-entitlement.test.sql` owns the totality of the map, and a journey
+ * that could set any status would invite a browser test to re-prove what pgTAP already proves
+ * against `enum_range`.
+ */
+export type EntitlementStatus = 'active' | 'canceled';
+
 export type Seeded = {
   runId: string;
   createUser: (label: string) => Promise<SeededUser>;
   createOrg: (owner: SeededUser, name: string) => Promise<string>;
   createProject: (owner: SeededUser, orgId: string, name: string) => Promise<void>;
+  entitle: (orgId: string, status?: EntitlementStatus) => Promise<void>;
   invite: (
     admin: SeededUser,
     orgId: string,
@@ -129,6 +139,75 @@ export function seeder(): Seeded {
     async createProject(owner, orgId, name) {
       const { error } = await owner.client.from('project').insert({ organization_id: orgId, name });
       if (error) throw error;
+    },
+
+    /**
+     * Put an organization on a plan, or take it off one — SPEC-007 AC-8.
+     *
+     * **This is the one seed that cannot go through a product path, and that is the product
+     * working.** Rule 2 above says the fixture seeds as an ordinary user; here there is no ordinary
+     * user who can. ADR-006's thesis is that Stripe bills and the database entitles, and
+     * `007-entitlement.test.sql` asserts the consequence directly: a member cannot INSERT, UPDATE or
+     * DELETE their own entitlement row, refused at the GRANT before any policy is consulted. An
+     * organization that could write this row would be granting itself a plan. So a fixture that
+     * could seed it as a user would be evidence that the spec's central claim is false.
+     *
+     * It therefore stands in for STRIPE, exactly as `invite` stands in for the email keelblock does
+     * not send. Same category, same justification.
+     *
+     * **Not through `service_role`, and this is the part worth being explicit about.** The obvious
+     * move is to grant the admin client a write here — and F-81 is the record of what that costs.
+     * `service_role` holds nothing on any tenant table by deliberate policy (20260908150000), and a
+     * single premature grant made it a probed identity on every tenant table, returning five suites'
+     * worth of `UNRELIABLE` because a `BYPASSRLS` role cannot demonstrate that a policy works.
+     * Arming the most powerful role in the system so a browser test could seed a row is precisely
+     * what that migration refuses. The grant it is waiting for lands with the webhook handler that
+     * needs it (AC-6), not with this.
+     *
+     * So it connects as the database owner, which is the only role holding a write here, and it does
+     * that over the same loopback-only guarantee as everything else in this file. `psql` is already a
+     * declared prerequisite of this repository (`REQUIRED_BINARIES`), so this adds no dependency.
+     *
+     * The values are passed as psql variables and interpolated with `:'name'`, which quotes them as
+     * literals rather than splicing them into the statement text.
+     */
+    async entitle(orgId, status = 'active') {
+      const dbUrl =
+        process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
+      const host = new URL(dbUrl).hostname;
+      if (!['127.0.0.1', 'localhost', '::1', '[::1]'].includes(host)) {
+        throw new Error(
+          `Refusing to write an entitlement to ${host}. This fixture stands in for Stripe and ` +
+            'writes as the database owner; it may only ever do that against a loopback database.',
+        );
+      }
+      // Fed on STDIN rather than with `-c`. MEASURED: psql performs variable interpolation for
+      // input read from a file or standard input and NOT for a `-c` command string, which fails as
+      // `syntax error at or near ":"`. Since the quoting is the whole reason the variables are
+      // used, the delivery mechanism is not interchangeable.
+      execFileSync(
+        'psql',
+        [
+          dbUrl,
+          '-q',
+          '-v',
+          'ON_ERROR_STOP=1',
+          '-v',
+          `org=${orgId}`,
+          '-v',
+          `st=${status}`,
+          '-f',
+          '-',
+        ],
+        {
+          input: `insert into public.organization_entitlement
+                    (organization_id, status, stripe_customer_id)
+                  values (:'org', :'st', 'cus_e2e')
+                  on conflict (organization_id) do update
+                    set status = excluded.status, entitlement_synced_at = now();`,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        },
+      );
     },
 
     /**

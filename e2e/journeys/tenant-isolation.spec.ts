@@ -18,6 +18,10 @@ test.describe('two accounts, two organizations', () => {
     const bob = await seed.createUser('bob');
     const acme = await seed.createOrg(alice, 'Acme');
     const beta = await seed.createOrg(bob, 'Beta');
+    // Both organizations are put on a plan: creating a project is entitlement-gated since
+    // SPEC-007 AC-8, and this walk is about ISOLATION, not billing.
+    await seed.entitle(acme);
+    await seed.entitle(beta);
     await seed.createProject(alice, acme, 'Alice secret plan');
     await seed.createProject(bob, beta, 'Bob secret plan');
 
@@ -48,6 +52,8 @@ test.describe('two accounts, two organizations', () => {
     const carol = await seed.createUser('carol');
     const first = await seed.createOrg(carol, 'Northwind');
     const second = await seed.createOrg(carol, 'Southgate');
+    await seed.entitle(first);
+    await seed.entitle(second);
     await seed.createProject(carol, first, 'Northwind roadmap');
     await seed.createProject(carol, second, 'Southgate roadmap');
 

@@ -4,11 +4,13 @@
 --               revoking it changes the next read
 -- AC-9  (REQ-7) the status-to-entitlement map is TOTAL over Stripe's eight documented statuses
 -- AC-10 (REQ-7) active -> past_due stays entitled; only past_due -> unpaid revokes
+-- AC-8  (REQ-1) an unentitled organization is refused a paid surface and granted it when the row
+--               changes -- and the three commands the gate does NOT cover stay permitted
 --
 -- The write half of this spec (webhook, idempotency, reconcile, portal) needs a Stripe account and
 -- is not here. What is here is the thing those all write to, and it is the half that decides access.
 begin;
-select plan(29);
+select plan(34);
 
 insert into auth.users (id, instance_id, aud, role, email) values
   ('11111111-1111-1111-1111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','a-owner@t'),
@@ -104,6 +106,14 @@ select throws_ok(
   '42501', null,
   'AC-1: nor DELETE one');
 
+-- ── AC-8 · while ENTITLED, a member may create a project ────────────────────
+-- The positive half first, and while org A is still `active`. This row is then carried across the
+-- revocation below, which is what makes "keep what you have" a demonstration rather than a claim.
+select lives_ok(
+  $$insert into public.project (id, organization_id, name)
+    values ('cccccccc-0000-0000-0000-00000000000c','aaaaaaaa-0000-0000-0000-00000000000a','Paid Project')$$,
+  'AC-8: an entitled organization''s member may create a project');
+
 -- ── AC-1 · revoking changes the NEXT read, not the next token ───────────────
 -- REQ-1's whole argument: entitlement is a row read per request, so a cancellation takes effect on
 -- the next request rather than at token expiry. The same session, the same claim, a different answer.
@@ -121,6 +131,40 @@ select is(
   (select count(*)::int from public.organization_entitlement),
   1,
   'AC-1: and the row is still READABLE while unentitled -- a cancelled org can see its own status');
+
+-- ── AC-8 · the gate, and the three commands it deliberately does NOT gate ───
+-- Same session, same member, same project row. Only the entitlement changed.
+select throws_ok(
+  $$insert into public.project (organization_id, name)
+    values ('aaaaaaaa-0000-0000-0000-00000000000a','After The Lapse')$$,
+  '42501', null,
+  'AC-8: an UNENTITLED organization cannot create a project -- refused by the policy, not by the UI');
+
+-- **The positive controls, and they are the reason "INSERT only" is a property rather than a
+-- sentence in a migration comment.** A gate asserted only by what it refuses can be widened to
+-- SELECT by anyone who thinks it reads better that way, and nothing goes red. These three make the
+-- narrowness load-bearing: the next person to add a command to that clause meets a failing test.
+select is(
+  (select count(*)::int from public.project
+    where id = 'cccccccc-0000-0000-0000-00000000000c'),
+  1,
+  'AC-8: an unentitled organization can still SELECT the projects it already has -- data does not vanish with a subscription');
+
+select lives_ok(
+  $$update public.project set name = 'Renamed While Unentitled'
+    where id = 'cccccccc-0000-0000-0000-00000000000c'$$,
+  'AC-8: and still UPDATE them -- a lapse does not freeze work they already own');
+
+-- DELETE as the OWNER, because `project_delete` is gated on `is_org_admin` by SPEC-005 and a plain
+-- member is refused it whatever the entitlement says. Asserting it as the member would pass for the
+-- wrong reason and would read as evidence that entitlement blocks deletes.
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+select lives_ok(
+  $$delete from public.project where id = 'cccccccc-0000-0000-0000-00000000000c'$$,
+  'AC-8: and an admin can still DELETE them -- a lapsed organization can clean up after itself');
 
 -- ── the absent row ──────────────────────────────────────────────────────────
 reset role;

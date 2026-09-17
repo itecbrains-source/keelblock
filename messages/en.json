@@ -64,5 +64,18 @@
     "signInFirst": "Sign in first — joining attaches this organization to your account.",
     "signIn": "Sign in",
     "unknown": "This invitation cannot be used. It may never have existed, or it may have expired, been withdrawn, or already been accepted. We do not say which: telling them apart would confirm to someone guessing at links that they had found a real one."
+  },
+  "projects": {
+    "title": "Projects",
+    "subtitle": "What your organization is working on. Creating one is part of a paid plan.",
+    "none": "No projects yet.",
+    "noOrg": "Create or join an organization first.",
+    "create": "New project",
+    "name": "Name",
+    "createSubmit": "Create project",
+    "unentitled": "Creating projects is part of a paid plan. Your organization does not have one right now — everything already here stays readable, and you can rename or remove it.",
+    "failed": "That could not be created. Please try again.",
+    "invalid": "Please give the project a name.",
+    "unauthorized": "Please sign in again."
   }
 }

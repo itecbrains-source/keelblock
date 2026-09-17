@@ -65,6 +65,37 @@ export class OrgsPage {
   }
 }
 
+export class ProjectsPage {
+  constructor(private readonly page: Page) {}
+
+  async goto() {
+    await this.page.goto('/projects');
+  }
+
+  heading() {
+    return this.page.getByRole('heading', { name: 'Projects' });
+  }
+
+  project(name: string) {
+    return this.page.getByRole('listitem').filter({ hasText: name });
+  }
+
+  /**
+   * Whatever the create form is currently saying. `status` rather than `alert`, matching the form's
+   * own live region — the same shape the organization forms use, and filtered to regions that are
+   * SAYING something for the reason given on `OrgsPage.refusal`: the region is mounted permanently
+   * and empty, because one created at the same moment as its message is often not announced.
+   */
+  outcome() {
+    return this.page.getByRole('main').getByRole('status').filter({ hasText: /\S/ });
+  }
+
+  async create(name: string) {
+    await this.page.getByLabel('Name').fill(name);
+    await this.page.getByRole('button', { name: 'Create project' }).click();
+  }
+}
+
 export class LoginPage {
   constructor(private readonly page: Page) {}
 
