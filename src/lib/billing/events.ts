@@ -80,7 +80,28 @@ export type EventOutcome =
  * status map) is that a new thing from the payment processor is a decision somebody makes, not a
  * default somebody inherits.
  */
-const SUBSCRIPTION_EVENTS = new Set([
+/**
+ * **REQ-4 lives here, as an absence.** Stripe's entitlement summary event is deliberately not in
+ * this set, and the reason is worth stating where somebody would otherwise add it.
+ *
+ * MEASURED (memo 11, quoting Stripe): _"The entitlement summary's `entitlements.data` array contains
+ * a maximum of 10 entitlements. If a customer has more than 10 active entitlements, use the
+ * `entitlements.url` field in the payload"_ to fetch the rest. A handler that treats that array as
+ * the complete set silently revokes everything past the tenth — in the expensive direction, on the
+ * largest customers, while appearing to work.
+ *
+ * keelblock cannot make that mistake, and not by being careful: REQ-7 decided that entitlement is a
+ * function of the SUBSCRIPTION STATUS alone, so the summary is never consulted at all. A truncated
+ * list cannot mislead a reader that does not read it. That is a stronger guarantee than pagination
+ * would be, and it is the same argument REQ-3 makes about payload statuses.
+ *
+ * Adding the summary type to this set would therefore not be a small change — it would reintroduce
+ * the trap REQ-4 is about. `events.test.mts` asserts this set's contents so that doing it turns a
+ * test red rather than passing quietly.
+ *
+ * Exported for that test.
+ */
+export const SUBSCRIPTION_EVENTS = new Set([
   'customer.subscription.created',
   'customer.subscription.updated',
   'customer.subscription.deleted',

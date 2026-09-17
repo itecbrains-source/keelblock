@@ -3234,3 +3234,71 @@ the gate count as a ceiling rather than a floor. F-69, F-82 and the count claims
 declined a gate for the same reason, and Theme 3 of the external review of 2026-09-10 is about
 exactly this marginal spend. Recorded so the aggregate exists somewhere; a rule is a separate
 decision, and the owner's.
+
+## F-86 · The unit suite edited a committed artifact, which made one gate unable to fail and produced a `unit` failure that repaired itself
+
+**2026-09-17 · found while building AC-4 · mechanism identified and fixed · this is very likely the flake F-84 could not explain**
+
+`scripts/gate-health.test.mts` asserts that every self-contained gate "reaches the same verdict, and
+prints the same thing, twice". It does that by spawning each one:
+
+```js
+const run = () => spawnSync('node', [`scripts/${gate}`], { encoding: 'utf8' });
+```
+
+**`battlecard.mjs` with no argument is in WRITE mode.** `--check` compares; bare regenerates. So the
+unit suite rewrote `docs/content/BATTLECARD.md` — twice — on every run.
+
+### Two consequences, and the second is the serious one
+
+**1 · A `unit` failure that cannot be reproduced.** `battlecard.test.mts` asserts the committed
+document equals what the generator produces. vitest orders test FILES nondeterministically, so with a
+stale battlecard the outcome depended on which file ran first: `gate-health` first repaired it and
+the comparison passed; `battlecard` first compared against the stale copy and `unit` went red.
+**Either way the file ended up repaired, so every subsequent run was green.** Fails once, never
+reproduces, heals itself — the exact shape [F-84](#f-84) recorded and could not explain, and the
+shape the handover had attributed to prettier.
+
+**2 · The `generated` gate could not fail.** `unit` runs before `generated` in `check.mjs`'s step
+list, so by the time the gate that exists to notice a stale battlecard looked at it, the same run had
+already rewritten it. MEASURED, and this is the sharp end:
+
+| same stale file, one `npm run check` | reported                                                     |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `unit`                               | **FAILED** — committed ≠ generated                           |
+| `generated`, later in the same run   | **ok — types, access matrix and battlecard are all current** |
+
+Two steps of one run gave opposite verdicts about one file, and the gate whose whole job is that
+question was the one that was wrong. `npm run check` also left the working tree dirty every time,
+carrying a modification nobody made.
+
+### Reproduced, then fixed, then re-proved
+
+Before the fix, with a stale battlecard: `unit` red once, green on every run after, file silently
+written. After the fix — spawning the generators with `--check`, which is also the mode
+`check-generated.mjs` actually uses, so the test now exercises the path that ships:
+
+```
+run 1: exit=1  1 failed | 668 passed   battlecard written: 0
+run 2: exit=1  1 failed | 668 passed   battlecard written: 0
+run 3: exit=1  1 failed | 668 passed   battlecard written: 0
+```
+
+Deterministic, and the repository is no longer edited by its own test suite. A full `npm run check`
+against the same stale file now reports **`2 failed: unit, generated`** where it previously reported
+`generated: ok`.
+
+### What this does and does not settle
+
+It gives F-84's shape a mechanism, and the mechanism is not the one that was suspected — prettier was
+never involved, and `check` has no concurrency, which F-84 had already established. **It does not
+prove this caused the specific failures of 2026-09-14 or the evening of 2026-09-17**, because those
+outputs were never captured; F-84 exists because they were lost. What can be said is that a
+self-healing, order-dependent `unit` failure was live in this repository the whole time, and that
+anyone meeting it would have re-run, seen green, and moved on.
+
+**The lesson is narrower than "tests should not write".** It is that a generator whose default mode
+mutates the repository will eventually be invoked by something that only meant to observe it — and
+the damage is not the write, it is that a gate downstream of the writer stops being able to fail.
+F-13 is the same shape, and this one hid inside the test file whose entire subject is whether the
+gates are dependable.

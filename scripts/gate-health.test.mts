@@ -140,6 +140,13 @@ describe('gate health (the suite is dependable)', () => {
     'check-schema-guard.mjs',
   ];
 
+  /**
+   * Gates that WRITE a committed artifact unless told not to. Spawned with `--check` below, for the
+   * reason given there: running one bare turns this suite into something that edits the repository
+   * (F-86). Frozen by value in its own test, like every other list here.
+   */
+  const GENERATORS = ['battlecard.mjs', 'access-matrix.mjs'];
+
   it('every self-contained gate reaches the same verdict, and prints the same thing, twice', () => {
     const local = GATES.filter((g) => !EXTERNAL.includes(g));
     expect(
@@ -147,7 +154,21 @@ describe('gate health (the suite is dependable)', () => {
       'nothing left to check — the exclusion list has eaten the test',
     ).toBeGreaterThanOrEqual(5);
     for (const gate of local) {
-      const run = () => spawnSync('node', [`scripts/${gate}`], { encoding: 'utf8' });
+      // **`--check` for the generators, and it is not a detail (F-86).** `battlecard.mjs` run with
+      // no argument is in WRITE mode: it regenerates `docs/content/BATTLECARD.md`. Spawning it bare
+      // here made the unit suite mutate a committed artifact on every run, with two consequences.
+      //
+      // It raced `battlecard.test.mts`, which asserts the committed document equals the generator's
+      // output — vitest orders test FILES nondeterministically, so a stale battlecard produced a
+      // `unit` failure or a pass depending on which ran first, and the file was repaired either way,
+      // so the failure never reproduced. And because `unit` runs before `generated` in `check`, the
+      // battlecard half of the `generated` gate could not fail at all: the run repaired the file
+      // before the gate that exists to notice it was stale ever looked.
+      //
+      // `--check` is also the mode `npm run check` actually uses — `check-generated.mjs` invokes
+      // these with it — so this tests the path that ships rather than one nothing runs.
+      const args = GENERATORS.includes(gate) ? [`scripts/${gate}`, '--check'] : [`scripts/${gate}`];
+      const run = () => spawnSync('node', args, { encoding: 'utf8' });
       const a = run(),
         b = run();
       expect(a.status, `${gate} gave different verdicts on identical input`).toBe(b.status);
