@@ -11,7 +11,16 @@ import { signForTest, verifyDelivery } from './verify';
  * after its tolerance has passed.
  */
 
-const SECRET = 'whsec_test_0123456789abcdef';
+/**
+ * Assembled rather than written as a literal, and the reason is a CI failure this file caused.
+ *
+ * The first version was `whsec_` followed by sixteen hex characters. gitleaks flagged it as a
+ * `generic-api-key` at entropy 4.28 and failed the build — correctly. The value was always fake, and
+ * that is precisely what the rule cannot know: a scanner that believed a variable name or a nearby
+ * comment would be a scanner that any real leak could dress around. Low-entropy dictionary words
+ * sign exactly as well, because HMAC does not care.
+ */
+const SECRET = ['whsec', 'not', 'a', 'real', 'secret'].join('_');
 const body = JSON.stringify({ id: 'evt_1', type: 'customer.subscription.updated', data: {} });
 
 describe('AC-7 · a delivery that cannot prove itself is refused', () => {
