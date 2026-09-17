@@ -144,11 +144,19 @@ describe('working-directory is part of the command — F-72', () => {
     const offenders: string[] = [];
     for (const [jobName, job] of Object.entries(wf.jobs ?? {})) {
       for (const step of job.steps ?? []) {
+        // `run:` steps ONLY, and the filter is load-bearing rather than tidy. `planStep` dispatches
+        // a `uses:` step to its ACTION_HANDLERS, and those handlers SPAWN PROCESSES — gitleaks
+        // actually scans, setup-node probes the binary. The first version of this test planned every
+        // step, so it shelled out on each run: ~5.4s, and intermittently red depending on what those
+        // binaries did. A test about destructive SQL had been quietly executing the local CI
+        // verifier's side effects, and it was flaky for exactly as long as it did.
+        if (typeof step.run !== 'string') continue;
         const plan = planStep(step, { full: true, dirExists: () => true });
-        const run = typeof step.run === 'string' ? step.run : '';
         const destructiveHere =
-          /db reset|rm -rf/.test(run) && plan.cmd && (plan.cwd ?? process.cwd()) === process.cwd();
-        if (destructiveHere) offenders.push(`${jobName}: ${run.split('\n')[0]}`);
+          /db reset|rm -rf/.test(step.run) &&
+          plan.cmd &&
+          (plan.cwd ?? process.cwd()) === process.cwd();
+        if (destructiveHere) offenders.push(`${jobName}: ${step.run.split('\n')[0]}`);
       }
     }
     expect(offenders, 'a destructive CI step would run against the developer’s own tree').toEqual(
