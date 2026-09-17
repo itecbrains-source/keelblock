@@ -4,6 +4,8 @@
 
 [![check](https://github.com/itecbrains-source/keelblock/actions/workflows/check.yml/badge.svg)](https://github.com/itecbrains-source/keelblock/actions/workflows/check.yml)
 [![nightly](https://github.com/itecbrains-source/keelblock/actions/workflows/nightly.yml/badge.svg)](https://github.com/itecbrains-source/keelblock/actions/workflows/nightly.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![status: work in progress](https://img.shields.io/badge/status-work%20in%20progress-orange.svg)](#project-status-honestly)
 
 **A multi-tenant SaaS starter where tenant isolation is enforced by the database and proven on every
 commit.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe. MIT.
@@ -81,6 +83,27 @@ The middle two are not redundant, and we measured why: a helper that dropped its
 produced a **total cross-tenant leak that the generated suite reported as clean** — because it mocks
 opaque policy functions. See [F-2](docs/FINDINGS.md).
 
+## What it looks like
+
+The thesis, rendered. An organization with no entitlement row is offered the create form like anyone
+else — **the form is never hidden**, because hiding it would move the access decision into
+application code, which is the one thing this project refuses. The database declines the write, and
+the refusal is what produces the message:
+
+![The projects page. A create form is offered, and beneath it: "Creating projects is part of a paid plan. Your organization does not have one right now — everything already here stays readable, and you can rename or remove it."](docs/media/entitlement-refused.png)
+
+The entitlement row changes. **Same browser, same session, same cookies** — no sign-out, no token
+refresh — and the next request succeeds, because entitlement is read per request rather than carried
+in a token:
+
+![The same page after the entitlement row changes, now listing the project "Q4 migration".](docs/media/entitlement-granted.png)
+
+_Both images are captured from the running application by `e2e/capture.spec.ts`, which asserts the
+state before photographing it — the refusal message is asserted present and the project asserted
+absent, then the shot is taken. They were taken at `3d0fdd9`. Regenerate with the command in that
+file's header. A screenshot proves nothing on its own, which is why the walk it shows is also a test
+that runs on every push (`e2e/journeys/entitlement.spec.ts`)._
+
 ## What we found by measuring
 
 [`docs/FINDINGS.md`](docs/FINDINGS.md) — every finding with a reproduction:
@@ -96,7 +119,9 @@ opaque policy functions. See [F-2](docs/FINDINGS.md).
   cannot catch it.
 - **Cache Components break every authenticated page** in Next 16 unless the read streams.
 
-Two of the eight were keelblock's own mistakes. They are published for the same reason as the rest.
+Some of these were keelblock's own mistakes — a gate that could not fail, a test suite quietly
+editing a committed artifact, a front page describing shipped work as unbuilt. They are published for
+the same reason as the rest, and `npm run status` counts them so this sentence does not have to.
 
 ## What's in it
 
@@ -104,10 +129,25 @@ Two of the eight were keelblock's own mistakes. They are published for the same 
 what makes feature-completeness affordable rather than a slogan: the field maintains the same feature
 set across three frameworks, so keelblock has roughly three times the budget per feature.
 
-Marketing shell · auth (magic link, OAuth, passkeys, 2FA, email verification — **no password**, ADR-021) ·
-account · organizations · team & invitations · billing · custom domains · ops & health ·
-transactional email · file storage · background jobs · notifications · admin & audited impersonation
-· **audit log** · **API keys** · **outbound webhooks**.
+**Built and green today** — each has a spec that `npm run status` reports as `done`:
+
+sign-in (magic link and OAuth — **no password, ever**, ADR-021) · organizations and roles · team
+invitations · the tenancy foundation and its proof harness · the gates · the scaffolder · the upgrade
+path.
+
+**Partly built:** billing — an organization's entitlement is a row read by a policy, a paid surface
+(projects) that the database refuses to an unentitled organization, and a webhook endpoint that
+verifies and deduplicates deliveries. Checkout, reconciliation and the billing portal are not built.
+
+**Specced, or on the list, and NOT built:** marketing shell · account settings · passkeys · 2FA ·
+email verification · custom domains · ops & health · transactional email · file storage · background
+jobs · notifications · admin & audited impersonation · audit log · API keys · outbound webhooks.
+
+That second list is the plan, and it is written in the future tense on purpose. An earlier version of
+this section listed all of it in one line under the heading "What's in it", which read as shipped —
+passkeys, 2FA and email verification appear nowhere in `src/`, and three of the entries that were
+listed as absent had in fact shipped (F-82). The lesson that cost the least to learn twice: **a
+capability list is a claim, and this project's rule is that a claim names what it is.**
 
 **Deliberately not shipped**, with reasons in [`docs/PRODUCT.md`](docs/PRODUCT.md): five payment
 providers, a choice of two ORMs, an AI chatbot demo, a CMS. Each is a comparison-table row bought
@@ -141,15 +181,28 @@ If a document ever disagrees with `npm run status`, the document is wrong.
 directly) · Python 3.10+ (the policy prober). `npm run check` names any missing one rather than
 failing with a stack trace.
 
-**To start a project** (SPEC-011). The generated project records the release it came from, so it can
-take a later one — see `keelblock.provenance.json` and the two-command upgrade the scaffolder prints:
+**To start a project — not yet.** The scaffolder is built and tested (SPEC-011), but the npm package
+is **a name placeholder and is not functional**. Its own registry description says so. So this
+command does **not** work today. It is shown rather than omitted, marked for what it is, because it
+is the command that will eventually work and a reader who meets it elsewhere deserves to know that:
 
 ```bash
-npx create-keelblock-app my-app
+npx create-keelblock-app my-app     # ✗ placeholder on npm — does not scaffold anything yet
 ```
 
-**To work on keelblock itself**, or to scaffold from a local checkout
-(`node scripts/create-keelblock-app.mjs my-app --from . --ref HEAD`):
+Publishing it is the one step between that line and a working quick start. Until then, scaffold from
+a local checkout, which runs the same code the package will:
+
+```bash
+git clone https://github.com/itecbrains-source/keelblock.git && cd keelblock
+npm install
+node scripts/create-keelblock-app.mjs my-app --from . --ref HEAD
+```
+
+The generated project records the release it came from, so it can take a later one — see
+`keelblock.provenance.json` and the two-command upgrade the scaffolder prints.
+
+**To work on keelblock itself:**
 
 ```bash
 git clone <this repo> && cd keelblock
@@ -296,3 +349,22 @@ Scope, non-goals and the acceptance bars: [`docs/PRODUCT.md`](docs/PRODUCT.md).
 ## Contributing
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md). Security issues: [`SECURITY.md`](SECURITY.md) — privately, please.
+
+## License
+
+**MIT** — [`LICENSE`](LICENSE). Free, open, and no paid tier of this repository exists or is planned;
+D-1 in [`docs/PRODUCT.md`](docs/PRODUCT.md) records why, and D-3 records the one boundary that is not
+free: a separate compliance-evidence layer. **keelblock's full claim must hold with nothing paid
+installed, and a gate asserts it.**
+
+Use it for anything, including commercially. Attribution is appreciated and not required.
+
+## Project status, honestly
+
+This is **work in progress and not a finished product.** The tenancy layer, sign-in, organizations
+and invitations are built and proven; billing is partly built; most of the list above is not built at
+all. The scaffolder's npm package is a placeholder. Nothing here is running in production for anyone.
+
+What this repository does claim is narrower and is checkable: **the isolation it has built, it
+proves** — on every push, per table, per command, per identity, with a mutation proof behind every
+gate. `npm run status` computes the rest, and it is the only thing to believe over this file.
