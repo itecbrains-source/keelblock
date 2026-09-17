@@ -134,6 +134,135 @@ export function findAdminReachableFrom(entries, read, resolveFn) {
   return problems;
 }
 
+/**
+ * Does this module pull in Stripe's SDK **as a value**? Returns the specifier and its line, or null.
+ *
+ * Parsed, and the type/value distinction is the whole reason it has to be. `import type Stripe from
+ * 'stripe'` is erased before anything runs — `src/lib/billing/events.ts` is written against
+ * `Database['public']['Enums']`, and the next module that models a payload will reach for
+ * `Stripe.Event` as a type. Accusing a type import is a false positive on correct code, which is how
+ * a gate gets exempted into uselessness (F-62). Accusing nothing is worse: a value import is a
+ * client, and a client is a network call.
+ *
+ * Every form is checked rather than the one this repository happens to use — the lesson F-78 charged
+ * for twice, in the service-role walk and in the Server Action rule. Side-effect `import 'stripe'`
+ * counts: it executes the module. `import { type Event } from 'stripe'` does not; a mixed clause
+ * does, because one of its bindings survives to runtime.
+ *
+ * **Scope, stated rather than assumed:** the `stripe` package and its subpaths. Not
+ * `@stripe/stripe-js`, which is the browser half — it carries the publishable key, makes no
+ * authorization decision, and reads nobody's entitlement. Widening to it would report correct code
+ * on the day someone builds Checkout.
+ *
+ * @param {string} source @param {string} [file] @returns {{specifier: string, line: number} | null}
+ */
+export function stripeValueImport(source, file) {
+  const STRIPE = /^stripe(\/|$)/;
+  const sf = parse(source, file);
+  /** @type {{specifier: string, line: number} | null} */ let found = null;
+  const hit = (node, specifier) => {
+    if (found) return;
+    found = { specifier, line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1 };
+  };
+
+  walkAst(sf, (n) => {
+    if (ts.isImportDeclaration(n) && ts.isStringLiteralLike(n.moduleSpecifier)) {
+      const spec = n.moduleSpecifier.text;
+      if (!STRIPE.test(spec)) return;
+      const clause = n.importClause;
+      if (!clause) return hit(n, spec); // import 'stripe' — no bindings, still executes
+      if (clause.isTypeOnly) return; // import type … from 'stripe'
+      if (clause.name) return hit(n, spec); // a default binding is a value
+      const bindings = clause.namedBindings;
+      if (!bindings) return;
+      if (ts.isNamespaceImport(bindings)) return hit(n, spec);
+      if (bindings.elements.some((el) => !el.isTypeOnly)) hit(n, spec);
+      return;
+    }
+    if (
+      ts.isExportDeclaration(n) &&
+      n.moduleSpecifier &&
+      ts.isStringLiteralLike(n.moduleSpecifier)
+    ) {
+      const spec = n.moduleSpecifier.text;
+      if (!STRIPE.test(spec) || n.isTypeOnly) return;
+      const clause = n.exportClause;
+      if (!clause) return hit(n, spec); // export * from 'stripe'
+      if (ts.isNamespaceExport(clause)) return hit(n, spec);
+      if (clause.elements.some((el) => !el.isTypeOnly)) hit(n, spec);
+      return;
+    }
+    if (ts.isCallExpression(n)) {
+      const dynamic = n.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const required = ts.isIdentifier(n.expression) && n.expression.text === 'require';
+      const arg = n.arguments[0];
+      if ((dynamic || required) && arg && ts.isStringLiteralLike(arg) && STRIPE.test(arg.text)) {
+        hit(n, arg.text);
+      }
+    }
+  });
+  return found;
+}
+
+/**
+ * SPEC-007 REQ-2 / AC-2 — no module on a request path reaches the Stripe client.
+ *
+ * The same shape as the service-role walk above, and for the same reason: a rule you can defeat by
+ * moving the import one file away is not a boundary. What it protects is REQ-2 — *the entitlement is
+ * never read from Stripe on the request path.* A page that answers "is this organization inside its
+ * plan" by calling Stripe has made every authorization decision depend on a third party's
+ * availability, in a product whose one claim is that the database decides. Stripe's own guidance
+ * agrees: "We recommend you persist these entitlements internally for faster resolution."
+ *
+ * **The allowance is on the ENTRY POINT, not on the module holding the client**, and that is the
+ * load-bearing choice. Allowlisting the leaf would mean the rule's own target gets added to the
+ * exemption list the first time a real API client lands — an allowlist entry that deletes the rule.
+ * Naming the entry point instead keeps every page, layout and Server Action covered forever, and it
+ * is the shape `SERVICE_ROLE_ALLOWED` already uses.
+ *
+ * @param {string[]} entries @param {(f: string) => string} read
+ * @param {(spec: string, from: string) => string | null} resolveFn
+ * @param {{file: string, reason: string}[]} [allowed]
+ * @returns {string[]}
+ */
+export function findStripeReachableFrom(entries, read, resolveFn, allowed = STRIPE_CLIENT_ALLOWED) {
+  const exempt = new Set(allowed.map((a) => a.file));
+  const problems = [];
+  for (const entry of entries) {
+    if (exempt.has(entry)) continue;
+    const seen = new Set();
+    const stack = [[entry, [entry]]];
+    while (stack.length) {
+      const [file, path] = stack.pop();
+      if (seen.has(file)) continue;
+      seen.add(file);
+      let source;
+      try {
+        source = read(file);
+      } catch {
+        continue;
+      }
+      const at = stripeValueImport(source, file);
+      if (at) {
+        problems.push(
+          `${path.join(' → ')}\n      ${file}:${at.line} imports \`${at.specifier}\` — a request ` +
+            `path can reach the Stripe client. SPEC-007 REQ-2: an entitlement is a row this ` +
+            `database answers, never a value read back from Stripe, so no authorization decision ` +
+            `waits on a third party being reachable. Read \`organization_entitlement\` instead — ` +
+            `or, if this entry point's own job is Stripe, declare it in STRIPE_CLIENT_ALLOWED with ` +
+            `a reason.`,
+        );
+        continue;
+      }
+      for (const spec of importsOf(source, file)) {
+        const target = resolveFn(spec, file);
+        if (target) stack.push([target, [...path, target]]);
+      }
+    }
+  }
+  return problems;
+}
+
 /** A `use cache` function reaching tenant data must take its organization as a parameter. */
 /**
  * @param {string[]} files
@@ -286,6 +415,30 @@ export const isEntryPoint = (file) =>
  * @type {Array<{file: string, reason: string}>}
  */
 export const SERVICE_ROLE_ALLOWED = [];
+
+/**
+ * Entry points whose own job is Stripe — SPEC-007 AC-2. **Compared by value in the test, never
+ * counted**, for F-30's reason: a capped list permits swapping one member for another, which is how
+ * an allowlist loses a guarantee without ever growing.
+ *
+ * One entry, and it should stay one. The webhook is the only surface in the product that is supposed
+ * to talk to Stripe at all.
+ * @type {Array<{file: string, reason: string}>}
+ */
+export const STRIPE_CLIENT_ALLOWED = [
+  {
+    file: 'src/app/api/stripe/webhook/route.ts',
+    reason:
+      'The webhook is the one surface whose job IS Stripe, and it cannot do that job without the ' +
+      "SDK: REQ-8 verifies the delivery signature with Stripe's own verifier over the raw body, " +
+      'and REQ-3 requires re-reading the authoritative subscription rather than applying the ' +
+      'payload as a delta. What REQ-2 forbids is an AUTHORIZATION decision that waits on Stripe ' +
+      'being reachable; this endpoint decides nothing and authorizes nobody — it verifies, records ' +
+      'and re-reads, and every part of that runs inside after(), so it is not on a response path ' +
+      'at all. The reason this is the entry point rather than the module below it: exempting the ' +
+      'module that holds the client would be an allowlist entry that deletes the rule.',
+  },
+];
 
 /**
  * Contexts with no response to put headers on. **Compared by value in the test, not counted** —
@@ -610,6 +763,9 @@ function main() {
     ...(existsSync(ADMIN)
       ? findAdminReachableFrom(entries, read, (s, f) => resolveImport(s, f))
       : []),
+    // Its OWN entry list: `entries` above has the service-role allowances removed, and an exemption
+    // granted for one boundary must not silently buy a pass on the other.
+    ...findStripeReachableFrom(files.filter(isEntryPoint), read, (s, f) => resolveImport(s, f)),
     ...findUnkeyedCaches(files, read),
     ...findDroppedCacheHeaders(files, read),
     ...findUnauthorizedActions(files, read, (s, f) => resolveImport(s, f)),
@@ -619,7 +775,8 @@ function main() {
 
   if (!problems.length) {
     console.log(
-      `boundaries: ok — ${entries.length} rendered entry point(s), none reaches the service-role client`,
+      `boundaries: ok — ${entries.length} rendered entry point(s), none reaches the service-role ` +
+        `client, and none but the declared webhook reaches the Stripe client`,
     );
     return;
   }

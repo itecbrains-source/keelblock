@@ -12,6 +12,9 @@ import {
   isEntryPoint,
   resolveImport,
   findPasswordSignIn,
+  STRIPE_CLIENT_ALLOWED,
+  findStripeReachableFrom,
+  stripeValueImport,
 } from './check-boundaries.mjs';
 
 const ADMIN = 'src/lib/supabase/server-only/admin.ts';
@@ -498,6 +501,167 @@ describe('Server Action authorization (SPEC-004 REQ-3)', () => {
 
   it("a re-export of another module's binding is not this module's action", () => {
     expect(check(`'use server';\nexport { something } from './other';`, [])).toEqual([]);
+  });
+});
+
+// ── SPEC-007 REQ-2 / AC-2: the entitlement is never read from Stripe on the request path ────────
+//
+// The defect this stops is not exotic — it is the obvious way to build the feature. A paid surface
+// asks "is this organization subscribed?", the answer is in Stripe, so the page asks Stripe. It
+// works in development and it is wrong twice: every authorization decision now depends on a third
+// party being reachable, and two readers of the same organization can disagree about whether it is
+// inside its plan. ADR-006's split is that Stripe bills and the database entitles.
+
+describe('the Stripe client is not reachable from a request path (SPEC-007 AC-2)', () => {
+  const resolver = (spec: string) =>
+    spec.startsWith('@/') ? spec.replace('@/', 'src/') + '.ts' : null;
+  const read = (files: Record<string, string>) => (f: string) => files[f] ?? '';
+  const walkFrom = (
+    files: Record<string, string>,
+    entries = Object.keys(files).filter(isEntryPoint),
+  ) => findStripeReachableFrom(entries, read(files), resolver, []);
+
+  it('MUTATION: a page importing the Stripe client directly is caught', () => {
+    const files = { 'src/app/page.tsx': `import Stripe from 'stripe';` };
+    const p = walkFrom(files);
+    expect(p).toHaveLength(1);
+    expect(p[0]).toMatch(/SPEC-007 REQ-2/);
+    expect(p[0]).toMatch(/src\/app\/page\.tsx:1/); // the file and the line, not just the fact
+  });
+
+  it('MUTATION: an INDIRECT path is caught, and the whole chain is shown', () => {
+    // The same reason the service-role walk is a graph walk: a boundary you defeat by moving the
+    // import one file away is not a boundary. "A page can reach Stripe" is useless; the chain is
+    // what someone can act on.
+    const files = {
+      'src/app/page.tsx': `import { plan } from '@/lib/plan';`,
+      'src/lib/plan.ts': `import Stripe from 'stripe';`,
+    };
+    const p = walkFrom(files);
+    expect(p).toHaveLength(1);
+    expect(p[0]).toContain('src/app/page.tsx → src/lib/plan.ts');
+  });
+
+  it('MUTATION: reached through a re-export barrel, two hops deep', () => {
+    const files = {
+      'src/app/page.tsx': `import { load } from '@/lib/billing';`,
+      'src/lib/billing.ts': `export * from '@/lib/billing-inner';`,
+      'src/lib/billing-inner.ts': `import Stripe from 'stripe';`,
+    };
+    expect(walkFrom(files)).toHaveLength(1);
+  });
+
+  it('MUTATION: a Server Action reaching Stripe is caught — it is a network boundary too', () => {
+    const files = { 'src/app/settings/actions.ts': `const s = await import('stripe');` };
+    expect(walkFrom(files)).toHaveLength(1);
+  });
+
+  it('a page that reads the entitlement row instead passes — the shape ADR-006 asks for', () => {
+    const files = {
+      'src/app/page.tsx': `import { entitlement } from '@/lib/orgs/dal';`,
+      'src/lib/orgs/dal.ts': `export const entitlement = () => db.from('organization_entitlement');`,
+    };
+    expect(walkFrom(files)).toEqual([]);
+  });
+
+  it('an allowed entry point is not walked, and exempting it does not switch the rule off', () => {
+    // The failure mode of every allowlist: one grant quietly becomes a general one.
+    const files = {
+      'src/app/api/stripe/webhook/route.ts': `import Stripe from 'stripe';`,
+      'src/app/page.tsx': `import Stripe from 'stripe';`,
+    };
+    const p = findStripeReachableFrom(
+      Object.keys(files).filter(isEntryPoint),
+      read(files),
+      resolver,
+      [{ file: 'src/app/api/stripe/webhook/route.ts', reason: 'x' }],
+    );
+    expect(p).toHaveLength(1);
+    expect(p[0]).toContain('src/app/page.tsx');
+  });
+
+  it('a cycle does not hang the walk', () => {
+    const files = { 'src/app/page.tsx': `import '@/a';`, 'src/a.ts': `import '@/app/page';` };
+    expect(walkFrom(files, ['src/app/page.tsx'])).toEqual([]);
+  });
+
+  it('the allowance list is frozen by value, and its entry carries a reason', () => {
+    // Counted lists permit a swap; F-30 paid for this in the gate that certifies the other gates.
+    expect(STRIPE_CLIENT_ALLOWED.map((a) => a.file)).toEqual([
+      'src/app/api/stripe/webhook/route.ts',
+    ]);
+    for (const a of STRIPE_CLIENT_ALLOWED) expect(a.reason.length).toBeGreaterThan(80);
+  });
+
+  it('the real tree is clean — and the rule had a real chain to look at', async () => {
+    const { readdirSync, statSync, readFileSync } = await import('node:fs');
+    const walk = (d: string, o: string[] = []): string[] => {
+      for (const n of readdirSync(d)) {
+        const p = `${d}/${n}`;
+        if (statSync(p).isDirectory()) walk(p, o);
+        else if (/\.tsx?$/.test(p)) o.push(p);
+      }
+      return o;
+    };
+    const entries = walk('src').filter(isEntryPoint);
+    const readFile = (f: string) => readFileSync(f, 'utf8');
+    const resolve = (s: string, f: string) => resolveImport(s, f);
+    expect(findStripeReachableFrom(entries, readFile, resolve)).toEqual([]);
+    // Non-vacuous, and this is the assertion that matters: emptying the allowance must produce a
+    // finding. "The real tree passes" is satisfied by a rule that inspects nothing — which is
+    // exactly how a green gate here once proved nothing at all (F-13).
+    expect(
+      findStripeReachableFrom(entries, readFile, resolve, []).length,
+      'no entry point reaches the Stripe SDK today, so this rule cannot be shown to fire',
+    ).toBeGreaterThan(0);
+  });
+});
+
+describe('stripeValueImport — a type import is not a client', () => {
+  const at = (src: string) => stripeValueImport(src, 'f.ts');
+
+  it('catches every form that survives to runtime', () => {
+    expect(at(`import Stripe from 'stripe';`)?.specifier).toBe('stripe');
+    expect(at(`import { Stripe } from 'stripe';`)?.specifier).toBe('stripe');
+    expect(at(`import * as S from 'stripe';`)?.specifier).toBe('stripe');
+    expect(at(`import 'stripe';`)?.specifier).toBe('stripe'); // side-effect: still executes
+    expect(at(`export * from 'stripe';`)?.specifier).toBe('stripe');
+    expect(at(`export { Stripe } from 'stripe';`)?.specifier).toBe('stripe');
+    expect(at(`const s = await import('stripe');`)?.specifier).toBe('stripe');
+    expect(at(`const s = require('stripe');`)?.specifier).toBe('stripe');
+    expect(at(`import { Webhooks } from 'stripe/lib/Webhooks';`)?.specifier).toBe(
+      'stripe/lib/Webhooks',
+    );
+  });
+
+  it('ignores a type-only import — it is erased before anything runs', () => {
+    // Accusing this is a false positive on correct code, and a gate that reports correct code is a
+    // gate somebody exempts (F-62). `Stripe.Event` as a TYPE is how the next payload gets modelled.
+    expect(at(`import type Stripe from 'stripe';`)).toBeNull();
+    expect(at(`import type { Event } from 'stripe';`)).toBeNull();
+    expect(at(`import { type Event } from 'stripe';`)).toBeNull();
+    expect(at(`export type { Event } from 'stripe';`)).toBeNull();
+  });
+
+  it('MUTATION: a MIXED clause is a value import — one binding survives', () => {
+    expect(at(`import Stripe, { type Event } from 'stripe';`)?.specifier).toBe('stripe');
+    expect(at(`import { type Event, Webhooks } from 'stripe';`)?.specifier).toBe('stripe');
+  });
+
+  it('does not fire on the browser SDK, or on a name that merely starts with it', () => {
+    // @stripe/stripe-js carries the publishable key, decides no authorization and reads nobody's
+    // entitlement. Widening to it would report correct code the day someone builds Checkout.
+    expect(at(`import { loadStripe } from '@stripe/stripe-js';`)).toBeNull();
+    expect(at(`import x from 'stripe-fake';`)).toBeNull();
+  });
+
+  it('the word in a comment or a string is not an import — parsed, not searched', () => {
+    // This rule's own doc comment, ADR-006 and SPEC-007 all contain the word. A text scan would
+    // fail on the documents that explain the rule — four separate rules here have done exactly
+    // that (F-64, F-66, F-67, F-70).
+    expect(
+      at(`// import Stripe from 'stripe';\nconst s = "import Stripe from 'stripe'";`),
+    ).toBeNull();
   });
 });
 

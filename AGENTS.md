@@ -38,16 +38,17 @@ with it, the document is wrong.
 restores the real defect and asserts the gate goes red — so a green run is evidence, not agreement.
 What it catches:
 
-| If you…                                                | This says so                          |
-| ------------------------------------------------------ | ------------------------------------- |
-| add a table and forget row-level security              | `schema`                              |
-| write `with check (true)` or `using (true)`            | `schema`                              |
-| reach for the service-role client to make a query work | `boundaries` (walks the import graph) |
-| cache a tenant query                                   | `boundaries`                          |
-| invent a translation key, or leave one unused          | `locale`                              |
-| leave an unused export or dependency                   | `unused`                              |
-| claim something nothing implements                     | `promises`                            |
-| widen a permission                                     | the `docs/ACCESS-MATRIX.md` diff      |
+| If you…                                                           | This says so                          |
+| ----------------------------------------------------------------- | ------------------------------------- |
+| add a table and forget row-level security                         | `schema`                              |
+| write `with check (true)` or `using (true)`                       | `schema`                              |
+| reach for the service-role client to make a query work            | `boundaries` (walks the import graph) |
+| ask Stripe whether an organization is entitled, on a request path | `boundaries` (the same walk)          |
+| cache a tenant query                                              | `boundaries`                          |
+| invent a translation key, or leave one unused                     | `locale`                              |
+| leave an unused export or dependency                              | `unused`                              |
+| claim something nothing implements                                | `promises`                            |
+| widen a permission                                                | the `docs/ACCESS-MATRIX.md` diff      |
 
 If a gate fails, **read its message** — it names the file, the line, and the fix. If a gate seems
 wrong, it has been wrong before: say so rather than working around it.
