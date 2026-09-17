@@ -33,6 +33,18 @@ const NOT_PROBEABLE = {
     coveredBy:
       'supabase/tests/intent/003-membership-invariants.test.sql (8 tests) + 001 (13 tests)',
   },
+  stripe_event: {
+    why:
+      'has RLS enabled and ZERO policies, so the generator emits nothing for it -- correctly, since ' +
+      'there is no policy to probe. Its protection is a PRIVILEGE-layer fact rather than a policy ' +
+      'one: anon and authenticated hold no grant at all, and service_role holds exactly the three ' +
+      'verbs the webhook handler runs. A prober that probes policies has nothing to say about a ' +
+      'table whose answer is "permission denied" before any policy is consulted.',
+    coveredBy:
+      'supabase/tests/intent/007-entitlement.test.sql (8 tests: anon and authenticated refused on ' +
+      'read and write, service_role permitted on insert and update, and refused on DELETE and on ' +
+      'TRUNCATE of the entitlement table -- F-80 at the privilege layer)',
+  },
 };
 
 /**
@@ -83,9 +95,10 @@ export function planProbes(tables, notProbeable = NOT_PROBEABLE) {
  * @param {string[]} files basenames in supabase/tests/rls
  * @param {string[]} probe tables that must have a suite
  * @param {Array<{table: string}>} skip tables whose coverage was transferred elsewhere
+ * @param {Map<string, number>} [policyCounts] table -> number of policies, read from the catalog
  * @returns {{ suites: string[], remove: string[], missing: string[], unmatchedSkips: string[] }}
  */
-export function reconcileEmitted(files, probe, skip) {
+export function reconcileEmitted(files, probe, skip, policyCounts = new Map()) {
   // 1xx only. `010-rls-enabled_rlsautotest.sql` is the tool's RLS-on guard, not a table's suite, and
   // counting it as one made three probed tables report as four -- a number that happened to equal
   // the table count, so it read as complete.
@@ -101,11 +114,24 @@ export function reconcileEmitted(files, probe, skip) {
     unmatchedSkips = [];
   for (const sk of skip) {
     const f = byTable.get(sk.table);
-    if (!f) unmatchedSkips.push(sk.table);
-    else {
+    if (f) {
       remove.push(f);
       byTable.delete(sk.table);
+      continue;
     }
+    // A skip with nothing to delete used to be a typo by definition. There is a THIRD case, and
+    // `stripe_event` is the first table to be in it: RLS enabled, ZERO policies, so the generator
+    // emits nothing for it because there is no policy to probe. Its protection is a privilege-layer
+    // fact -- the app roles hold no grant at all -- which a policy prober cannot see.
+    //
+    // **Derived from the catalog, not declared in the skip entry.** A `noPolicies: true` flag would
+    // let a table with real policies and a missing suite hide behind a label, which is the exact
+    // shape of hole this gate exists to refuse. Asking pg_policies means the claim is measured on
+    // every run: the day somebody adds a policy to a skipped table, its suite becomes mandatory
+    // again and this reports it.
+    const policies = policyCounts.get(sk.table);
+    if (policies === 0) continue;
+    unmatchedSkips.push(sk.table);
   }
   return {
     suites: [...byTable.keys()].sort(),
@@ -465,10 +491,37 @@ function main() {
     process.exit(2);
   }
 
+  // Policy counts for the skipped tables, so "the generator emitted nothing" can be checked against
+  // the catalog rather than taken on the skip entry's word.
+  const policyCounts = new Map(
+    execFileSync(
+      'psql',
+      [
+        DB,
+        '-tA',
+        '-c',
+        `select c.relname, count(p.oid) from pg_class c
+           join pg_namespace n on n.oid = c.relnamespace
+           left join pg_policy p on p.polrelid = c.oid
+          where n.nspname = 'public' and c.relkind = 'r'
+          group by c.relname`,
+      ],
+      { encoding: 'utf8' },
+    )
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => {
+        const [t, n] = line.split('|');
+        return [t, Number(n)];
+      }),
+  );
+
   const { suites, remove, missing, unmatchedSkips } = reconcileEmitted(
     readdirSync('supabase/tests/rls'),
     probe,
     skip,
+    policyCounts,
   );
   if (unmatchedSkips.length) {
     console.error(

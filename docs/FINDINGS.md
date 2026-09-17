@@ -2930,3 +2930,55 @@ change does not close it and deliberately does not deepen it: the new clause is 
 in the shape each file already uses. Closing it is separate work, and it is the reason the guard's
 `QUERY` would need exporting — which the unit suite cannot consume, because it must run without a
 database.
+
+## F-81 · A migration quoted the rule it was about to break, and the prober was what noticed
+
+**2026-09-17 · found while building the webhook · fixed before it shipped**
+
+`20260908150000_state_service_role_privileges.sql` set a posture and named the moment it would first
+be tested:
+
+> service_role holds NOTHING on tenant tables until something needs it … Granting in advance means
+> the most powerful role in the system is armed for a use case that does not exist … **the Stripe
+> webhook in SPEC-007 is the canonical one**.
+
+The webhook increment's migration quoted that passage approvingly — and then granted `service_role`
+`SELECT`/`INSERT`/`UPDATE` on two tables, two lines below the quotation. **Nothing needed them.** This
+increment ships the ledger schema, the delivery verifier and the handler logic; the handler's
+dependencies are not wired, because they need the service-role client, which is imported by nothing
+today (DEF-004). The grants were for a consumer that does not exist, which is the sentence being
+quoted.
+
+**It was not a harmless excess, and that is why it is a finding rather than an edit.** `rlsautotest`
+probes every role it can REACH. Granting `service_role` anything made it a probed identity on **every
+tenant table** — including the four it held nothing on — and each of those cells came back
+`UNRELIABLE`, because a role carrying `BYPASSRLS` cannot demonstrate that a policy works:
+
+```
+101-rls-organization              SELECT, UPDATE   UNRELIABLE
+102-rls-organization_entitlement  SELECT           UNRELIABLE
+103-rls-organization_invitation   SELECT           UNRELIABLE
+105-rls-project                   SELECT           UNRELIABLE
+```
+
+One premature grant turned five suites amber. The instinct at that point is to reach for
+`--allow-unreliable`, which the gate already supports and already uses once — and that would have
+been the wrong move twice over: it would have silenced a true report, and it would have grown a
+per-cell allowlist by one entry per table, which is the decay shape F-80 had just been written to end.
+
+**The tool was right and the migration was wrong.** The grants are removed. They land in the
+migration that wires the handler, which is where F-80's rule is already waiting for them.
+
+Two things this left behind that are worth more than the fix:
+
+- **The ledger is unreachable by every role, and that is now asserted.** `stripe_event` has RLS
+  enabled, zero policies and no grants at all — `anon`, `authenticated` and `service_role` are each
+  refused at the privilege layer. The two `service_role` assertions are written knowing they must
+  change on the day the wiring lands, which is the point of having them.
+- **The policy gate learned a third category.** Its skip mechanism assumed a skipped table still has
+  a generated suite to delete, so a skip matching nothing was "a typo quietly widening into a
+  coverage hole". A table with zero policies is a legitimate third case: the generator emits nothing
+  because there is no policy to probe. That is now **derived from `pg_policies` rather than declared
+  in the skip entry** — a `noPolicies: true` flag would let a table with real policies and a missing
+  suite hide behind a label, and asking the catalog means the day somebody adds a policy to a skipped
+  table, its suite becomes mandatory again and the gate says so.

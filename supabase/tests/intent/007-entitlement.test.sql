@@ -8,7 +8,7 @@
 -- The write half of this spec (webhook, idempotency, reconcile, portal) needs a Stripe account and
 -- is not here. What is here is the thing those all write to, and it is the half that decides access.
 begin;
-select plan(22);
+select plan(29);
 
 insert into auth.users (id, instance_id, aud, role, email) values
   ('11111111-1111-1111-1111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','a-owner@t'),
@@ -129,6 +129,52 @@ set local request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
 
 select ok(not public.is_org_entitled('bbbbbbbb-0000-0000-0000-00000000000b'),
   'a new organization with no entitlement row is not entitled -- absence needs no branch');
+
+-- ── the event ledger (REQ-5, REQ-8) ─────────────────────────────────────────
+-- `stripe_event` has RLS enabled and ZERO policies, so `rlsautotest` generates no suite for it --
+-- correctly: there is no policy to probe. Its protection is a PRIVILEGE-layer fact, and the policy
+-- gate refuses to report on a table it has no coverage for. These are the assertions that coverage
+-- was transferred to, registered against the table in `check-policies.mjs`'s NOT_PROBEABLE.
+--
+-- The application never touches this table. Both app roles are asserted rather than one, because
+-- "anon cannot" and "authenticated cannot" are different grants and only one of them was ever the
+-- default.
+reset role;
+set local role anon;
+select throws_ok($$select 1 from public.stripe_event$$, '42501', null,
+  'LEDGER: anon cannot read the event ledger');
+select throws_ok($$insert into public.stripe_event (id, type) values ('evt_x','x')$$, '42501', null,
+  'LEDGER: anon cannot forge a processed event');
+
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select throws_ok($$select 1 from public.stripe_event$$, '42501', null,
+  'LEDGER: a signed-in member cannot read it either -- it is not tenant data');
+select throws_ok($$insert into public.stripe_event (id, type) values ('evt_y','y')$$, '42501', null,
+  'LEDGER: nor write it');
+
+-- service_role holds NOTHING here either, today, and that is the posture rather than an oversight.
+-- 20260908150000: "service_role holds NOTHING on tenant tables until something needs it." The
+-- handler's dependencies are not wired yet, so nothing needs it, and a first draft of the ledger
+-- migration granted it anyway -- which made rlsautotest probe service_role on every tenant table and
+-- return five suites' worth of UNRELIABLE cells, because a BYPASSRLS role cannot demonstrate a
+-- policy. The grant arrives with the wiring; these two assertions are what will have to change on
+-- that day, which is the point of writing them.
+reset role;
+set local role service_role;
+select throws_ok($$select 1 from public.stripe_event$$, '42501', null,
+  'LEDGER: service_role holds nothing here YET -- the grant lands with the handler that needs it');
+select throws_ok($$insert into public.stripe_event (id, type) values ('evt_ok','x')$$, '42501', null,
+  'LEDGER: including insert, so the ledger is unreachable by every role today');
+
+-- F-80's subject at the privilege layer. Today this passes because service_role holds nothing at
+-- all; when the wiring migration grants it the three verbs the handler runs, this assertion is what
+-- distinguishes that from `grant all`, and it must keep passing.
+select throws_ok($$truncate public.organization_entitlement$$, '42501', null,
+  'LEDGER: and never TRUNCATE on a tenant table -- the privilege RLS cannot filter (F-80)');
+
+reset role;
 
 select * from finish();
 rollback;

@@ -66,6 +66,17 @@ Row-level security: **enabled** · policies for DELETE, INSERT, SELECT, UPDATE
 | Authenticated · member | ✓ | ✓ | ✓ | · |
 | Service role | · | – | · | · |
 
+## `stripe_event`
+
+Row-level security: **enabled** · **no policies**
+
+| Identity | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| Unauthenticated | – | – | – | – |
+| Authenticated · different organization | – | – | – | – |
+| Authenticated · member | – | – | – | – |
+| Service role | – | – | – | – |
+
 ## Bypass surfaces
 
 Objects and roles that can sidestep RLS **even when every policy above is correct.** Listed
