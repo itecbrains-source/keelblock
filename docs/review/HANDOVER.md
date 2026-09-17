@@ -58,56 +58,79 @@ npm run check      # every gate; --strict to fail on a rule that did not run
 describes, its score, and how far HEAD has moved since. A record behind HEAD is normal and is
 reported rather than failed — but it tells you whether the score you are about to quote is current.
 
-## Where the work is — paused 2026-09-14, resuming in a few days
+## Where the work is — 2026-09-17, handing to a fresh session
 
 Pointers and dates only. No counts, for the reason at the top of this file.
 
-**Last shipped.** SPEC-007 REQ-1 at `bb511f8` — the entitlement row, its policy, and the status map
-that reads it. Billing moved `draft` -> `partial`. `npm run status` has the rest and is the authority.
+**Where SPEC-007 stands.** `partial`, and the webhook increment landed: the entitlement row and its
+policy (REQ-1, REQ-7), the event ledger schema (REQ-5), the delivery verifier and the route. Six of
+its eleven criteria are done. `npm run status` has the current split and is the authority.
 
-**The one part of SPEC-007 that needs no Stripe account.** AC-2: _"a parsed rule: no module on a
-request path imports the Stripe client — the same shape as the service-role boundary in
-`boundaries`."_ Measured 2026-09-14: nothing under `src/` imports `stripe`, so that rule **passes on
-the day it lands**, which is the standard ADR-023 set when it deferred the consistency gate. Every
-other open criterion here — Checkout, the webhook, idempotency, reconciliation, the portal — waits on
-an account. If you want one thing to pick up cold, it is that rule.
+**Next, in dependency order**, and the first one needs no Stripe account:
 
-**Parked, with exactly one question.** The storage spike behind SPEC-018: does `storage-api` assume a
-constrained role per request? Memo 16 measured everything else and could not settle this, because
-`SET LOCAL ROLE` is transaction-scoped and the connection idles between uploads. It needs one real
-upload while sampling `pg_stat_activity`, or that service's source. It decides whether a policy on
-`storage.objects` is an enforced boundary or a convention, which is the sentence SPEC-018 turns on.
+1. **AC-2** — "no module on a request path imports the Stripe client". A parsed rule, and **reuse
+   `check-boundaries`'s existing import traversal rather than writing a second walk.** F-78 is the
+   reason that sentence is here: the service-role walk matched one syntax out of four until it was
+   derived, and a parallel hand-rolled walk inherits the same class of hole. The Stripe client sits
+   in exactly one file today, deliberately, so the allowlist this rule needs is one entry.
+2. **AC-8** — a journey: an organization is refused a paid surface, then granted it. The first thing
+   in this spec that produces a **visible product surface**, which is the half this project has least
+   of.
+3. Then reconciliation: AC-6, AC-4, AC-11.
+
+**The grant that is coming, and what is waiting for it.** Wiring the handler's dependencies needs the
+service-role client (imported by nothing today, DEF-004) and will be the first migration to grant
+`service_role` writes on a tenant table. F-80's rule watches for `TRUNCATE`; F-81 is the record of
+what happens if that grant arrives before its consumer — one premature grant made `service_role` a
+probed identity on every tenant table and returned five suites' worth of `UNRELIABLE`. Two assertions
+in `007-entitlement.test.sql` are written knowing they must change on that day.
+
+**Owed and not done.** Nothing. The README banner correction that was going to ride the next push
+went in with this one (F-82), because a session that ends with an owed edit is a session that loses
+it.
+
+**One thing unexplained.** A single `npm run check` reported `unit` failing with no test named,
+followed by six consecutive green runs. The hypothesis is prettier rewriting files as vitest starts
+in the same command chain; it was not reproduced. If it recurs, that hypothesis is the first thing to
+test — and note that a real flake hid behind exactly this shape once already: F-72's safety test was
+spawning processes on every unit run and was intermittently red for as long as it existed.
+
+**A known local flake, so nobody re-derives it.** `failure-message.test.sql` inside the `policy` gate
+has deadlocked — `AccessExclusiveLock` on `auth.users` against `RowExclusiveLock` on
+`public.organization` — twice in five runs on 2026-09-14, and not in any run since on a stack that
+had been reset recently. The variable that differed was **local stack uptime**. Correlation, not
+demonstration. If it holds, consecutive green scheduled nightlies are **not** evidence against it —
+CI always starts a fresh stack — and the person who meets it is a developer on day three of the same
+`supabase start`. Ruled out by execution, do not re-derive: F-1's `TRUNCATE` assertion is not the
+cause, because the privilege check precedes lock acquisition and returns `permission denied` without
+taking a lock.
 
 **Owner-gated, not a session's to do.** The three Vercel secrets; publishing `create-keelblock-app`
-(B-1's headline command still fails for any user until it is published, and F-74's fix does not reach
-anyone before that); publishing F-1; and whether `npm run status`'s score line gets a withdrawal
-marker, since the withdrawal exists nowhere in the repository.
+(B-1's headline command still fails for any user until it is published, and F-74's fix reaches nobody
+before that); publishing F-1; and whether `npm run status`'s score line gets a withdrawal marker,
+since the withdrawal exists nowhere in the repository.
 
-**The dated horizon.** Nothing expires within days. The cluster is late October, and the first item is
-not only about this repository:
+**The dated horizon**, re-measured 2026-09-17. Nothing expires within weeks:
 
-| when           | what                                                                                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **2026-10-22** | The freshness pins were verified 2026-09-07 against a 45-day limit. **Every generated project's build starts failing on that date, not just this one** — the stamp ships with the scaffold. |
-| **2026-10-23** | `DEF-016` fires — review the pinned Supabase CLI version.                                                                                                                                   |
-| **2026-12-08** | `DEF-024` fires — the human half of the handover trial.                                                                                                                                     |
+| when           | what                                                                                                                                                        |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **2026-10-22** | Freshness pins expire — 35 days out. **Every generated project's build starts failing then, not just this one**, because the stamp ships with the scaffold. |
+| **2026-10-23** | `DEF-016` fires — review the pinned Supabase CLI version.                                                                                                   |
+| **2026-12-08** | `DEF-024` fires — the human half of the handover trial.                                                                                                     |
 
-**A known local flake, so nobody re-derives it.** `failure-message.test.sql` inside the `policy`
-gate has deadlocked — `AccessExclusiveLock` on `auth.users` against `RowExclusiveLock` on
-`public.organization` — twice in five runs on 2026-09-14, and not at all in four runs on 09-17 or
-three on 09-17 after a reset. The one thing that differed was **local stack uptime**: days on the day
-it failed, hours on the days it did not. Correlation, not demonstration, and stated that way
-deliberately. If it holds, two things follow: consecutive green scheduled nightlies are **not**
-evidence against it, because CI always starts a fresh stack — and the person who meets it is a
-developer on day three of the same `supabase start`. Ruled out by execution, do not re-derive: F-1's
-TRUNCATE assertion is not the cause, because the privilege check precedes lock acquisition and
-returns `permission denied` without ever taking a lock.
+The nearest research memo expiry is 80 days out, so no memo needs re-verifying this month.
 
-**Open, and not feature work.** Themes 3 and 4 of the 2026-09-10 external review. Theme 3 asks for a
-mechanism that can fail when the project overspends on itself; the marginal ratio of `scripts/` to
-`src/` was measured rising, and every candidate gate would land on the wrong side of it. Theme 4 is
-that nobody has used the product. Neither is answerable by another fix, and successive seats have
-deliberately declined to close them with tactical work.
+**Open, and not feature work.** Themes 3 and 4 of the external review of 2026-09-10. Theme 3 asks for
+a mechanism that can fail when the project overspends on itself; the marginal ratio of `scripts/` to
+`src/` was measured **falling** for the first time on the entitlement commit — 10.0:1 down to 5.8:1 —
+because that increment was mostly `src/` and `supabase/`. One commit is not a trend and the webhook
+increment should continue it; re-measuring after is the only evidence either way. Theme 4 is that
+nobody has used the product. Neither is answerable by another fix, and four successive seats have
+declined to close them with tactical work.
+
+**Three findings declined a gate on purpose** — F-69, F-82 and the count claims in F-78. Each names
+why in its own entry. A session that reads them as oversights and builds the gates will be spending
+on the wrong side of the ratio above.
 
 ## Two rules the review's own machinery now enforces
 
