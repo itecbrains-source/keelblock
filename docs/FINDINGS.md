@@ -3037,3 +3037,140 @@ the thing Theme 3 of the external review of 2026-09-10 is about.
 Two review seats looked for this and did not find it. Both searched for the _phrase_ the report used;
 neither opened the paragraph. The report's own wording — "the README says shipped specs are unbuilt"
 — was an accurate description of a sentence neither of them read.
+
+## F-83 · The stack-uptime explanation for the `policy` deadlock does not survive its own evidence, and the one failure that could have settled it was not captured
+
+**2026-09-17 · hypothesis raised and then withdrawn by the seat that raised it · mechanism still unidentified**
+
+`supabase/tests/intent/failure-message.test.sql`, inside the `policy` gate, has deadlocked —
+`AccessExclusiveLock` on `auth.users` against `RowExclusiveLock` on `public.organization`. An
+explanation was offered and it has since been contradicted: **local stack uptime**, the idea being
+that a recently reset stack does not show it and a stack left running for days does.
+
+**It is written here rather than as an edit** because it corrects a claim that appears in a frozen
+numbered record and in the handover, and a numbered record is a dated claim about a specific commit —
+correcting one by editing it is the thing `docs/review/` does not do.
+
+### Everything observed, so the next seat can weigh it rather than inherit a conclusion
+
+| when                 | stack uptime | runs                                | failures                                                      |
+| -------------------- | ------------ | ----------------------------------- | ------------------------------------------------------------- |
+| 2026-09-14           | not recorded | 5                                   | **2** — deadlock captured, both lock modes and both relations |
+| 2026-09-17 morning   | ~5h          | 4                                   | 0                                                             |
+| 2026-09-17 evening   | ~2h          | 3 (`npm run check`)                 | **1** — **output not captured**                               |
+| 2026-09-17 evening   | ~2h+         | 12 (5 standalone, 2 check, 5 again) | 0                                                             |
+| 2026-09-17 20:28 UTC | 1h48m        | 1 (`npm run check`, all 14 green)   | 0                                                             |
+
+The fourth row is what breaks the hypothesis and the last row was added by re-running it: **the
+short-uptime stack failed where the long-uptime stack did not**, and a fresh reading on a stack of
+the same age as the failing one passed. Uptime does not order these observations. It is not
+disproved — nothing here is strong enough to disprove anything — it is simply no longer the variable
+the evidence points at.
+
+**None of these is a rate, and no rate should be quoted from them.** The conditions differ across
+rows, the samples are small, the 2026-09-14 runs have no recorded uptime at all, and one of the three
+failures produced no output. "Two in five" is a description of one afternoon, not a probability.
+
+**Ruled out by execution, so nobody re-derives it:** F-1's `truncate public.organization cascade`
+assertion is not the cause. With another session deliberately holding a `ROW EXCLUSIVE` lock on
+`public.organization`, that statement still returns `permission denied` instantly — the privilege
+check precedes lock acquisition, so it never takes a lock and cannot be a party to a deadlock.
+
+### What this changes about how the flake should be treated
+
+- **Consecutive green CI nightlies were being discounted on the strength of the hypothesis** — the
+  reasoning was that CI always starts a fresh stack, so its greenness said nothing. That reasoning
+  only holds if uptime is the variable. It is not established that it is, so nightlies are back to
+  being ordinary evidence: weak, but not excluded by argument.
+- **A green run is not a re-derivation.** Twelve consecutive passes were already observed after a
+  failure. Running it again until it passes measures patience.
+
+### The thing actually worth doing, and it is verified rather than suggested
+
+The single highest-value action is to **capture the next failure**, because the one that would have
+identified the mechanism was lost. It need not be caught live: this stack's Postgres writes to
+container stderr (`logging_collector = off`, `log_destination = stderr`), and a deadlock is reported
+at `ERROR`, which clears `log_min_messages = warning`. So the full report is retrievable from the
+container afterwards even when the gate's stdout is gone.
+
+**MEASURED 2026-09-17** by deadlocking two sessions on advisory locks — chosen because they touch no
+table and leave no residue — discarding stdout, and recovering the report from the container:
+
+```bash
+docker logs --since 40s supabase_db_keelblock 2>&1 | grep -A 6 -i deadlock
+```
+
+It returned both waiting processes, both lock modes and **both full statements**, which is more than
+the test output would have shown:
+
+```
+ERROR:  deadlock detected
+DETAIL:  Process 6445 waits for ExclusiveLock on advisory lock [5,0,9002,1]; blocked by process 6452.
+        Process 6452 waits for ExclusiveLock on advisory lock [5,0,9001,1]; blocked by process 6445.
+```
+
+`deadlock_timeout` is `1000` ms and `log_lock_waits` is `off` on this stack; turning the latter on
+would also log the waits that do _not_ deadlock, which is the shape that would show whether the
+contention is always present and only sometimes fatal. That is a configuration change to a running
+stack and is left as a decision rather than made here.
+
+**Stated because it is the honest limit:** this finding identifies no mechanism. It removes a wrong
+explanation and leaves a recipe for catching the next occurrence, and those are different from a fix.
+
+## F-84 · The `unit` flake recurred, its standing explanation is impossible, and the output was lost a second time by the person who had just written down not to lose it
+
+**2026-09-17 · second observed occurrence · hypothesis refuted, mechanism still unidentified · output not captured**
+
+`npm run check` reported `unit` failing with **no test named**, inside a run whose other thirteen
+steps were green. A standalone `npx vitest run` immediately afterwards passed every test in every
+file. This is the second occurrence of the shape, and it is a **different gate** from the `policy`
+deadlock in [F-83](#f-83) — two unreproduced flakes, not one.
+
+### The standing hypothesis cannot be the mechanism
+
+The explanation carried forward until now was _prettier rewriting files as vitest starts in the same
+command chain_. Two independent measurements rule it out:
+
+- **`check` has no concurrency to race.** `scripts/check.mjs` runs its steps in a `for` loop over
+  `spawnSync`, which blocks until each child exits. `format` is finished before `unit` is spawned;
+  there is no window in which the two are both running.
+- **The `format` step cannot write.** It is `prettier --check`, not `--write`. MEASURED 2026-09-17:
+  recording the mtime of every tracked file, running `npx prettier --check .`, and comparing —
+  **not one file was modified**.
+
+A third point specific to this occurrence: the `prettier --write` in that session ran as a separate
+command that had already exited before `npm run check` was invoked, so even a write-during-run story
+does not reach it.
+
+**What that leaves.** No mechanism. The candidates not excluded — and not investigated, because the
+evidence to investigate them was discarded — include the preceding `next build` step's effect on the
+tree vitest walks, and resource contention in a run where `unit` is already the most expensive step.
+Naming them is not evidence for them.
+
+### The part that is a lesson rather than a flake
+
+**The output was lost the same way twice, and the second time was avoidable.** The run was invoked as
+`npm run check 2>&1 | tail -35`, because the interesting part of a green run is the summary. When the
+run is not green, `tail` has already thrown away the only copy of the thing worth having — and it
+does it silently, because a pipeline reports the exit status of its LAST command, so `tail` exiting 0
+made a failing check look like a passing one to anything reading the status.
+
+That happened in the same session in which F-83 was written to say the lost output was the expensive
+part. Knowing the rule is not the same as having the habit.
+
+**So the rule is mechanical rather than remembered.** Any `check` run whose output might matter is
+written to a file first and read from the file:
+
+```bash
+npm run check > /tmp/check-$(date -u +%Y%m%dT%H%M%SZ).log 2>&1; echo "exit=$?"
+```
+
+`tee` works equally well. What does not work is any pipeline that both truncates the output and
+replaces the exit status, which is the shape that cost two failures.
+
+### Also observed in the same run, and not the same thing
+
+`freshness` reported **degraded** — `~`, a rule did not run — in the failing run, and `✓` in the runs
+either side of it. That gate has a network-dependent rule, and `check` deliberately exits 0 on a
+degradation unless `--strict`, so a laptop on a bad network can still run the suite. It is noted here
+only so the next reader does not attach it to the `unit` failure by proximity; nothing links them.
