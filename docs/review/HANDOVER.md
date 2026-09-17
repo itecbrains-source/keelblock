@@ -92,6 +92,17 @@ not only about this repository:
 | **2026-10-23** | `DEF-016` fires — review the pinned Supabase CLI version.                                                                                                                                   |
 | **2026-12-08** | `DEF-024` fires — the human half of the handover trial.                                                                                                                                     |
 
+**A known local flake, so nobody re-derives it.** `failure-message.test.sql` inside the `policy`
+gate has deadlocked — `AccessExclusiveLock` on `auth.users` against `RowExclusiveLock` on
+`public.organization` — twice in five runs on 2026-09-14, and not at all in four runs on 09-17 or
+three on 09-17 after a reset. The one thing that differed was **local stack uptime**: days on the day
+it failed, hours on the days it did not. Correlation, not demonstration, and stated that way
+deliberately. If it holds, two things follow: consecutive green scheduled nightlies are **not**
+evidence against it, because CI always starts a fresh stack — and the person who meets it is a
+developer on day three of the same `supabase start`. Ruled out by execution, do not re-derive: F-1's
+TRUNCATE assertion is not the cause, because the privilege check precedes lock acquisition and
+returns `permission denied` without ever taking a lock.
+
 **Open, and not feature work.** Themes 3 and 4 of the 2026-09-10 external review. Theme 3 asks for a
 mechanism that can fail when the project overspends on itself; the marginal ratio of `scripts/` to
 `src/` was measured rising, and every candidate gate would land on the wrong side of it. Theme 4 is

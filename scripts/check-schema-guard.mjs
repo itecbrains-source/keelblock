@@ -6,7 +6,7 @@
  * usually decay. Everything else proves the policies that exist; this proves none is missing.
  *
  * A table carrying `organization_id` is tenant-scoped by definition (ADR-001 REQ-2 puts the column
- * on the table precisely so this is derivable rather than a hand-kept list). Four ways it can be
+ * on the table precisely so this is derivable rather than a hand-kept list). The ways it can be
  * wrong, all measured on real schemas:
  *
  *   · RLS disabled — the table is readable by anyone with the publishable key
@@ -15,6 +15,10 @@
  *     another tenant, and the smuggled row is invisible to them (F-4)
  *   · a write policy whose `WITH CHECK` is trivially `true` — the same hole with a clause that looks
  *     like a check. `polwithcheck IS NULL` does not catch it; this does (F-8)
+ *   · a DESTRUCTIVE GRANT — `anon` or `authenticated` holding TRUNCATE/REFERENCES/TRIGGER, or
+ *     `service_role` holding TRUNCATE. Row security does not apply to these commands at all, so
+ *     every policy rule above is silent about them and F-1's fix was held by two hand-written
+ *     assertions covering two of five tables (F-80)
  */
 import { execFileSync } from 'node:child_process';
 
@@ -77,6 +81,37 @@ cross join lateral (
              then '(^|[^a-z_])(organization_id|id)([^a-z_]|$)'
              else '(^|[^a-z_])organization_id([^a-z_]|$)' end
       )
+  union all
+  -- ── destructive GRANTS, which RLS cannot filter ───────────────────────────
+  -- F-1 is this project's headline finding and the one on the landing page: \`anon\` could TRUNCATE
+  -- every tenant table on a default Supabase project, because Postgres does not apply row security
+  -- to TRUNCATE or REFERENCES at all. The remediation was a migration. **The proof was two
+  -- hand-written pgTAP assertions**, covering \`organization\` and \`project\` -- so
+  -- organization_member, organization_invitation and organization_entitlement had none, and the
+  -- newest of those three was added three days before this rule was written.
+  --
+  -- That is F-31's recorded lesson running live: "a hardening statement applied to the objects that
+  -- existed when it was written decays silently." This rule is derived from the same \`scoped\` set
+  -- as every other rule here, so table six is covered because it is a tenant table, not because
+  -- somebody remembered.
+  --
+  -- Roles are read from pg_roles rather than named literally, so a stack without one of them yields
+  -- no rows instead of erroring -- has_table_privilege raises on a role that does not exist.
+  select r.rolname || ' holds ' || p.priv || ' -- row security does not apply to it (F-1)'
+    from (select rolname from pg_roles where rolname in ('anon','authenticated')) r
+    cross join (values ('TRUNCATE'),('REFERENCES'),('TRIGGER')) p(priv)
+    where has_table_privilege(r.rolname, s.oid, p.priv)
+  union all
+  -- service_role is the SANCTIONED bypass, so it may legitimately hold SELECT/INSERT/UPDATE once a
+  -- consumer needs them -- the Stripe webhook is the first, per 20260908150000. TRUNCATE is
+  -- different in kind: it is not filtered by RLS, it takes every tenant's rows at once, and no
+  -- webhook needs it. Measured 2026-09-17, before this rule existed: a webhook migration writing
+  -- \`grant all\` instead of \`grant select, insert, update\` produced EXACTLY the same gate output as
+  -- the correct one -- seven UNRELIABLE probe lines about BYPASSRLS in both cases. The existing
+  -- machinery could not distinguish a correct grant from one handing back TRUNCATE.
+  select 'service_role holds TRUNCATE -- the one privilege RLS cannot filter, on a tenant table'
+    where exists (select 1 from pg_roles where rolname = 'service_role')
+      and has_table_privilege('service_role', s.oid, 'TRUNCATE')
   union all
   -- The residual case the "mentions the key" rule lets through, named rather than left implicit:
   -- an expression whose ONLY use of the key is a null test. It mentions organization_id and

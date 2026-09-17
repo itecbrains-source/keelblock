@@ -2854,3 +2854,79 @@ Two boundary decisions, recorded because both could have been carve-outs:
 - **`.test.mts` is excluded as a category, not as a carve-out for the rule's own file.** A test's
   business is to contain the strings the rule forbids. Exempting "tests" is a statement about what
   tests are; exempting "this file" is the shape F-64, F-66, F-67, F-70 and F-77 are all about.
+
+## F-80 · The headline finding's fix was held by two hand-written assertions covering two of five tables, and nothing in the repository gated a grant at all
+
+**2026-09-17 · found by the review seat, reproduced here · fixed**
+
+F-1 is this project's headline finding and the one on the landing page: `anon` could `TRUNCATE`
+every tenant table on a default Supabase project. Its whole point is that **row security does not
+apply to `TRUNCATE` or `REFERENCES` at all**, so no policy and no policy test could ever see it.
+
+The remediation was a migration. The _proof_ was two `throws_ok` assertions in
+`001-tenant-isolation.test.sql`, against `public.organization` and `public.project`. Measured:
+
+```
+TRUNCATE assertions in the entire suite:   organization, project
+tenant tables:                             5
+grep -rln "role_table_grants|has_table_privilege|grantee|pg_default_acl" scripts/*.mjs
+                                           -> nothing
+```
+
+`organization_member`, `organization_invitation` and `organization_entitlement` had none, and the
+last of those three was added three days earlier **by me**, in the commit that made billing partial.
+All five tables are in fact clean — the migration's `alter default privileges` holds — so this is a
+proof gap, not a live hole. It is F-31's own recorded lesson running in front of us: _"a hardening
+statement applied to the objects that existed when it was written decays silently."_
+
+The schema guard was no help and was never meant to be: its subject is RLS **enablement**, and it
+contained no reference to a privilege, a grant or a role.
+
+### Why it blocked the webhook specifically
+
+`bb511f8` deliberately granted `service_role` nothing, deferring that to the webhook's own migration
+per the posture set in `20260908150000`. **The webhook migration is therefore the first thing in this
+repository that will grant writes to `service_role` on a tenant table.**
+
+The question is whether anything would notice it coming out wider than intended. Measured before
+writing the rule, on the live stack:
+
+```
+grant all  on organization_entitlement to service_role  -> 7 UNRELIABLE lines from `policy`
+grant select, insert, update to service_role            -> 7 UNRELIABLE lines from `policy`
+```
+
+Identical. Both spellings produce the same complaint — that probing `service_role` is unreliable
+because it carries `BYPASSRLS` — and **neither says anything about `TRUNCATE`**. So the existing
+machinery could not distinguish the correct grant from one handing back the power to erase every
+tenant's rows in a single statement. Not silence, which is the easier thing to argue about: _noise
+that reads the same either way_, which is worse, because the fix it suggests is "add an allowance"
+and the fix it needs is "narrow the grant".
+
+### Fixed by deriving, not enumerating
+
+The rule lives in the schema guard rather than in a twelfth gate — SPEC-003 makes the count a
+ceiling, and the guard already computes the set of tenant-scoped tables from the catalog. The new
+clause hangs off that same `scoped` CTE, so **table six is covered because it is a tenant table, not
+because somebody remembered** — which is the whole difference between this and the two assertions it
+supersedes.
+
+- `anon` and `authenticated` may hold no `TRUNCATE`, `REFERENCES` or `TRIGGER` — F-1's exact set.
+- `service_role` may hold no `TRUNCATE`. It is the sanctioned bypass and may legitimately hold
+  `SELECT`/`INSERT`/`UPDATE` once a consumer exists, but `TRUNCATE` is different in kind: unfiltered
+  by RLS, total in effect, and needed by no webhook.
+
+Roles are read from `pg_roles` rather than named literally, because `has_table_privilege` raises on a
+role that does not exist and a scaffolded project on a different image may not have all three.
+
+Two planted proofs in `004-schema-guard.test.sql`, and they fail for different reasons: F-1's own
+defect on a table its assertions never covered, and the `grant all` a webhook migration could write.
+A third asserts the rule is not vacuous in reverse — revoking clears it.
+
+**One limit, stated rather than left to be discovered.** That pgTAP suite proves a hand-written
+_copy_ of the guard's SQL, not the guard's SQL itself, and the copy's labels differ from the real
+rule's prose. The external review of 2026-09-10 already recorded that divergence as a defect in the proof. This
+change does not close it and deliberately does not deepen it: the new clause is written into both,
+in the shape each file already uses. Closing it is separate work, and it is the reason the guard's
+`QUERY` would need exporting — which the unit suite cannot consume, because it must run without a
+database.

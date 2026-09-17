@@ -5,7 +5,7 @@
 -- nothing behind. A unit test of the surrounding string-splitting would prove nothing about the
 -- thing that actually protects the data.
 begin;
-select plan(12);
+select plan(15);
 
 create or replace function pg_temp.guard_violations() returns setof text language sql as $$
   with scoped as (
@@ -49,6 +49,16 @@ create or replace function pg_temp.guard_violations() returns setof text languag
     union all select 'null-test-using' from pg_policy p
       where p.polrelid = s.oid and p.polcmd in ('r','w','d','*') and p.polqual is not null
         and pg_get_expr(p.polqual, p.polrelid) ~* '^\(?\s*organization_id\s+is\s+not\s+null\s*\)?$'
+    -- Destructive GRANTS. RLS does not apply to TRUNCATE or REFERENCES at all, so every rule above
+    -- is silent about them -- which is how F-1's fix came to be held by two hand-written assertions
+    -- covering two of five tables (F-80).
+    union all select 'destructive-grant'
+      from (select rolname from pg_roles where rolname in ('anon','authenticated')) r
+      cross join (values ('TRUNCATE'),('REFERENCES'),('TRIGGER')) pr(priv)
+      where has_table_privilege(r.rolname, s.oid, pr.priv)
+    union all select 'service-role-truncate'
+      where exists (select 1 from pg_roles where rolname = 'service_role')
+        and has_table_privilege('service_role', s.oid, 'TRUNCATE')
   ) f;
 $$;
 
@@ -125,5 +135,26 @@ select is((select count(*)::int from pg_temp.guard_violations()), 0,
 alter table public.organization disable row level security;
 select ok(exists(select 1 from pg_temp.guard_violations() v where v like 'organization: rls-disabled'),
   'the ROOT table is covered -- it is scoped by its own id, not an organization_id column');
+
+-- ── destructive grants (F-80) ───────────────────────────────────────────────
+-- Two plants, because the rule has two halves that fail for different reasons. The first is F-1's
+-- own defect on a table its two hand-written assertions never covered. The second is the webhook
+-- migration writing `grant all` where it meant `grant select, insert, update` -- measured before
+-- this rule existed, both spellings produced identical output from every other gate.
+grant truncate on public.planted to anon;
+select ok(exists(select 1 from pg_temp.guard_violations() v where v = 'planted: destructive-grant'),
+  'F-80: anon holding TRUNCATE on a tenant table is caught -- RLS never applied to it');
+revoke truncate on public.planted from anon;
+
+grant all on public.planted to service_role;
+select ok(exists(select 1 from pg_temp.guard_violations() v where v = 'planted: service-role-truncate'),
+  'F-80: a webhook granted ALL rather than the three verbs it needs is caught');
+revoke all on public.planted from service_role;
+
+select is(
+  (select count(*)::int from pg_temp.guard_violations() v
+    where v in ('planted: destructive-grant','planted: service-role-truncate')),
+  0,
+  'F-80: and not vacuous in reverse -- revoking the grant clears the violation');
 
 rollback;
