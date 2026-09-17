@@ -8,10 +8,18 @@
 **A multi-tenant SaaS starter where tenant isolation is enforced by the database and proven on every
 commit.** Next.js 16 · React 19 · TypeScript · Supabase · Stripe. MIT.
 
-> **Status: foundation, plus sign-in.** The tenancy layer, the proof harness and the gates are built
-> and green. You can now sign in with an emailed link, and every Server Action must authorize or the
-> build refuses it. Organizations, invitations, billing and the product surfaces are specced and not
-> built — run `npm run status`, which reads the repository rather than this sentence.
+> **Status: the tenancy layer, sign-in, organizations and invitations — plus billing in part.** The
+> proof harness and the gates are built and green. You can sign in with an emailed link, create an
+> organization, invite people into it, and every Server Action must authorize or the build refuses
+> it. Billing is **partial**: an organization's entitlement is a row read by a policy, and the
+> webhook endpoint verifies and deduplicates deliveries — Checkout, reconciliation and the billing
+> portal are not built. Everything else on the list below is specced and not built.
+>
+> **Do not trust this paragraph over `npm run status`,** which reads the repository. It is here
+> because a reader deserves a sentence before a command, and it was wrong for nine days: it said
+> organizations, invitations and billing were "specced and not built" while two were `done` and the
+> third was partial. Nothing caught it — the staleness gate polices counts, and this claim has no
+> number in it (F-82).
 > This README describes what exists today, not what is planned. If that distinction ever blurs, the
 > project has failed its own first rule.
 

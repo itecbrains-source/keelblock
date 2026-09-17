@@ -2982,3 +2982,58 @@ Two things this left behind that are worth more than the fix:
   in the skip entry** — a `noPolicies: true` flag would let a table with real policies and a missing
   suite hide behind a label, and asking the catalog means the day somebody adds a policy to a skipped
   table, its suite becomes mandatory again and the gate says so.
+
+## F-82 · The README's front page said three shipped capabilities were unbuilt, in the paragraph that declares the rule against exactly that
+
+**2026-09-17 · reported as a P0 by the external review of 2026-09-10, unreproduced by two review seats, reproduced here · fixed**
+
+The first thing a reader sees:
+
+> **Status: foundation, plus sign-in.** … Organizations, invitations, billing and the product
+> surfaces are **specced and not built** — run `npm run status`…
+> This README describes what exists today, not what is planned. **If that distinction ever blurs, the
+> project has failed its own first rule.**
+
+Measured against the specs on the day it was found:
+
+| claimed "not built" | actual                              |
+| ------------------- | ----------------------------------- |
+| Organizations       | `SPEC-005` **done** — 7 REQ, 9/9 AC |
+| Invitations         | `SPEC-006` **done** — 7 REQ, 9/9 AC |
+| Billing             | `SPEC-007` **partial** — 6/11 AC    |
+
+**The sentence declaring the rule is in the same paragraph that breaks it**, and it had been for nine
+days — since `SPEC-005` closed.
+
+### Why nothing caught it, which is the part worth keeping
+
+The `status` gate is this repository's answer to stale documentation, and it is good: it has caught
+the author three separate times this month, including twice in the same week. It works by finding a
+**number** adjacent to a countable noun and comparing it to the catalog.
+
+"Organizations, invitations, billing … are specced and not built" contains no number. **Prose
+staleness has no mechanism here at all** — which is F-69's shape a second time: a gate that proves
+the structural property it can see while the claim a reader acts on goes unchecked beside it.
+
+That gap is recorded rather than closed. The obvious rule — every capability named in a
+reader-facing document maps to a spec whose status agrees with the sentence — needs a parse of
+English that says which of "built", "not built" and "partial" a paragraph is asserting, and a gate
+that guesses at that will be wrong in the direction of confidence. **No gate is added for this**, for
+the same reason none was added for F-69 and none for the two count claims in F-78: a defect is not
+by itself evidence for machinery, and this project's marginal spend on `scripts/` against `src/` is
+the thing Theme 3 of the external review of 2026-09-10 is about.
+
+### The other two claims in the same report
+
+- **"`What's in it` lists capabilities that do not exist"** — true and softer. Sixteen are listed in
+  present tense under that heading; twelve have no spec file at all. It is arguably scope rather than
+  status, and `PRODUCT.md` carries the same list deliberately, so it is left alone and named here
+  instead of edited by guess.
+- **"README and FAQ carry two mutually inconsistent stale counts"** — **does not reproduce.** The
+  only counts in either document are the "seven tables" lines added by F-70's scope fix, and they
+  agree with each other and with the database. Either it was fixed by that commit or the original
+  pattern was different. Reported back rather than left as an open item somebody re-derives.
+
+Two review seats looked for this and did not find it. Both searched for the _phrase_ the report used;
+neither opened the paragraph. The report's own wording — "the README says shipped specs are unbuilt"
+— was an accurate description of a sentence neither of them read.
