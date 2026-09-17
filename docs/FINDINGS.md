@@ -3174,3 +3174,63 @@ replaces the exit status, which is the shape that cost two failures.
 either side of it. That gate has a network-dependent rule, and `check` deliberately exits 0 on a
 degradation unless `--strict`, so a laptop on a bad network can still run the suite. It is noted here
 only so the next reader does not attach it to the `unit` failure by proximity; nothing links them.
+
+## F-85 · "The database enforces isolation" is true by two mechanisms, and the harness that proves it can only see one
+
+**2026-09-17 · surfaced while choosing AC-8's surface · not a defect · no gate added**
+
+Choosing which surface SPEC-007 should gate required asking a question this repository had not asked
+in the aggregate: **which tenant-table writes are mediated by a policy, and which by a function
+body?** The answer decided the spec — an entitlement clause on `organization_invitation` would have
+been inert — and the general form outlives that decision.
+
+### Measured, not assumed
+
+Eleven `SECURITY DEFINER` functions exist in `public`. Every one is owned by `postgres`, which
+carries `rolbypassrls`, so row-level security does not apply to statements inside them. Four of them
+write to tenant tables:
+
+```
+create_organization   accept_invitation   invite_member   revoke_invitation
+```
+
+Set against the policies that actually exist, the split is:
+
+| table                      | INSERT               | UPDATE           | DELETE           |
+| -------------------------- | -------------------- | ---------------- | ---------------- |
+| `organization`             | **definer only**     | policy           | policy           |
+| `organization_member`      | policy **+ definer** | policy           | policy           |
+| `organization_invitation`  | **definer only**     | **definer only** | **definer only** |
+| `organization_entitlement` | no path              | no path          | no path          |
+| `project`                  | policy               | policy           | policy           |
+
+**None of this is a defect, and saying so is not a formality.** Every one of those functions is
+already recorded individually in `docs/ACCESS-MATRIX.md` with a written reason, and the reasons are
+good ones: `organization_invitation` has no write policy _on purpose_, because a single write path
+is what makes hashing, expiry and the admin re-check unavoidable rather than conventional; each
+function re-checks authorization itself precisely because being definer means RLS will not.
+An earlier framing of this — "nobody has asked" — is too strong and is corrected here: the matrix
+asks about every function, one at a time.
+
+### What is actually missing
+
+**No artifact states the aggregate, and the coverage claim does not distinguish the two mechanisms.**
+`npm run check` reports that the policy gate covers the tables it probes. A prober that probes
+policies cannot see a rule that lives in a function body, so for the four definer-mediated write
+commands above there is nothing for it to probe and nothing that says so. The hand-written intent
+suites do cover them — `006-invitations.test.sql` is substantial — but that coverage is a fact about
+someone having written those tests, not a property the harness would notice the loss of.
+
+**The sharpest cell is `organization_member` INSERT**, and it is the one an aggregate view finds and
+a per-function review does not. It has a policy, which the prober checks, **and** a second write path
+through `accept_invitation`, which it does not. A table can therefore be fully green in the probe
+while one of its write paths was never examined by it.
+
+### Deliberately not gated
+
+The obvious rule — every definer function writing a tenant table must carry a named intent test —
+is not added. B-2's proof harness is about policies, this is a different claim, and SPEC-003 treats
+the gate count as a ceiling rather than a floor. F-69, F-82 and the count claims in F-78 each
+declined a gate for the same reason, and Theme 3 of the external review of 2026-09-10 is about
+exactly this marginal spend. Recorded so the aggregate exists somewhere; a rule is a separate
+decision, and the owner's.
