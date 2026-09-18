@@ -3440,3 +3440,77 @@ hand — is the mistake the font lesson in `AGENTS.md` is about.
 CI builds without it and is the real regression test. A unit test now asserts `env.ts` still branches
 on the phase, so the likely regression — someone simplifying it back to an unconditional `load()` —
 fails before the push rather than after it.
+
+## F-89 · A criterion's logic was proven and the route that carries it had never been executed
+
+**2026-09-17 · found by running the endpoint rather than reading it · closed the same day**
+
+AC-11's measurement was proven: `src/lib/billing/staleness.test.mts`, eleven assertions, including a
+mutation proof of the measure-before-write property. **The forty lines of `route.ts` that turn
+`report.stale` into a status code were executed by nothing** — no journey, no CI step, and
+`CRON_SECRET` appeared in `.env.example` and nowhere else.
+
+The proof is what the endpoint actually did when asked:
+
+```
+GET, no auth header      -> 500 "not configured"
+GET, wrong bearer token  -> 500 "not configured"      <- short-circuits before the auth check
+```
+
+**Those two were the only states anyone had ever observed**, and they are the same state. Because the
+secret was unset everywhere, the handler returned before reaching the comparison — so _no-auth_ and
+_wrong-auth_ were indistinguishable in logs, and `constant-time.ts`, a module that exists solely to
+avoid leaking a secret through timing, **had never run inside a request.** Unexecuted with it: the
+401 path, the 200 path, and the non-200-when-stale path, which IS AC-11's claim.
+
+**F-74's shape** — _"every defect in this file lives in the lines of `main()` that no test executes"_ —
+and **F-76's**: a correct component behind a composition nobody runs.
+
+### The distinction worth keeping
+
+**A proven measurement and an unexecuted status code are not the same claim.** `staleness.test.mts`
+proves a number is computed correctly; it says nothing about whether any caller ever receives it. An
+acceptance criterion written as _"raises an alert"_ is a claim about a response, and only a request
+can settle it.
+
+Closed with three journeys over HTTP, each shown to fail before being believed:
+
+| mutation                                      | caught by             |
+| --------------------------------------------- | --------------------- |
+| the staleness branch never fires (always 200) | the stale-row journey |
+| the secret comparison always accepts          | the auth journey      |
+
+Both directions are asserted, and on the **count** rather than only the status — a bare status
+assertion is green for a bad deploy or a Stripe timeout too, so it would pass for defects the test
+exists to exclude.
+
+**What it still does not prove**, stated rather than implied: the journey step sets a
+`STRIPE_SECRET_KEY` that cannot authenticate, so every subscription comes back unreadable. The status
+code under test is reached regardless — staleness is measured before the pass writes, and an
+unreadable subscription is never revoked — but a correction round-trip needs a real account and
+remains SPEC-007's open Definition-of-Done item.
+
+## F-90 · The rendered surface count grew; B-7's evidence did not
+
+**2026-09-17 · recorded, not fixed · the scheduling decision is the owner's**
+
+There are now five rendered surfaces — `[locale]`, `/orgs`, `/login`, `/invite/[token]`, and
+`/projects`, added by SPEC-007 AC-8. **There is no axe pass anywhere.** Searching `e2e/`, `src/`,
+`scripts/` and `package.json` for `axe` or `@axe-core` returns a single match: a comment in
+`sign-in-form.tsx` referring to B-7 itself.
+
+B-7 reads: _"Accessible: keyboard-complete, axe-clean on every shipped surface"_, with the evidence
+named as _"an automated axe pass in CI plus a manual keyboard walkthrough per surface"_.
+
+**This is not a regression** — no surface has ever had one, and B-7 is owned by SPEC-008 and SPEC-015,
+both registered and not yet authored. It is recorded because the projects UI was accepted on the
+stated understanding that it brought an axe pass and a keyboard walkthrough, and it did not.
+
+Two honest partial credits: the journey layer uses accessible locators only — `getByRole`,
+`getByLabel`, `getByText`, never a CSS selector or a test id — so a control that loses its accessible
+name fails a test written for another reason; and the new projects form was built with labelled
+inputs and a live region. Neither is an axe pass.
+
+**The choice is binary and it is the owner's:** either the surface count stops growing until B-7 is
+scheduled, or B-7 is scheduled now. What should not happen is a sixth surface arriving with the same
+sentence attached. Written down so it is not discovered later as a surprise.

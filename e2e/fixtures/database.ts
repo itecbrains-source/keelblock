@@ -56,7 +56,11 @@ export type Seeded = {
   createUser: (label: string) => Promise<SeededUser>;
   createOrg: (owner: SeededUser, name: string) => Promise<string>;
   createProject: (owner: SeededUser, orgId: string, name: string) => Promise<void>;
-  entitle: (orgId: string, status?: EntitlementStatus) => Promise<void>;
+  entitle: (
+    orgId: string,
+    status?: EntitlementStatus,
+    opts?: { subscriptionId?: string; confirmedSecondsAgo?: number },
+  ) => Promise<void>;
   invite: (
     admin: SeededUser,
     orgId: string,
@@ -171,7 +175,13 @@ export function seeder(): Seeded {
      * The values are passed as psql variables and interpolated with `:'name'`, which quotes them as
      * literals rather than splicing them into the statement text.
      */
-    async entitle(orgId, status = 'active') {
+    /**
+     * `opts.subscriptionId` links the row to a subscription, which is what makes it visible to
+     * `entitlements_to_reconcile` — that function returns only rows naming one. `confirmedSecondsAgo`
+     * back-dates `entitlement_synced_at`, which is the only way to exercise REQ-7's bound without
+     * waiting six hours for it.
+     */
+    async entitle(orgId, status = 'active', opts = {}) {
       const dbUrl =
         process.env.KEELBLOCK_DB_URL ?? 'postgresql://postgres:postgres@127.0.0.1:54722/postgres';
       const host = new URL(dbUrl).hostname;
@@ -196,15 +206,23 @@ export function seeder(): Seeded {
           `org=${orgId}`,
           '-v',
           `st=${status}`,
+          '-v',
+          `sub=${opts.subscriptionId ?? ''}`,
+          '-v',
+          `age=${Math.max(0, Math.floor(opts.confirmedSecondsAgo ?? 0))}`,
           '-f',
           '-',
         ],
         {
           input: `insert into public.organization_entitlement
-                    (organization_id, status, stripe_customer_id)
-                  values (:'org', :'st', 'cus_e2e')
+                    (organization_id, status, stripe_customer_id, stripe_subscription_id,
+                     entitlement_synced_at)
+                  values (:'org', :'st', 'cus_e2e', nullif(:'sub', ''),
+                          now() - (:'age' || ' seconds')::interval)
                   on conflict (organization_id) do update
-                    set status = excluded.status, entitlement_synced_at = now();`,
+                    set status = excluded.status,
+                        stripe_subscription_id = excluded.stripe_subscription_id,
+                        entitlement_synced_at = excluded.entitlement_synced_at;`,
           stdio: ['pipe', 'pipe', 'pipe'],
         },
       );

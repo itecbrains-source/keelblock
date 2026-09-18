@@ -93,6 +93,20 @@ jobs:
         # leaked credential.
         run: |
           eval "$(npx supabase status -o env | sed 's/^/export /')"
+          # CRON_SECRET: generated per run rather than written here. The reconcile endpoint
+          # authorizes with a shared secret, and until this existed the route had NEVER been
+          # executed by anything — no-auth and wrong-auth both returned 500 "not configured",
+          # indistinguishable, and the constant-time comparison had never run in a request.
+          # Generated rather than hardcoded so nothing in this file looks like a credential.
+          #
+          # STRIPE_SECRET_KEY: deliberately NOT a key-shaped string. There is no Stripe account
+          # (SPEC-007's Definition of Open item), so this value cannot authenticate and every
+          # subscription comes back unreadable — which is fine, because staleness is measured
+          # BEFORE the pass writes and an unreadable subscription is never revoked. It avoids the
+          # `sk_test_` prefix on purpose: a fixture that looked like a Stripe key tripped gitleaks
+          # here once, and gitleaks was right.
+          CRON_SECRET="$(openssl rand -hex 16)" \
+          STRIPE_SECRET_KEY="journey-layer-has-no-stripe-account" \
           NEXT_PUBLIC_SUPABASE_URL="$API_URL" \
           NEXT_PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY" \
           SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
