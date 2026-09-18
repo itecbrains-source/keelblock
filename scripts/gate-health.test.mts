@@ -145,7 +145,7 @@ describe('gate health (the suite is dependable)', () => {
    * reason given there: running one bare turns this suite into something that edits the repository
    * (F-86). Frozen by value in its own test, like every other list here.
    */
-  const GENERATORS = ['battlecard.mjs', 'access-matrix.mjs'];
+  const GENERATORS = ['battlecard.mjs', 'access-matrix.mjs', 'readme-state.mjs'];
 
   it('every self-contained gate reaches the same verdict, and prints the same thing, twice', () => {
     const local = GATES.filter((g) => !EXTERNAL.includes(g));

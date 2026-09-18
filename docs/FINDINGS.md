@@ -3302,3 +3302,68 @@ mutates the repository will eventually be invoked by something that only meant t
 the damage is not the write, it is that a gate downstream of the writer stops being able to fail.
 F-13 is the same shape, and this one hid inside the test file whose entire subject is whether the
 gates are dependable.
+
+## F-87 · The documentation pipeline is real, and the file people actually land on was outside all of it
+
+**2026-09-17 · found by auditing the README against a generic checklist, not by any mechanism · two of the three gaps closed**
+
+The question that produced this was the owner's: _"I thought we have a pipeline for README, technical
+docs, user guide, developer guide, website material, battlecard. I'm not sure we are doing this
+methodically, because I caught the README stale."_ The audit says: the pipeline is real and good, and
+the README sat almost entirely outside it.
+
+### What protects what — measured, not assumed
+
+| artifact                             | mechanism                                                             | can it go stale?         |
+| ------------------------------------ | --------------------------------------------------------------------- | ------------------------ |
+| `docs/ACCESS-MATRIX.md`              | **generated** from the live catalog, byte-compared                    | no                       |
+| `docs/content/BATTLECARD.md`         | **generated** from specs + manifest                                   | no                       |
+| `src/lib/db/database.types.ts`       | **generated** from the schema                                         | no                       |
+| `docs/GETTING-STARTED.md`            | **executable** — CI follows the page in an empty directory (SPEC-012) | no                       |
+| `docs/FINDINGS.md` ↔ `MANIFEST.json` | **routed** — every finding has a declared destination                 | routing only             |
+| `docs/FAQ.md`, differentiators       | content gate — answers cited, every shipped spec written up           | partly                   |
+| `spec/*.md`                          | contracts gate — cited evidence must exist                            | prose, no                |
+| `research/*.md`                      | freshness windows                                                     | no                       |
+| **`README.md`**                      | **counts only**, plus bar ownership                                   | **everything else, yes** |
+
+Three mechanisms exist and work — **generate it**, **execute it**, **route it**. The README was wired
+to none of them. It got the number-staleness rule and nothing more.
+
+### The two defects map exactly onto the two missing mechanisms
+
+- **`npx create-keelblock-app my-app` did not work.** The published package is a name placeholder
+  whose own npm description reads _"Not yet functional"_, and nothing in the README said so. No gate
+  executes a command in the README. `GETTING-STARTED.md` has exactly this solved.
+- **"What's in it" listed passkeys, 2FA and email verification as shipped**, none of which appear
+  anywhere in `src/`. That is volatile state written by hand — the thing `npm run status` exists to
+  prevent, and the thing `BATTLECARD.md` already gets right by being generated.
+
+**The repository already knew half of it.** F-82 recorded _"prose staleness has no mechanism here at
+all"_ and deliberately declined a gate, because the obvious rule would need to parse whether English
+asserts built/not-built/partial and would be wrong in the direction of confidence. That reasoning was
+right and is not disturbed. What it missed is that two mechanisms which need no English parsing were
+already running on other files.
+
+**The same section has now been wrong in both directions** — F-82 (shipped work called unbuilt), and
+this audit (unbuilt work called shipped). And while fixing it, the replacement banner went stale
+**within the hour**: it said reconciliation was not built, and AC-6 had shipped.
+
+### What was closed, and what was left open on purpose
+
+- **Generated.** `scripts/readme-state.mjs` renders the capability block from the same `census()`
+  `npm run status` reads — no second walk — and `check-generated --check` byte-compares it. The
+  status banner was rewritten to carry argument rather than state, because prose that names features
+  is state wearing prose's clothes.
+- **Executable-ish.** Every fenced command block in the README must now declare how it was verified,
+  from a closed vocabulary: `getting-started` (must appear verbatim in the page CI executes),
+  `package-script` (every `npm run X` must be a real script), `output`, or `none — <reason>` with a
+  substantial reason. It does not prove a command works. It makes somebody say which of the four it
+  is, and checks the two claims that are checkable. The `npx` line can only be `none`, so its reason
+  is now in the README where the reader sees it.
+- **Not closed, deliberately.** Free prose — "Why this exists", the argument sections — has no
+  mechanism and should not have one. F-82's reasoning holds.
+
+**A note on how this was found, because it is the finding's own subject.** No gate surfaced it. It
+came out of reading the README against a generic checklist because the owner asked. A coverage gap
+that can only be found by someone deciding to look is exactly the kind this project exists to
+convert into a mechanism, and two thirds of it now is.

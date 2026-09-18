@@ -89,10 +89,23 @@ function main() {
     problems.push((battlecard.stderr ?? 'docs/content/BATTLECARD.md is stale').trim());
   }
 
+  // ── 4 · the README's state block ─────────────────────────────────────────────
+  // The most-read file in the repository, and until 2026-09-17 the one with the least protection.
+  // Which capabilities exist is VOLATILE STATE, and this project's rule is that volatile state is
+  // computed — so the block between the markers is generated from the same spec catalog `npm run
+  // status` reads, and compared here. It is in this gate rather than a new one because it is the
+  // same promise the other three make: nothing derived is stale.
+  const readme = spawnSync('node', ['scripts/readme-state.mjs', ...(check ? ['--check'] : [])], {
+    encoding: 'utf8',
+  });
+  if (readme.status !== 0) {
+    problems.push((readme.stderr ?? "README.md's generated state block is stale").trim());
+  }
+
   if (!problems.length) {
     console.log(
       check
-        ? 'generated: ok — types, access matrix and battlecard are all current'
+        ? 'generated: ok — types, access matrix, battlecard and the README state block are all current'
         : 'generated: done',
     );
     process.exit(0);

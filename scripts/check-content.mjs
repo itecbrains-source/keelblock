@@ -267,6 +267,11 @@ function main() {
     ...checkContent(manifest, findings, faq, (p) => existsSync(p)),
     ...checkDifferentiators(manifest, specs, battlecard, findings, (p) => existsSync(p)),
     ...checkDocumentation(manifest, specs, (p) => existsSync(p)),
+    ...checkCommandBlocks(
+      readFileSync('README.md', 'utf8'),
+      existsSync('docs/GETTING-STARTED.md') ? readFileSync('docs/GETTING-STARTED.md', 'utf8') : '',
+      JSON.parse(readFileSync('package.json', 'utf8')).scripts ?? {},
+    ),
   ];
 
   if (problems.length) {
@@ -287,3 +292,96 @@ function main() {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
+
+/**
+ * SPEC-012's rule, extended to the file people actually land on — **every command block in the
+ * README declares how it was verified.**
+ *
+ * `docs/GETTING-STARTED.md` is EXECUTABLE: CI follows the page in an empty directory and fails if a
+ * block does not run (SPEC-012 AC-1). The README has no such mechanism, and that is how its headline
+ * instruction came to be `npx create-keelblock-app my-app` for days while the published package was
+ * a name placeholder whose own registry description reads "Not yet functional". A reader's first
+ * action failed, silently, and no gate could see it: the staleness rule polices numbers, and a
+ * broken command has none.
+ *
+ * So each fenced block must carry one of four declarations on the line above it. The vocabulary is
+ * CLOSED — an unknown one is an error rather than a pass — because the value is in having to choose:
+ *
+ *   `verified: getting-started`  the block appears verbatim in the page CI executes
+ *   `verified: package-script`   every `npm run X` in it is a real script in package.json
+ *   `verified: output`           a transcript, not commands — nothing to run
+ *   `verified: none — <reason>`  deliberately unverified, and the reason is in the README
+ *
+ * This does not prove a command works. It proves somebody had to say which of those four it is, and
+ * that the two checkable claims are true. `npx create-keelblock-app` cannot be `package-script` and
+ * is not in the executed page, so it must be declared `none` with its reason — which is exactly the
+ * sentence the README now carries.
+ *
+ * @param {string} readme @param {string} gettingStarted @param {Record<string, string>} scripts
+ * @returns {string[]}
+ */
+export function checkCommandBlocks(readme, gettingStarted, scripts) {
+  const problems = [];
+  const KINDS = ['getting-started', 'package-script', 'output', 'none'];
+  const lines = readme.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^```(bash|sh|shell)\s*$/.test(lines[i])) continue;
+
+    // The body, to the closing fence.
+    const close = lines.indexOf('```', i + 1);
+    if (close === -1) {
+      problems.push(`README.md:${i + 1} opens a command block that is never closed`);
+      continue;
+    }
+    const body = lines.slice(i + 1, close).join('\n');
+
+    // The declaration is the nearest preceding non-blank line.
+    let j = i - 1;
+    while (j >= 0 && lines[j].trim() === '') j--;
+    // `[a-z-]+` for the kind, so `package-script` is not truncated at its hyphen — the first version
+    // of this excluded `-` from the kind and reported every correct label as unknown.
+    const declaration = (lines[j] ?? '').match(
+      /<!--\s*verified:\s*([a-z-]+)\s*(?:—\s*(.*?))?\s*-->/,
+    );
+
+    if (!declaration) {
+      problems.push(
+        `README.md:${i + 1} — a command block with no \`<!-- verified: … -->\` declaration. ` +
+          `Say how it was checked: ${KINDS.join(' | ')}. The README's headline command was broken ` +
+          `for days because nothing made anyone answer this.`,
+      );
+      i = close;
+      continue;
+    }
+
+    const [, kind, reason = ''] = declaration;
+    if (!KINDS.includes(kind)) {
+      problems.push(
+        `README.md:${i + 1} declares \`verified: ${kind}\`, which is not one of ${KINDS.join(', ')}. ` +
+          `An open vocabulary is a label anybody can invent, which is not a check.`,
+      );
+    } else if (kind === 'getting-started' && !gettingStarted.includes(body.trim())) {
+      problems.push(
+        `README.md:${i + 1} claims \`verified: getting-started\`, but this block does not appear ` +
+          `verbatim in docs/GETTING-STARTED.md — which is the page CI actually executes, and the ` +
+          `only reason that claim would mean anything.`,
+      );
+    } else if (kind === 'package-script') {
+      for (const m of body.matchAll(/^\s*npm run ([\w:-]+)/gm)) {
+        if (!scripts[m[1]]) {
+          problems.push(
+            `README.md:${i + 1} runs \`npm run ${m[1]}\`, which is not a script in package.json`,
+          );
+        }
+      }
+    } else if (kind === 'none' && reason.trim().length < 20) {
+      problems.push(
+        `README.md:${i + 1} declares \`verified: none\` with no real reason. An unverified command ` +
+          `in the most-read file needs to say WHY in the README, where the reader will see it.`,
+      );
+    }
+    i = close;
+  }
+  return problems;
+}

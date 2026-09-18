@@ -6,6 +6,7 @@ import {
   checkContent,
   checkDifferentiators,
   checkDocumentation,
+  checkCommandBlocks,
 } from './check-content.mjs';
 
 const manifest = JSON.parse(readFileSync('docs/content/MANIFEST.json', 'utf8'));
@@ -237,5 +238,113 @@ describe('checkDocumentation — ADR-019, the rule that had a paragraph while it
         status: (readFileSync(`spec/${f}`, 'utf8').match(/^> Status: `(\w+)`/m) ?? [, '?'])[1],
       }));
     expect(checkDocumentation(manifest, specs, (p: string) => existsSync(p))).toEqual([]);
+  });
+});
+
+// ── every command block in the README declares how it was verified ──────────────────────────────
+//
+// The README's headline instruction was `npx create-keelblock-app my-app` while the published
+// package was a name placeholder — its own registry description reads "Not yet functional". A
+// reader's first action failed, silently, and no gate could see it: the staleness rule polices
+// numbers and a broken command has none. `docs/GETTING-STARTED.md` has this solved (CI executes the
+// page); the README had no mechanism at all.
+
+describe('README command blocks declare their verification', () => {
+  const scripts = { status: 'node scripts/status.mjs', check: 'node scripts/check.mjs' };
+  const block = (decl: string, body: string) => `${decl}\n\n\`\`\`bash\n${body}\n\`\`\`\n`;
+
+  it('MUTATION: an undeclared command block is caught', () => {
+    const problems = checkCommandBlocks('```bash\nnpm run status\n```\n', '', scripts);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/no `<!-- verified: … -->` declaration/);
+  });
+
+  it('MUTATION: a label outside the closed vocabulary is caught', () => {
+    // An open vocabulary is a label anybody can invent, which is not a check.
+    const problems = checkCommandBlocks(block('<!-- verified: probably -->', 'ls'), '', scripts);
+    expect(problems[0]).toMatch(/not one of/);
+  });
+
+  it('MUTATION: `package-script` is refused when the script does not exist', () => {
+    const problems = checkCommandBlocks(
+      block('<!-- verified: package-script -->', 'npm run invented'),
+      '',
+      scripts,
+    );
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/not a script in package\.json/);
+  });
+
+  it('`package-script` passes for a real script', () => {
+    expect(
+      checkCommandBlocks(block('<!-- verified: package-script -->', 'npm run status'), '', scripts),
+    ).toEqual([]);
+  });
+
+  it('MUTATION: `getting-started` is refused when the block is not on the executed page', () => {
+    // The claim only means anything because CI follows that page in an empty directory. A block
+    // that says so while not appearing there is borrowing credibility it has not got.
+    const problems = checkCommandBlocks(
+      block('<!-- verified: getting-started -->', 'npm install'),
+      'a page that does not contain it',
+      scripts,
+    );
+    expect(problems[0]).toMatch(/does not appear\s+verbatim/);
+  });
+
+  it('`getting-started` passes when the block really is on that page', () => {
+    expect(
+      checkCommandBlocks(
+        block('<!-- verified: getting-started -->', 'npm install'),
+        'follow along:\n\n```bash\nnpm install\n```\n',
+        scripts,
+      ),
+    ).toEqual([]);
+  });
+
+  it('MUTATION: `none` with no real reason is refused', () => {
+    // Declaring a command unverified is allowed. Doing it without saying why, in the file the
+    // reader is holding, is how the npx line survived.
+    const problems = checkCommandBlocks(
+      block('<!-- verified: none — meh -->', 'npx thing'),
+      '',
+      scripts,
+    );
+    expect(problems[0]).toMatch(/no real reason/);
+  });
+
+  it('`none` passes with a substantial reason', () => {
+    expect(
+      checkCommandBlocks(
+        block(
+          '<!-- verified: none — the published package is a placeholder and does not scaffold yet -->',
+          'npx create-keelblock-app my-app',
+        ),
+        '',
+        scripts,
+      ),
+    ).toEqual([]);
+  });
+
+  it('`package-script` is not truncated at its hyphen', () => {
+    // The first version of this rule matched the kind with `[^\s—-]+`, which cut `package-script`
+    // to `package` and reported every correct label as unknown — a gate that fails on correct usage
+    // is one somebody switches off (F-62).
+    expect(
+      checkCommandBlocks(block('<!-- verified: package-script -->', 'echo hi'), '', scripts),
+    ).toEqual([]);
+  });
+
+  it('an output transcript in a plain fence is not a command block', () => {
+    expect(checkCommandBlocks('```\n✓ all green\n```\n', '', scripts)).toEqual([]);
+  });
+
+  it('the real README passes, and it has blocks for the rule to have looked at', () => {
+    const readme = readFileSync('README.md', 'utf8');
+    const gettingStarted = readFileSync('docs/GETTING-STARTED.md', 'utf8');
+    const real = JSON.parse(readFileSync('package.json', 'utf8')).scripts;
+    expect(checkCommandBlocks(readme, gettingStarted, real)).toEqual([]);
+    // Non-vacuous: a rule that inspected nothing would also report nothing.
+    expect((readme.match(/^```bash$/gm) ?? []).length).toBeGreaterThan(0);
   });
 });
