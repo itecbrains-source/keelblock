@@ -16,9 +16,28 @@ whether any of it can be picked up by a stranger (SPEC-024). Billing is **partia
 row, its policy and the status map decide access today (SPEC-007 REQ-1, REQ-7), while Checkout, the
 webhook, idempotency, reconciliation and the portal wait on a Stripe account. The remaining product
 surfaces are specced and not built — run `npm run status`, which reads the repository rather than
-this paragraph.
+this paragraph. Accessibility is **partial** too (SPEC-015): the automated half runs on every push,
+and the keyboard half is a person nobody has scheduled.
 
 ### Added
+
+- **An accessibility pass that states its own coverage (SPEC-015).** Every rendered surface is
+  scanned at WCAG 2.1 AA on every push, and the list of surfaces is DERIVED from the route tree — a
+  page added tomorrow fails the suite until somebody says how it is reached, and an entry naming a
+  page that no longer exists fails too. The first version of it passed all five surfaces on its first
+  run, which is the result to distrust: every session-dependent region renders inside `<Suspense>`,
+  so the scan was measuring the empty shell. It was caught by planting one defect twice — an image
+  with no `alt` failed on the static sign-in page and passed on the streamed one — and each scan now
+  refuses to run until something inside the boundary is visible (F-91).
+
+  **The bar deliberately does not say "accessible".** Deque's own study puts automated testing at
+  roughly 57% of issues by volume, a figure they explicitly redefined away from the older question —
+  the share of success criteria a machine can check at all, traditionally cited at 20–30%. The
+  smaller number is the one a conformance claim depends on, so the keyboard walkthrough B-7 names is
+  the majority of the work rather than a courtesy, and it has not been done. The ruleset targets
+  WCAG 2.1 AA because that is still what the law points at: EN 301 549 v4.1.1, published two weeks
+  ago, adopts WCAG 2.2 but is not the legal reference until the European Commission cites it in the
+  Official Journal (DEF-033, memo 17).
 
 - **The entitlement row, and the map that reads it (SPEC-007 REQ-1, REQ-7).** The fifth tenant-scoped
   table, and the first whose point is that the tenant cannot write it: `grant select` and no write

@@ -139,7 +139,7 @@ Tenancy foundation (`SPEC-001`) · Proof harness (`SPEC-002`) · Gates (`SPEC-00
 
 **Partly built** — the criteria still open are listed in each spec:
 
-Billing (`SPEC-007`, 11 of 11) · Docs & the stranger walkthrough (`SPEC-012`, 7 of 8) · Handover (`SPEC-024`, 5 of 5)
+Billing (`SPEC-007`, 11 of 11) · Docs & the stranger walkthrough (`SPEC-012`, 7 of 8) · Accessibility & performance budgets (`SPEC-015`, 2 of 6) · Handover (`SPEC-024`, 5 of 5)
 
 **Specced and not built** — these are a plan, not a product:
 

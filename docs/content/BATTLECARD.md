@@ -523,6 +523,70 @@ because both silent answers are a decision about money and access that nobody ma
 
 ---
 
+## An accessibility check that says what it did not check
+
+**What keelblock claims.** The accessibility pass runs on every rendered surface on every push, derives that list from the route tree so a new page fails until it says how it is reached, and states its own coverage as a bound rather than calling the result 'accessible'.
+
+**What the field does instead.** The kits in this field ship accessible component libraries and stop there — an accessible primitive says nothing about the page assembled from it, and none of the ones examined runs an automated pass over its own rendered surfaces in CI. The sharper contrast is not that they lack the tool, which anyone can add in an afternoon: it is that a green axe run is routinely described as 'accessible', when Deque's own study puts automation at roughly 57% of issues by volume and the traditionally cited 20-30% of success criteria. Read 2026-09-18; the claim is as broad as the public repositories and says nothing about the paid kits.
+
+Ask a vendor what their accessibility claim covers. The interesting answer is the part they leave
+out.
+
+The field ships accessible component libraries, and that is genuinely useful — Base UI and Radix have
+done the hard parts of focus management and label association, upstream, once, properly. But **an
+accessible primitive says nothing about the page assembled from it.** A correct input inside a form
+with no landmark, a dialog opened by a button with no accessible name, a page that never streams its
+content — none of those is the library's fault and none of them is caught by choosing it. Of the
+public kits examined on 2026-09-18, none runs an automated accessibility pass over its own rendered
+surfaces in CI. That says nothing about the paid kits, whose CI is not public.
+
+Adding the tool is an afternoon. It is not the differentiator, and claiming it as one would be the
+same overstatement this section is about.
+
+**The differentiator is what the check says about itself.** Three properties, and the third is the
+one that costs something:
+
+**The surface list is derived, not typed.** `e2e/journeys/accessibility.spec.ts` walks `src/app` for
+rendered routes and compares that to a declared map of how each is reached. A page added tomorrow
+fails the suite until somebody says how to visit it — and an entry naming a page that no longer
+exists fails too. A hand-written list of URLs is correct on the day it is written and silently
+incomplete afterwards, which is precisely how the surface count here grew past its evidence once
+already (F-90).
+
+**The scan proves it looked at the page.** Every session-dependent region in this application renders
+inside `<Suspense>`, so the shell arrives before the content. The first version of this suite waited
+for a heading — which is in the shell — and reported every surface clean while scanning empty pages.
+It was caught by planting the same defect twice: an image with no `alt` failed on the static sign-in
+page and **passed** on the streamed one, and a rule that fires where markup is static and not where it
+streams is being asked about a different document than the one on screen (F-91). Each scan now names
+something inside the boundary and refuses to run until it is visible.
+
+**And the bar states its own coverage instead of implying it.** Deque's study, over 13,000+ pages and
+nearly 300,000 issues, puts automated testing at roughly **57% of issues by volume** — and Deque are
+explicit that this figure was redefined away from the older question, the share of WCAG success
+criteria a machine can test at all, **traditionally cited at 20–30%**. Those are different
+denominators, and a conformance claim depends on the smaller one.
+
+So "axe-clean" is not written here as "accessible". The keyboard walkthrough is not a courtesy
+appended to the automated pass; by that arithmetic it is the majority of the work, and until it has
+been performed this bar says so rather than rounding up.
+
+**What this does not claim.** No screen-reader conformance testing — a different method and a cost
+nobody here has paid. No Core Web Vitals: they are defined at the 75th percentile of real user data
+over a 28-day window, and a project with no users has no such data, so any speed number produced here
+is a lab measurement and is labelled as one. The standard itself is moving: EN 301 549 v4.1.1,
+published 2 September 2026, adopts WCAG 2.2, and until the European Commission cites it in the
+Official Journal the legal reference remains WCAG 2.1 AA — which is what the shipped ruleset targets,
+deliberately, with the change waiting on that event rather than on a date somebody guessed.
+
+**Evidence:** [`research/17-ACCESSIBILITY-AND-BUDGETS.md`](../../research/17-ACCESSIBILITY-AND-BUDGETS.md) · [`e2e/journeys/accessibility.spec.ts`](../../e2e/journeys/accessibility.spec.ts) · [F-91](../FINDINGS.md) · [F-90](../FINDINGS.md)
+
+**State.** SPEC-015 is `partial` · 6 requirements · 2 of 6 criteria met. Verify: `npm run check`.
+
+**The one-line version.** _Ask what their accessibility claim covers. Ours answers with a ruleset, a surface list derived from the router, and the share of criteria a machine cannot check at all._
+
+---
+
 ## Where keelblock is behind, stated because a battlecard that only wins is marketing
 
 | Axis                  | Field                                       | keelblock                                                                                                                                                                    |
