@@ -581,7 +581,7 @@ deliberately, with the change waiting on that event rather than on a date somebo
 
 **Evidence:** [`research/17-ACCESSIBILITY-AND-BUDGETS.md`](../../research/17-ACCESSIBILITY-AND-BUDGETS.md) · [`e2e/journeys/accessibility.spec.ts`](../../e2e/journeys/accessibility.spec.ts) · [F-91](../FINDINGS.md) · [F-90](../FINDINGS.md)
 
-**State.** SPEC-015 is `partial` · 6 requirements · 2 of 6 criteria met. Verify: `npm run check`.
+**State.** SPEC-015 is `partial` · 6 requirements · 5 of 6 criteria met. Verify: `npm run check`.
 
 **The one-line version.** _Ask what their accessibility claim covers. Ours answers with a ruleset, a surface list derived from the router, and the share of criteria a machine cannot check at all._
 

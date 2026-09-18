@@ -1,0 +1,12 @@
+{
+  "$comment": "SPEC-015 REQ-6 / AC-6 — the LAB half of B-8's performance budget. These are bytes of client JavaScript, measured from .next/static after a build. They are NOT Core Web Vitals: CWV are assessed at the 75th percentile of real user data over a 28-day window (memo 17), and this project has no users, no deployed instance carrying traffic, and therefore no such data. A number here predicts field performance; it does not measure it. See DEF-034 for the half that waits on an event rather than a date.",
+  "bundle": {
+    "$comment": "WHY BYTES RATHER THAN A TIMING. A lab timing on a shared CI runner moves run to run, and a budget that flakes gets raised until it measures nothing — the decay shape F-80 was written to end. MEASURED 2026-09-18: one clean build and two incremental builds of an unchanged tree produced byte-identical output (19 files, 703706 bytes, largest 229186). Bytes are deterministic; the budget therefore needs headroom for GROWTH, not for variance.",
+    "$bound": "These numbers are a REGRESSION TRIPWIRE, not a performance threshold. Nothing derives them from LCP — inferring a field threshold from a lab number is the exact conflation REQ-6 forbids. They are today's measurement plus deliberate headroom, and crossing one means somebody added weight and should look at why. Raising one is a diff with a reason, which is the point of them living here.",
+    "totalBytes": 819200,
+    "largestChunkBytes": 286720,
+    "measuredOn": "2026-09-18",
+    "measuredTotalBytes": 703706,
+    "measuredLargestChunkBytes": 229186
+  }
+}
