@@ -3,6 +3,9 @@ import { createAdminClient } from '@/lib/supabase/server-only/admin';
 import { createStripeClient, customerIdOf, narrowStatus } from './stripe';
 import type { EventDeps, SubscriptionStatus } from '../events';
 import type { ReconcileDeps, EntitlementRow } from '../reconcile';
+import { stalenessThresholdSeconds } from '../staleness';
+import billing from '../../../../keelblock.billing.json';
+import vercel from '../../../../vercel.json';
 
 /**
  * The world, wired — SPEC-007 REQ-5, REQ-6.
@@ -106,9 +109,19 @@ export function reconcileDeps(): ReconcileDeps {
         status: r.status,
         stripeCustomerId: r.stripe_customer_id,
         stripeSubscriptionId: r.stripe_subscription_id,
+        entitlementSyncedAt: r.entitlement_synced_at,
       }));
     },
     readSubscription: events.readSubscription,
     writeEntitlement: events.writeEntitlement,
+
+    // REQ-7's bound, derived from the two files that DECLARE its halves rather than from a literal:
+    // `keelblock.billing.json` states how many missed runs are tolerated, `vercel.json` states how
+    // often the job runs. Expressing it as a multiple is what stops the threshold changing meaning
+    // the day somebody edits the schedule — a file nobody thinks of as billing (AC-11).
+    thresholdSeconds: stalenessThresholdSeconds(
+      vercel.crons.find((c) => c.path === '/api/cron/reconcile')?.schedule ?? '',
+      billing.staleness.missedRuns,
+    ),
   };
 }

@@ -1,4 +1,5 @@
 import type { SubscriptionStatus } from './events';
+import { measureStaleness } from './staleness';
 
 /**
  * Scheduled reconciliation — SPEC-007 REQ-6, AC-6.
@@ -23,6 +24,8 @@ export type EntitlementRow = {
   status: SubscriptionStatus;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  /** When this row was last CONFIRMED against Stripe — REQ-7's bound is measured on it (AC-11). */
+  entitlementSyncedAt: string | null;
 };
 
 export type ReconcileDeps = {
@@ -38,6 +41,12 @@ export type ReconcileDeps = {
     stripeCustomerId: string;
     stripeSubscriptionId: string;
   }) => Promise<void>;
+  /**
+   * REQ-7's stated bound in seconds, or null when it could not be derived from the declared
+   * schedule. Part of the world rather than a second argument, so `reconcile` keeps exactly one
+   * parameter — there is still no place an event could arrive through.
+   */
+  thresholdSeconds: number | null;
 };
 
 /** Not exported: it is reached through `ReconcileReport`, and an export nothing imports is dead
@@ -58,6 +67,11 @@ export type ReconcileReport = {
   corrected: number;
   confirmed: number;
   unreadable: number;
+  /** AC-11 — rows past REQ-7's bound, measured BEFORE this pass wrote anything. */
+  stale: number;
+  oldestAgeSeconds: number | null;
+  /** False when the bound could not be derived; `stale` is then 0 because nothing was measured. */
+  measured: boolean;
   outcomes: RowOutcome[];
 };
 
@@ -76,8 +90,16 @@ export type ReconcileReport = {
  * would otherwise revoke every customer at once — the failure that decision exists to prevent,
  * executed in bulk by the machinery meant to protect against drift.
  */
-export async function reconcile(deps: ReconcileDeps): Promise<ReconcileReport> {
+export async function reconcile(deps: ReconcileDeps, now = Date.now()): Promise<ReconcileReport> {
   const rows = await deps.listEntitlements();
+
+  // **Measured here, before the loop writes anything.** The rows arrive oldest-confirmed first and
+  // this pass is about to refresh every one it can reach, so a count taken afterwards would be
+  // nearly zero by construction — and whatever remained would be a row the pass could not read,
+  // which `unreadable` already reports. Taken before, it answers how well the PREVIOUS runs did,
+  // which is the signal REQ-7 asks for.
+  const staleness = measureStaleness(rows, deps.thresholdSeconds, now);
+
   const outcomes: RowOutcome[] = [];
 
   for (const row of rows) {
@@ -122,6 +144,9 @@ export async function reconcile(deps: ReconcileDeps): Promise<ReconcileReport> {
 
   return {
     examined: rows.length,
+    stale: staleness.stale,
+    oldestAgeSeconds: staleness.oldestAgeSeconds,
+    measured: staleness.measured,
     corrected: outcomes.filter((o) => o.action === 'corrected').length,
     confirmed: outcomes.filter((o) => o.action === 'confirmed').length,
     unreadable: outcomes.filter((o) => o.action === 'unreadable').length,

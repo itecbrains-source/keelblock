@@ -13,7 +13,11 @@ import type { SubscriptionStatus } from './events';
 
 /** A world where Stripe's answer and our stored answer can be set independently — which is the
  *  whole subject: reconciliation only means anything when the two disagree. */
-function world(rows: EntitlementRow[], stripe: Record<string, SubscriptionStatus | null>) {
+function world(
+  rows: EntitlementRow[],
+  stripe: Record<string, SubscriptionStatus | null>,
+  thresholdSeconds: number | null = 6 * 3600,
+) {
   const writes: { organizationId: string; status: SubscriptionStatus }[] = [];
   let reads = 0;
   const deps: ReconcileDeps = {
@@ -26,6 +30,7 @@ function world(rows: EntitlementRow[], stripe: Record<string, SubscriptionStatus
     writeEntitlement: async ({ organizationId, status }) => {
       writes.push({ organizationId, status });
     },
+    thresholdSeconds,
   };
   return { deps, writes, reads: () => reads };
 }
@@ -34,11 +39,13 @@ const row = (
   organizationId: string,
   status: SubscriptionStatus,
   stripeSubscriptionId: string | null = `sub_${organizationId}`,
+  entitlementSyncedAt: string | null = new Date().toISOString(),
 ): EntitlementRow => ({
   organizationId,
   status,
   stripeCustomerId: `cus_${organizationId}`,
   stripeSubscriptionId,
+  entitlementSyncedAt,
 });
 
 describe('AC-6 · a drifted entitlement is corrected with no webhook', () => {
@@ -117,9 +124,10 @@ describe('AC-6 · a drifted entitlement is corrected with no webhook', () => {
   });
 
   it('no webhook can reach this path — it is structural, not a rule', () => {
-    // `reconcile` takes exactly one argument and it is the world. There is no parameter an event
-    // could arrive through, which is what makes "without any webhook arriving" a fact about the
-    // signature rather than a claim about the test.
+    // `reconcile` has exactly one REQUIRED argument and it is the world; the only other is an
+    // optional clock, which exists so AC-11's ages can be asserted without waiting six hours.
+    // There is no parameter an event could arrive through, which is what makes "without any webhook
+    // arriving" a fact about the signature rather than a claim about the test.
     expect(reconcile.length).toBe(1);
   });
 });

@@ -45,13 +45,46 @@ export async function GET(request: NextRequest) {
   // at the moment they are wondering whether reconciliation has been running at all.
   console.info(
     `reconcile: examined ${report.examined}, corrected ${report.corrected}, ` +
-      `confirmed ${report.confirmed}, unreadable ${report.unreadable}`,
+      `confirmed ${report.confirmed}, unreadable ${report.unreadable}, ` +
+      `stale ${report.measured ? report.stale : 'not measured'}`,
   );
 
-  return NextResponse.json({
+  const body = {
     examined: report.examined,
     corrected: report.corrected,
     confirmed: report.confirmed,
     unreadable: report.unreadable,
-  });
+    stale: report.stale,
+    oldestAgeSeconds: report.oldestAgeSeconds,
+    measured: report.measured,
+  };
+
+  // **AC-11's alert, and it reuses the only alerting this project has: the scheduler's own.** There
+  // is no notification infrastructure here and building one for a single signal would be a second
+  // system to keep alive. A non-2xx on a cron invocation is what the platform already reports.
+  //
+  // `report.stale` is measured BEFORE this pass wrote anything, so it describes how well the
+  // PREVIOUS runs did — which is the question REQ-7 asks. A count taken afterwards would be zero by
+  // construction.
+  //
+  // **A non-200 here carries two different meanings, and for alerting both mean LOOK:**
+  //   · "I could not run"      — this handler threw, or the platform never invoked it
+  //   · "I ran and found stale rows" — the bound in keelblock.billing.json was crossed
+  // They are distinguishable in the body and in the log; they are deliberately not distinguishable
+  // in the status code, because the action is the same.
+  //
+  // **What this cannot do, stated rather than left to be discovered: the reconcile cannot detect its
+  // own absence.** If the job never runs, nothing counts anything and no status code is returned at
+  // all. The platform's "job failed / did not run" notification is what covers that case, which
+  // means this non-200 does less work than it looks like.
+  if (report.measured && report.stale > 0) {
+    return NextResponse.json(
+      { ...body, error: 'entitlements past the staleness bound' },
+      {
+        status: 503,
+      },
+    );
+  }
+
+  return NextResponse.json(body);
 }

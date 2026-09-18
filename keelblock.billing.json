@@ -1,0 +1,10 @@
+{
+  "$comment": "SPEC-007 REQ-7's stated bound. A row whose entitlement_synced_at is older than this has not been confirmed against Stripe, and under a rule that errs toward GRANTING the failure mode of silence is service given away indefinitely. Declared here — reviewable as a diff, read by the thing that enforces it — rather than as a literal in SQL retyped in a test, where the two can disagree. See src/lib/billing/staleness.ts.",
+  "staleness": {
+    "$comment": "Expressed as a MULTIPLE OF THE CRON INTERVAL, not as hours. Since AC-6 the reconcile refreshes every row on every pass, so a stale row means OUR job is down rather than that Stripe is — which retires the 72h anchor, tied as it was to Stripe's retry window. Hardcoding '6 hours' would silently become ONE missed run the day someone edits vercel.json to `0 */6 * * *`: the threshold would change meaning through a file nobody thinks of as billing.",
+    "missedRuns": 6,
+    "decidedOn": "2026-09-17",
+    "decidedBy": "owner",
+    "why": "Six consecutive misses is not noise. Late costs free service; early costs one glance. REQ-7: 'the failure mode of silence is service given away indefinitely.'"
+  }
+}
