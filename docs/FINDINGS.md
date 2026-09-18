@@ -3651,10 +3651,16 @@ exists to explain.
 ### The other way evidence gets discarded
 
 The harness deleting it is one. **Reading a truncated copy and concluding from it is the other**, and
-it has now produced a wrong conclusion here three times — a `tail` that cut a README line, a count of
-schemas read from a clipped listing, and a report that the new standalone re-run had not fired when
-it had, the notice simply being below the cut. Each time the output existed and the reader did not
-have all of it.
+it has now produced a wrong conclusion here twice — a `tail` that cut a README line, and a report that
+the new standalone re-run had not fired when it had, the notice simply being below the cut. Both times
+the output existed and the reader did not have all of it.
+
+**A third wrong conclusion is NOT this defect, and the distinction matters because the prescription
+below is what depends on it.** A count of schemas came back wrong not because anything was clipped but
+because the query's predicate named four schemas and the question needed more — the output was
+complete for the question asked, and the question was the wrong one. Writing the run to a file would
+not have caught it. Narrowed domains and truncated output produce the same symptom and take different
+remedies; grouping them would have attached a fix to a defect it cannot reach.
 
 It is the same defect F-84 records from the other side: a pipeline that truncates output _and_
 replaces the exit status. The fix there was mechanical rather than a resolution to be careful, and

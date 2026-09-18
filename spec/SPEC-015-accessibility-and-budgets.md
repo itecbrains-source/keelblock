@@ -22,7 +22,7 @@ whole requirement.
 - **Out of scope, and named so it is a decision:**
   - **Core Web Vitals as a claim.** They are defined on real users at the 75th percentile over a
     28-day window (memo 17). keelblock has no users (DEF-001), so there is no p75 of anything. Not
-    deferred to a date — deferred to the event, below.
+    deferred to a date — DEF-034, whose trigger is the event rather than a calendar.
   - **Accessibility of surfaces that do not exist.** This spec covers what is rendered today and
     fails when a new surface arrives without saying how it is reached; it does not describe surfaces
     SPEC-008 will add.
@@ -126,8 +126,7 @@ Its trigger is `decided:` rather than `date:` because no source publishes a time
 schedules the look is memo 17's own `fast` window, since re-verifying the memo means reading the
 citation status.
 
-One more is expected and named here so it is not invented later as though it were always planned: the
-field half of REQ-6, which waits on the product having users at all — the same wall DEF-001 and
+**DEF-034** — the field half of REQ-6, which waits on the product having users at all — the same wall DEF-001 and
 Theme 4 of the external review of 2026-09-10 describe.
 
 **This spec inherits evidence rather than starting from nothing.** AC-1 and AC-2 were built before it
