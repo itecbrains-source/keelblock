@@ -1,5 +1,7 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { verifyDelivery } from '@/lib/billing/verify';
+import { handleEvent } from '@/lib/billing/events';
+import { eventDeps } from '@/lib/billing/server-only/deps';
 
 /**
  * The Stripe webhook — SPEC-007 REQ-8.
@@ -25,7 +27,7 @@ import { verifyDelivery } from '@/lib/billing/verify';
  * The cost of that is real and named rather than hidden: work that fails inside `after()` will not
  * be retried by Stripe, because Stripe has already been told the delivery succeeded. REQ-6's
  * scheduled reconcile is what closes it, and the event ledger's null `processed_at` is what it looks
- * for. This endpoint is therefore correct only as half of a pair, and the other half is not built.
+ * for. **Both halves of that pair now exist** — the other is `src/app/api/cron/reconcile/route.ts`.
  */
 export async function POST(request: NextRequest) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -55,12 +57,36 @@ export async function POST(request: NextRequest) {
 
   // Accepted. Everything past this line runs after the response is committed.
   after(async () => {
-    // The handler and its dependencies are wired in the increment that adds the reconcile — the
-    // logic is already written and proven in `src/lib/billing/events.ts` (AC-3, AC-5), but its deps
-    // need the service-role client, which is imported by nothing today (DEF-004). Logging the
-    // accepted id keeps the endpoint honest in the meantime: it says what it took responsibility for
-    // rather than implying it did the work.
-    console.info(`stripe webhook: accepted ${event.id} (${event.type})`);
+    // Wired as of the reconcile increment. The logic is `src/lib/billing/events.ts` — claim, re-read,
+    // write, mark — and it is proven there without a Stripe account (AC-3, AC-5). This supplies the
+    // real world: the service-role client and the Stripe API client, the only place both are held.
+    try {
+      // **The payload is narrowed here, and the narrowing is REQ-3 expressed as a type.** Stripe's
+      // `Event` carries the whole object — including `status`, which this handler must never read,
+      // because a `deleted` arriving before the `updated` that preceded it would leave a cancelled
+      // customer entitled. Passing the raw event would make that mistake merely discouraged; copying
+      // out the three fields the handler is allowed to see makes it unavailable. Anything else in
+      // there is not input, and now it cannot be.
+      const object = event.data.object as { id?: string; object?: string };
+      const outcome = await handleEvent(
+        {
+          id: event.id,
+          type: event.type,
+          data: { object: { id: object.id, object: object.object } },
+        },
+        eventDeps(),
+      );
+      console.info(`stripe webhook: ${event.id} (${event.type}) → ${outcome.action}`);
+    } catch (error) {
+      // Swallowed on purpose, and this is the cost REQ-8 named rather than an oversight. The 2xx is
+      // already sent, so throwing here cannot make Stripe retry — it would only crash the task. The
+      // event's `processed_at` stays null, which is exactly what REQ-6's reconcile looks for, so the
+      // failure is recoverable rather than lost. Logged loudly because a silent one is not.
+      console.error(
+        `stripe webhook: ${event.id} (${event.type}) FAILED after the 2xx — left unprocessed for ` +
+          `the reconcile: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   });
 
   return NextResponse.json({ received: true });

@@ -10,7 +10,7 @@
 -- The write half of this spec (webhook, idempotency, reconcile, portal) needs a Stripe account and
 -- is not here. What is here is the thing those all write to, and it is the half that decides access.
 begin;
-select plan(34);
+select plan(47);
 
 insert into auth.users (id, instance_id, aud, role, email) values
   ('11111111-1111-1111-1111-111111111111','00000000-0000-0000-0000-000000000000','authenticated','authenticated','a-owner@t'),
@@ -198,13 +198,110 @@ select throws_ok($$select 1 from public.stripe_event$$, '42501', null,
 select throws_ok($$insert into public.stripe_event (id, type) values ('evt_y','y')$$, '42501', null,
   'LEDGER: nor write it');
 
+-- ── AC-6 · the billing write path, and who may reach it ────────────────────
+-- SPEC-007 REQ-5/REQ-6. The webhook and the reconcile write through five SECURITY DEFINER functions
+-- rather than through table grants, and `20260917140000` records why: MEASURED 2026-09-17, a
+-- service_role table grant of ANY width makes it a probed identity on every tenant table and turns
+-- five suites UNRELIABLE (F-81). Narrowness was not the variable; the mechanism was.
+--
+-- These functions are therefore the entire billing write path, so who can call them IS the boundary.
+reset role;
+set local role anon;
+
+select throws_ok(
+  $$select public.claim_stripe_event('evt_forged','customer.subscription.updated')$$,
+  '42501', null,
+  'AC-6: anon cannot claim an event -- an unauthenticated write into the billing ledger');
+select throws_ok(
+  $$select public.write_entitlement('aaaaaaaa-0000-0000-0000-00000000000a','active','cus_x','sub_x')$$,
+  '42501', null,
+  'AC-6: anon cannot write an entitlement -- this is the function that grants a plan');
+select throws_ok(
+  $$select * from public.entitlements_to_reconcile()$$,
+  '42501', null,
+  'AC-6: anon cannot list entitlements -- the one function here that returns ROWS');
+
+-- The same three as a signed-in member. A different grant from anon's, and only one of them was ever
+-- the default: Postgres grants EXECUTE on new functions to PUBLIC, so without the revokes in that
+-- migration every one of these is reachable by everybody (smoke S-4).
+reset role;
+set local role authenticated;
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+
+select throws_ok(
+  $$select public.claim_stripe_event('evt_forged','customer.subscription.updated')$$,
+  '42501', null,
+  'AC-6: a signed-in member cannot claim an event either');
+select throws_ok(
+  $$select public.write_entitlement('aaaaaaaa-0000-0000-0000-00000000000a','active','cus_x','sub_x')$$,
+  '42501', null,
+  'AC-6: nor write their own entitlement -- an organization that could is granting itself a plan');
+select throws_ok(
+  $$select * from public.entitlements_to_reconcile()$$,
+  '42501', null,
+  'AC-6: nor read every organization''s billing rows through the reconcile helper');
+
+-- ── AC-6 · and service_role CAN, while still holding no table privilege ─────
+reset role;
+set local role service_role;
+
+select ok(public.claim_stripe_event('evt_first','customer.subscription.updated'),
+  'AC-6: service_role claims an event, and is told it is the first');
+select ok(not public.claim_stripe_event('evt_first','customer.subscription.updated'),
+  'AC-6: and a duplicate claim answers false -- idempotency is the primary key, not a check');
+
+select lives_ok(
+  $$select public.write_entitlement('bbbbbbbb-0000-0000-0000-00000000000b','active','cus_B','sub_B')$$,
+  'AC-6: service_role writes an entitlement through the definer function');
+
+select is(
+  (select count(*)::int from public.entitlements_to_reconcile()),
+  1,
+  'AC-6: the reconcile sees the subscription it must ask Stripe about');
+
+-- Read back as the OWNER, not as service_role, and the reason is the design itself: service_role
+-- cannot SELECT this table -- it holds no privilege on it and never will. It wrote through a definer
+-- function and cannot read what it wrote. That is not an inconvenience to work around; it is the
+-- assertion below this one, demonstrated in passing.
+reset role;
+select is(
+  (select status::text from public.organization_entitlement
+    where organization_id = 'bbbbbbbb-0000-0000-0000-00000000000b'),
+  'active',
+  'AC-6: and the row it wrote is the row a policy will read -- one source, not two');
+
+set local role service_role;
+select throws_ok(
+  $$select 1 from public.organization_entitlement$$,
+  '42501', null,
+  'AC-6: service_role cannot even READ the table it just wrote -- EXECUTE-only is the whole design');
+
+-- **THE POSTURE, asserted rather than assumed.** This is the assertion that makes the whole design
+-- checkable: the write path exists and works, and service_role STILL holds no privilege on any
+-- tenant table. 20260908150000's rule is kept rather than spent, and if someone later adds a table
+-- grant to make something easier, this goes red before the probe suites turn amber.
+reset role;
+select is(
+  (select count(*)::int from information_schema.role_table_grants
+    where grantee = 'service_role' and table_schema = 'public'),
+  0,
+  'AC-6: service_role holds NO table privilege in public -- the write path is EXECUTE-only (F-81)');
+
+set local role service_role;
+
 -- service_role holds NOTHING here either, today, and that is the posture rather than an oversight.
 -- 20260908150000: "service_role holds NOTHING on tenant tables until something needs it." The
 -- handler's dependencies are not wired yet, so nothing needs it, and a first draft of the ledger
 -- migration granted it anyway -- which made rlsautotest probe service_role on every tenant table and
 -- return five suites' worth of UNRELIABLE cells, because a BYPASSRLS role cannot demonstrate a
--- policy. The grant arrives with the wiring; these two assertions are what will have to change on
--- that day, which is the point of writing them.
+-- policy.
+--
+-- **UPDATED 2026-09-17, and the update is that they did NOT have to change.** These two were written
+-- expecting to be rewritten on the day the handler was wired. The handler is wired (AC-6) and they
+-- still pass, because the write path turned out to be five SECURITY DEFINER functions rather than a
+-- table grant -- the grant was measured to poison five suites at ANY width, so the posture was kept
+-- instead of spent (20260917140000). An assertion that survives the event it was written for is
+-- better evidence than one that was edited to keep passing.
 reset role;
 set local role service_role;
 select throws_ok($$select 1 from public.stripe_event$$, '42501', null,

@@ -37,13 +37,16 @@ const NOT_PROBEABLE = {
     why:
       'has RLS enabled and ZERO policies, so the generator emits nothing for it -- correctly, since ' +
       'there is no policy to probe. Its protection is a PRIVILEGE-layer fact rather than a policy ' +
-      'one: anon and authenticated hold no grant at all, and service_role holds exactly the three ' +
-      'verbs the webhook handler runs. A prober that probes policies has nothing to say about a ' +
-      'table whose answer is "permission denied" before any policy is consulted.',
+      'one: NO role holds any grant on it, service_role included. The webhook and the reconcile ' +
+      'write it through SECURITY DEFINER functions they alone may EXECUTE, because a table grant of ' +
+      'any width was MEASURED to make service_role a probed identity on every tenant table and turn ' +
+      'five suites UNRELIABLE (F-81, 20260917140000). A prober that probes policies has nothing to ' +
+      'say about a table whose answer is "permission denied" before any policy is consulted.',
     coveredBy:
-      'supabase/tests/intent/007-entitlement.test.sql (8 tests: anon and authenticated refused on ' +
-      'read and write, service_role permitted on insert and update, and refused on DELETE and on ' +
-      'TRUNCATE of the entitlement table -- F-80 at the privilege layer)',
+      'supabase/tests/intent/007-entitlement.test.sql (anon, authenticated and service_role each ' +
+      'refused on read and write of the ledger; anon and authenticated refused EXECUTE on all five ' +
+      'billing functions; service_role permitted, and asserted to hold ZERO table privileges in ' +
+      'public afterwards; TRUNCATE of the entitlement table refused -- F-80 at the privilege layer)',
   },
 };
 

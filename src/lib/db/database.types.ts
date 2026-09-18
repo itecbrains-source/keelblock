@@ -226,9 +226,23 @@ export type Database = {
     Functions: {
       _rlsa_try: { Args: { sql: string }; Returns: undefined }
       accept_invitation: { Args: { token: string }; Returns: string }
+      claim_stripe_event: {
+        Args: { event_id: string; event_type: string }
+        Returns: boolean
+      }
       create_organization: {
         Args: { org_name: string; org_slug: string }
         Returns: string
+      }
+      entitlements_to_reconcile: {
+        Args: never
+        Returns: {
+          entitlement_synced_at: string
+          organization_id: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string
+          stripe_subscription_id: string
+        }[]
       }
       invitation_preview: {
         Args: { token: string }
@@ -251,14 +265,31 @@ export type Database = {
       is_org_admin: { Args: { org: string }; Returns: boolean }
       is_org_entitled: { Args: { org: string }; Returns: boolean }
       is_org_member: { Args: { org: string }; Returns: boolean }
+      mark_stripe_event_processed: {
+        Args: { event_id: string }
+        Returns: undefined
+      }
       org_role_of: {
         Args: { org: string }
         Returns: Database["public"]["Enums"]["org_role"]
+      }
+      organization_for_stripe_customer: {
+        Args: { customer: string }
+        Returns: string
       }
       revoke_invitation: { Args: { invitation: string }; Returns: undefined }
       status_entitles: {
         Args: { s: Database["public"]["Enums"]["subscription_status"] }
         Returns: boolean
+      }
+      write_entitlement: {
+        Args: {
+          customer: string
+          new_status: Database["public"]["Enums"]["subscription_status"]
+          org: string
+          subscription: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

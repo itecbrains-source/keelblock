@@ -195,13 +195,23 @@ describe('entry points', () => {
     expect(problems[0]).toContain('route.ts');
   });
 
-  it('the service-role allowance list is empty, and every future entry carries a reason', () => {
-    // The Stripe webhook (SPEC-007) is the canonical legitimate consumer and does not exist yet.
-    // Granting the bypass should be a one-line diff in a reviewed list, not a comment in a file.
+  it('the service-role allowance list is frozen by value, and every entry carries a reason', () => {
+    // Empty until SPEC-007 wired the webhook and the reconcile — the two consumers the list was
+    // written for, named in it before either existed. Frozen BY VALUE rather than counted: a length
+    // cap permits swapping one member for another, which is how an allowlist loses a guarantee
+    // without ever growing (F-30). Both entries are Route Handlers with no user and no rendered
+    // output; a `page.tsx` appearing here is a different thing wearing the same shape.
+    expect(SERVICE_ROLE_ALLOWED.map((a) => a.file)).toEqual([
+      'src/app/api/stripe/webhook/route.ts',
+      'src/app/api/cron/reconcile/route.ts',
+    ]);
     for (const a of SERVICE_ROLE_ALLOWED) {
-      expect(a.reason.length, `${a.file} is allowed with no reason`).toBeGreaterThan(24);
+      expect(a.reason.length, `${a.file} is allowed with no reason`).toBeGreaterThan(80);
     }
-    expect(SERVICE_ROLE_ALLOWED).toEqual([]);
+    expect(
+      SERVICE_ROLE_ALLOWED.every((a) => /\/route\.ts$/.test(a.file)),
+      'only a Route Handler can hold the service role — a page or an action may never',
+    ).toBe(true);
   });
 });
 
@@ -589,8 +599,16 @@ describe('the Stripe client is not reachable from a request path (SPEC-007 AC-2)
     // Counted lists permit a swap; F-30 paid for this in the gate that certifies the other gates.
     expect(STRIPE_CLIENT_ALLOWED.map((a) => a.file)).toEqual([
       'src/app/api/stripe/webhook/route.ts',
+      'src/app/api/cron/reconcile/route.ts',
     ]);
     for (const a of STRIPE_CLIENT_ALLOWED) expect(a.reason.length).toBeGreaterThan(80);
+    // The question REQ-2 actually asks, kept in front of whoever adds a third: does this entry
+    // point decide whether somebody may do something? Both of these serve no page and gate no
+    // action — they are Route Handlers with no user present.
+    expect(
+      STRIPE_CLIENT_ALLOWED.every((a) => /\/route\.ts$/.test(a.file)),
+      'a page or a Server Action may never reach the Stripe client — that is the request path',
+    ).toBe(true);
   });
 
   it('the real tree is clean — and the rule had a real chain to look at', async () => {

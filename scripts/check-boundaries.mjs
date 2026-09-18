@@ -414,15 +414,39 @@ export const isEntryPoint = (file) =>
  * one-line diff in a reviewed list — a review artifact rather than an exception nobody sees.
  * @type {Array<{file: string, reason: string}>}
  */
-export const SERVICE_ROLE_ALLOWED = [];
+export const SERVICE_ROLE_ALLOWED = [
+  {
+    file: 'src/app/api/stripe/webhook/route.ts',
+    reason:
+      'SPEC-007 REQ-5. The webhook writes the event ledger and the entitlement row for a caller who ' +
+      'is Stripe, not a person — there is no session to carry and no policy that could permit it, ' +
+      'because an organization that could write its own entitlement would be granting itself a ' +
+      'plan (ADR-006). It authorizes by verifying the delivery signature before anything else, and ' +
+      'every write it makes goes through a SECURITY DEFINER function rather than a table grant, so ' +
+      'service_role still holds no privilege on any tenant table (20260917140000).',
+  },
+  {
+    file: 'src/app/api/cron/reconcile/route.ts',
+    reason:
+      'SPEC-007 REQ-6. The scheduled reconcile has no user either: its caller is a scheduler, and it ' +
+      'exists precisely to correct rows no request path may write. It authorizes with a shared ' +
+      'secret compared in constant time before any work happens, and it reaches the database ' +
+      'through the same four definer functions the webhook uses. Both of these are Route Handlers ' +
+      'by ADR-011 design — "Server Actions for the app, Route Handlers for the outside world" — and ' +
+      'neither renders anything to anybody.',
+  },
+];
 
 /**
  * Entry points whose own job is Stripe — SPEC-007 AC-2. **Compared by value in the test, never
  * counted**, for F-30's reason: a capped list permits swapping one member for another, which is how
  * an allowlist loses a guarantee without ever growing.
  *
- * One entry, and it should stay one. The webhook is the only surface in the product that is supposed
- * to talk to Stripe at all.
+ * **Two entries, and the second is the one to scrutinise.** The list grew when the reconcile landed,
+ * which is what an entry-point allowance is for — a reviewed one-line diff — but it is also how an
+ * allowlist becomes a formality. The test freezes both by value, and the question to ask of any
+ * third is the one REQ-2 actually asks: does this entry point decide whether somebody may do
+ * something? If it does, it may not reach Stripe, whatever else is true of it.
  * @type {Array<{file: string, reason: string}>}
  */
 export const STRIPE_CLIENT_ALLOWED = [
@@ -437,6 +461,16 @@ export const STRIPE_CLIENT_ALLOWED = [
       'and re-reads, and every part of that runs inside after(), so it is not on a response path ' +
       'at all. The reason this is the entry point rather than the module below it: exempting the ' +
       'module that holds the client would be an allowlist entry that deletes the rule.',
+  },
+  {
+    file: 'src/app/api/cron/reconcile/route.ts',
+    reason:
+      'SPEC-007 REQ-6. Reconciliation IS "ask Stripe what is actually true" — it is the only thing ' +
+      'that closes an event which never arrived, or one whose work failed after the 2xx was already ' +
+      'sent. It decides nothing and authorizes nobody: it reads the rows we hold, asks Stripe about ' +
+      'each subscription, and writes what it finds, on a schedule, with no user present. REQ-2 ' +
+      'forbids an entitlement being read from Stripe ON THE REQUEST PATH, where a third party being ' +
+      'down would refuse a paying customer; nothing here serves a page or gates an action.',
   },
 ];
 
@@ -776,7 +810,8 @@ function main() {
   if (!problems.length) {
     console.log(
       `boundaries: ok — ${entries.length} rendered entry point(s), none reaches the service-role ` +
-        `client, and none but the declared webhook reaches the Stripe client`,
+        `client, and no undeclared entry point reaches the Stripe client ` +
+        `(${STRIPE_CLIENT_ALLOWED.length} declared, each with a reason)`,
     );
     return;
   }
