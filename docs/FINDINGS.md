@@ -3607,6 +3607,14 @@ That is exactly the shape each of them had: a failure with no output that passes
 they are findings rather than fixed bugs. What it does is remove the ambiguity that made them
 unanswerable.
 
+**And it refutes neither F-83 nor F-84, which is a distinction worth stating plainly because the two
+readings are very different to somebody arriving later.** Each of those investigations retired its
+hypothesis correctly, on its own evidence. What this explains is why neither could ever be
+_confirmed_: **the harness was discarding the evidence at the moment of failure.** "Unreproduced
+failures whose investigations went nowhere" and "investigations that were denied the thing they
+needed" describe the same record and mean opposite things about the people who did the work. The
+second is what happened.
+
 ### What the runner does now
 
 - **Keeps the output.** Each step streams live as before and is also captured; a failing step's full
@@ -3639,6 +3647,18 @@ A failing run now costs roughly twice that step's time, because it runs it again
 when something is already wrong, and it buys the answer to the first question anybody asks. Output is
 capped at 4 MiB per step so a runaway gate cannot turn a diagnosis into the memory kill this change
 exists to explain.
+
+### The other way evidence gets discarded
+
+The harness deleting it is one. **Reading a truncated copy and concluding from it is the other**, and
+it has now produced a wrong conclusion here three times — a `tail` that cut a README line, a count of
+schemas read from a clipped listing, and a report that the new standalone re-run had not fired when
+it had, the notice simply being below the cut. Each time the output existed and the reader did not
+have all of it.
+
+It is the same defect F-84 records from the other side: a pipeline that truncates output _and_
+replaces the exit status. The fix there was mechanical rather than a resolution to be careful, and
+the same applies here — when a run matters, write it to a file and read the file.
 
 **The habit worth keeping is the reviewer's, not the fix.** Each individual investigation was sound.
 What none of them could see was the pattern, because each began after the previous one had closed. A
