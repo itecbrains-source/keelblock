@@ -142,6 +142,14 @@
       "verifiedOn": "2026-09-14",
       "specs": ["SPEC-018"],
       "kind": "sourced"
+    },
+    {
+      "file": "17-ACCESSIBILITY-AND-BUDGETS.md",
+      "area": "what an accessibility bar and a performance budget can honestly claim — automation coverage, the WCAG version the law points at, and why Core Web Vitals need a field this project has not got",
+      "volatility": "fast",
+      "verifiedOn": "2026-09-18",
+      "specs": ["SPEC-015"],
+      "kind": "sourced"
     }
   ],
   "$kinds": {
