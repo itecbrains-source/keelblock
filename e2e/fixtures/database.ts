@@ -66,6 +66,7 @@ export type Seeded = {
     orgId: string,
     invitee: SeededUser,
     role: 'owner' | 'admin' | 'member',
+    opts?: { accept?: boolean },
   ) => Promise<string>;
   cleanup: () => Promise<void>;
 };
@@ -234,15 +235,23 @@ export function seeder(): Seeded {
      * never read back out of the table, which holds only a hash (SPEC-006 REQ-3), so there is no
      * back door here that the product does not have.
      */
-    async invite(adminUser, orgId, invitee, role) {
+    /**
+     * `opts.accept` defaults to true because every existing caller wants a member at the end of it.
+     * Passing false leaves the invitation UNSPENT, which is the only state in which
+     * `/invite/[token]` renders its offer — an accepted token renders a refusal instead, and
+     * scanning that would be scanning a different surface than the one B-7 names.
+     */
+    async invite(adminUser, orgId, invitee, role, opts = {}) {
       const minted = await adminUser.client.rpc('invite_member', {
         org: orgId,
         invitee_email: invitee.email,
         invited_role: role,
       });
       if (minted.error) throw minted.error;
-      const accepted = await invitee.client.rpc('accept_invitation', { token: minted.data });
-      if (accepted.error) throw accepted.error;
+      if (opts.accept !== false) {
+        const accepted = await invitee.client.rpc('accept_invitation', { token: minted.data });
+        if (accepted.error) throw accepted.error;
+      }
       return minted.data as string;
     },
 

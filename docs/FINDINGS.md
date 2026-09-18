@@ -3514,3 +3514,57 @@ inputs and a live region. Neither is an axe pass.
 **The choice is binary and it is the owner's:** either the surface count stops growing until B-7 is
 scheduled, or B-7 is scheduled now. What should not happen is a sixth surface arriving with the same
 sentence attached. Written down so it is not discovered later as a surprise.
+
+## F-91 · The first accessibility scan passed every surface, because it was scanning the shell
+
+**2026-09-17 · found by refusing to believe a suite that was green on its first run · fixed, then re-proved**
+
+B-7's automated half — axe over every rendered surface — passed all five on the first run. That is the
+result to distrust, and distrusting it is what found the defect.
+
+**Every session-dependent region in this application renders inside `<Suspense>` (ADR-004), so the
+shell flushes before the content exists.** The scan's non-vacuity guard waited for a heading — and
+the heading is in the shell. So axe ran against a page whose `<main>` was still empty, evaluated
+fifteen rules against nothing much, and reported it clean.
+
+### Measured, and the asymmetry is what gave it away
+
+| planted defect           | `/login`                           | `/projects` |
+| ------------------------ | ---------------------------------- | ----------- |
+| `<img>` with no `alt`    | **fails** — `image-alt (critical)` | **passes**  |
+| form input with no label | **fails** — `label (critical)`     | **passes**  |
+
+Two different rules, one surface catching both and the other catching neither. A rule that is broken
+fails everywhere; a rule that fires where the markup is static and not where it streams is being asked
+about a different document than the one on screen.
+
+The confirming detail: on `/projects` the `label` rule came back **`inapplicable`** — axe had found no
+form element at all to apply it to. Not "this input is fine" but "there is no input here", on a page
+that visibly has one.
+
+**The instrumentation hid it.** Adding a `console.log` of `page.locator('input').count()` before the
+scan made the defect disappear, because awaiting a locator waits for the content to arrive. Every
+debugging step that looked at the page also fixed the page.
+
+### The fix, and why it is an argument rather than a wait
+
+`scanSurface` now takes a `settled` locator naming something **inside** the Suspense boundary — the
+create button on `/projects`, the members heading on `/orgs`, the offer text on the invitation page —
+and refuses to scan until it is visible. Not a sleep: a sleep would make the suite slower and still
+wrong on a slow machine, which is the flake this project already paid for once.
+
+Re-proved after the fix: the same `image-alt` defect that passed on `/projects` now fails it, and so
+does the missing label. The `inapplicable` result is explained by the same cause rather than left as
+an axe quirk nobody understood.
+
+**F-38's shape, arriving in the accessibility layer.** That finding is the prerendered shell flushing
+with a 200 while the real answer is still on its way; this is the same shell, being measured for
+accessibility and found blameless because it is empty.
+
+### What this says about the other suite
+
+Nothing, and that is worth stating rather than assuming. The journey layer's other tests assert on
+content (`getByRole('heading', { name: 'Members of Acme' })`), so they already wait for what they
+check — Playwright's auto-waiting makes an assertion about content into a wait for it. The scan was
+uniquely exposed because **axe asks the DOM a question about the whole page rather than about one
+element**, so nothing in the call itself waits for anything.
