@@ -58,79 +58,91 @@ npm run check      # every gate; --strict to fail on a rule that did not run
 describes, its score, and how far HEAD has moved since. A record behind HEAD is normal and is
 reported rather than failed — but it tells you whether the score you are about to quote is current.
 
-## Where the work is — 2026-09-17, handing to a fresh session
+## Where the work is — 2026-09-18, handing to a fresh session
 
 Pointers and dates only. No counts, for the reason at the top of this file.
 
-**Where SPEC-007 stands.** `partial`, and the webhook increment landed: the entitlement row and its
-policy (REQ-1, REQ-7), the event ledger schema (REQ-5), the delivery verifier and the route. Six of
-its eleven criteria are done. `npm run status` has the current split and is the authority.
+**SPEC-007 is 11 of 11 and still `partial`, deliberately.** Every acceptance criterion is met. Its
+Definition of Done still carries an unticked box — a live round-trip against a real Stripe account,
+which is owner-gated. Marking it `done` fires DEF-011, DEF-012 and DEF-029 and fails the build until
+they are picked up. That is the gate applying the pressure it exists for; leaving it `partial` is the
+honest state, not an oversight.
 
-**Next, in dependency order**, and the first one needs no Stripe account:
+**SPEC-015 was authored this session and is `partial`.** It owns B-7 and half of B-8, and it exists
+because the axe pass built in `d681687` was running on every push while claiming no acceptance
+criterion — its registered owners were unauthored. AC-1 and AC-2 are `done` on that evidence.
 
-1. **AC-2** — "no module on a request path imports the Stripe client". A parsed rule, and **reuse
-   `check-boundaries`'s existing import traversal rather than writing a second walk.** F-78 is the
-   reason that sentence is here: the service-role walk matched one syntax out of four until it was
-   derived, and a parallel hand-rolled walk inherits the same class of hole. The Stripe client sits
-   in exactly one file today, deliberately, so the allowlist this rule needs is one entry.
-2. **AC-8** — a journey: an organization is refused a paid surface, then granted it. The first thing
-   in this spec that produces a **visible product surface**, which is the half this project has least
-   of.
-3. Then reconciliation: AC-6, AC-4, AC-11.
+**Next, in the order they are cheapest:**
 
-**The grant that is coming, and what is waiting for it.** Wiring the handler's dependencies needs the
-service-role client (imported by nothing today, DEF-004) and will be the first migration to grant
-`service_role` writes on a tenant table. F-80's rule watches for `TRUNCATE`; F-81 is the record of
-what happens if that grant arrives before its consumer — one premature grant made `service_role` a
-probed identity on every tenant table and returned five suites' worth of `UNRELIABLE`. Two assertions
-in `007-entitlement.test.sql` are written knowing they must change on that day.
+1. **AC-3** — move the coverage bound into `docs/PRODUCT.md`'s B-7 wording so the bar itself stops
+   saying "axe-clean". Small, and it closes the overclaim risk memo 17 is about.
+2. **AC-6** — a lab performance budget that fails the build when crossed, and that names itself a
+   lab measurement. Buildable now; the field half is deferred to the product having users.
+3. **AC-5** — the keyboard walkthrough. A person. Same wall as DEF-024.
 
-**Owed and not done.** Nothing. The README banner correction that was going to ride the next push
-went in with this one (F-82), because a session that ends with an owed edit is a session that loses
-it.
+**Two flake hypotheses were retired this session, and one mechanism was found.** Do not re-derive any
+of it:
 
-**One thing unexplained.** A single `npm run check` reported `unit` failing with no test named,
-followed by six consecutive green runs. The hypothesis is prettier rewriting files as vitest starts
-in the same command chain; it was not reproduced. If it recurs, that hypothesis is the first thing to
-test — and note that a real flake hid behind exactly this shape once already: F-72's safety test was
-spawning processes on every unit run and was intermittently red for as long as it existed.
+- The `policy` deadlock does **not** correlate with local stack uptime (F-83). The short-uptime stack
+  failed where the long-uptime one passed. Mechanism still unidentified; F-83 carries a verified
+  recipe for recovering the next occurrence from the container log after the test output is gone.
+- The `unit` flake was **not** prettier racing vitest (F-84) — `check.mjs` has no concurrency and its
+  format step cannot write. A real self-healing mechanism was then found and fixed (F-86): the unit
+  suite was regenerating a committed artifact, which made one gate unable to fail.
+- And the harness itself was discarding evidence (F-92). `status ?? EXIT.FAILED` collapsed "killed by
+  a signal", "never started" and "ran and objected" into one summary line. `npm run check` now keeps
+  a failing step's output in a file, says how the step died, and re-runs it once to report whether it
+  repeated. **The next unexplained failure should be a diagnosis rather than a fourth hypothesis.**
 
-**A known local flake, so nobody re-derives it.** `failure-message.test.sql` inside the `policy` gate
-has deadlocked — `AccessExclusiveLock` on `auth.users` against `RowExclusiveLock` on
-`public.organization` — twice in five runs on 2026-09-14, and not in any run since on a stack that
-had been reset recently. The variable that differed was **local stack uptime**. Correlation, not
-demonstration. If it holds, consecutive green scheduled nightlies are **not** evidence against it —
-CI always starts a fresh stack — and the person who meets it is a developer on day three of the same
-`supabase start`. Ruled out by execution, do not re-derive: F-1's `TRUNCATE` assertion is not the
-cause, because the privilege check precedes lock acquisition and returns `permission denied` without
-taking a lock.
+**A local-only condition, observed while closing this session and not fully explained.** After a long
+working session — many `check` runs, journey suites killed mid-run, manual grant experiments, a
+deliberate deadlock — the local stack drifted into a state where two gates failed on a tree that had
+been green an hour earlier with only a markdown file changed since:
 
-**Owner-gated, not a session's to do.** The three Vercel secrets; publishing `create-keelblock-app`
-(B-1's headline command still fails for any user until it is published, and F-74's fix reaches nobody
-before that); publishing F-1; and whether `npm run status`'s score line gets a withdrawal marker,
-since the withdrawal exists nowhere in the repository.
+- `policy` — `organization:UPDATE` lost its positive control ("a suite that seeded nothing would be
+  just as green");
+- `unit` — `gate-health`'s determinism case reported `access-matrix.mjs gave different verdicts on
+identical input`, and the harness recorded that it **did not reproduce standalone**.
 
-**The dated horizon**, re-measured 2026-09-17. Nothing expires within weeks:
+Both read the live database. `supabase db reset --local` restored all fourteen to green. **What was
+not isolated is which drift caused it**, so this is a remedy and a correlation rather than a
+mechanism — recorded here rather than as a finding for exactly that reason. CI is unaffected: it
+starts a fresh stack every run. If it recurs, the harness now keeps each failing gate's output under
+the system temp directory and says whether it reproduced, which is the evidence F-83 and F-84 never
+had.
 
-| when           | what                                                                                                                                                        |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **2026-10-22** | Freshness pins expire — 35 days out. **Every generated project's build starts failing then, not just this one**, because the stamp ships with the scaffold. |
-| **2026-10-23** | `DEF-016` fires — review the pinned Supabase CLI version.                                                                                                   |
-| **2026-12-08** | `DEF-024` fires — the human half of the handover trial.                                                                                                     |
+**Owed and not done.** Nothing. The tree is clean and CI is green on `HEAD`.
 
-The nearest research memo expiry is 80 days out, so no memo needs re-verifying this month.
+**One thing prepared and unrun.** `docs/review/TRIAL-B11-HUMAN.md` — DEF-024's human trial, ready to
+hand to a participant. It needs a person and an afternoon, and it closes SPEC-012's AC-8 and moves
+SPEC-024 off `partial`. It does **not** close B-11, and says so in its own words.
 
-**Open, and not feature work.** Themes 3 and 4 of the external review of 2026-09-10. Theme 3 asks for
-a mechanism that can fail when the project overspends on itself; the marginal ratio of `scripts/` to
-`src/` was measured **falling** for the first time on the entitlement commit — 10.0:1 down to 5.8:1 —
-because that increment was mostly `src/` and `supabase/`. One commit is not a trend and the webhook
-increment should continue it; re-measuring after is the only evidence either way. Theme 4 is that
-nobody has used the product. Neither is answerable by another fix, and four successive seats have
-declined to close them with tactical work.
+**Owner-gated, not a session's to do.** The three Vercel secrets and `CRON_SECRET`; publishing
+`create-keelblock-app` (the README now says plainly that the published package is a placeholder);
+publishing F-1; whether `npm run status`'s score line gets a withdrawal marker; and three deferrals
+whose own text was re-read this session — **DEF-011's trigger is mis-keyed** (it fires on
+`spec-done:SPEC-007` while its text says "the moment money math exists", and there is none), DEF-012
+is genuinely arguable now that `constantTimeEquals` exists, and **DEF-029's stated moment has
+arrived** — it is the only one of the three that is a product decision, and SPEC-031's account
+deletion cannot succeed for a sole owner without it.
 
-**Three findings declined a gate on purpose** — F-69, F-82 and the count claims in F-78. Each names
-why in its own entry. A session that reads them as oversights and builds the gates will be spending
-on the wrong side of the ratio above.
+**The dated horizon**, re-measured 2026-09-18:
+
+| when           | what                                                                                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **2026-10-22** | Freshness pins expire. **Every generated project's build starts failing then, not just this one**, because the stamp ships with the scaffold. |
+| **2026-10-23** | `DEF-016` fires — review the pinned Supabase CLI version.                                                                                     |
+| **2026-12-08** | `DEF-024` fires — the human half of the handover trial, which now blocks two specs rather than one.                                           |
+
+**Memo 17 is registered `fast` on purpose.** Re-verifying it means reading whether the European
+Commission has cited EN 301 549 v4.1.1 in the Official Journal — which is what schedules DEF-033's
+look. The deferral records the position; the memo's window is the mechanism.
+
+**Open, and not feature work.** Themes 3 and 4 of the external review of 2026-09-10. Theme 3 has
+eased — the marginal ratio is below where that review found it, and the recent gate work fixed real
+defects rather than adding apparatus. **Theme 4 has not moved at all.** DEF-024 gates B-11 and B-5,
+blocks two specs, and is the only open item that would say whether any of this works for somebody who
+is not the owner. No amount of further building changes it.
 
 ## Two rules the review's own machinery now enforces
 
