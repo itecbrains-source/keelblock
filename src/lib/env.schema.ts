@@ -67,3 +67,35 @@ export function validateEnv(raw: Record<string, string | undefined>) {
   if (problems.length) return { ok: false as const, problems };
   return { ok: true as const, env: { ...server.data!, ...client.data! } };
 }
+
+/**
+ * The phase Next sets while `next build` is collecting route configuration.
+ *
+ * MEASURED 2026-09-17 by printing it from inside a module the build evaluates:
+ * `NEXT_PHASE="phase-production-build"`, `NODE_ENV="production"`. Written down here rather than
+ * inlined because a magic string in a branch that only runs on a build machine is the kind nobody
+ * notices has stopped matching.
+ */
+export const BUILD_PHASE = 'phase-production-build';
+
+/**
+ * Is this process a BUILD rather than a BOOT?
+ *
+ * The distinction earns its keep because `env.ts` deliberately validates at import and throws — so a
+ * misconfigured deployment fails at boot with every problem listed, rather than at the first
+ * connection with one. That is a good property and it is kept.
+ *
+ * But `next build` is also an importer. Next evaluates route modules to collect their configuration,
+ * so the moment any route reached `env.ts` through its import graph, the build began demanding
+ * RUNTIME secrets from a machine that legitimately holds none. It stayed invisible until a route
+ * transitively imported it (F-88) — the same shape as F-76, where a missing typegen step was latent
+ * until a spec introduced `PageProps`.
+ *
+ * Exported and pure so the decision is testable: `env.ts` itself carries `import 'server-only'` and
+ * cannot be loaded by a test runner.
+ *
+ * @param {Record<string, string | undefined>} processEnv
+ */
+export function isBuildPhase(processEnv: Record<string, string | undefined>): boolean {
+  return processEnv.NEXT_PHASE === BUILD_PHASE;
+}

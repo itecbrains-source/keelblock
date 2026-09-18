@@ -3367,3 +3367,76 @@ this audit (unbuilt work called shipped). And while fixing it, the replacement b
 came out of reading the README against a generic checklist because the owner asked. A coverage gap
 that can only be found by someone deciding to look is exactly the kind this project exists to
 convert into a mechanism, and two thirds of it now is.
+
+## F-88 · A validator that fails at boot also fails the build, and nothing noticed until a route imported it
+
+**2026-09-17 · CI red on two consecutive commits, three jobs each · reproduced locally, then fixed**
+
+`src/lib/env.ts` validates the environment at import and throws. Its docblock says why, and the
+reason is good:
+
+> so a misconfigured deployment fails at boot with every problem listed, rather than at the first
+> connection with one
+
+**`next build` is also an importer.** Next evaluates route modules to collect their configuration, so
+the moment any `route.ts` reached `env.ts` through its import graph, the build began demanding
+RUNTIME secrets from a machine that legitimately holds none.
+
+```
+Error: Failed to collect configuration for /api/stripe/webhook   (521a2d6)
+                                           /api/cron/reconcile    (dc6680f)
+  [cause]: Environment is not valid — 2 problem(s):
+    · NEXT_PUBLIC_SUPABASE_URL: Invalid input: expected string, received undefined
+    · NEXT_PUBLIC_SUPABASE_ANON_KEY: Invalid input: expected string, received undefined
+```
+
+**It names a different route on each commit, which is the tell.** The route named is simply whichever
+one the build reached first — the chain is `route.ts` → `deps.ts` → `admin.ts` → `env.ts`, and it is
+the chain that is the defect, not the route.
+
+### Why it only broke now
+
+`.github/workflows/check.yml` does set both variables — **scoped to the `npm run journey` step, not
+to the `npm run check` step that runs the build.** That was harmless for as long as no route module
+transitively reached `env.ts`. `dc6680f` — the commit that wired the webhook handler and the
+reconcile to the service-role client — is the first where one does.
+
+**F-76's shape again:** a latent misconfiguration made fatal by an unrelated import. Three weeks ago
+it was a missing typegen step, latent until SPEC-004 introduced `PageProps`. Same class, different
+file, and both surfaced as an error naming a symptom rather than a cause.
+
+### The design tension, which is the part worth keeping
+
+Fail-at-boot is a deliberately chosen property and it is right. The fix is **not** to export two more
+variables into the CI step: that makes CI green without addressing anything, teaches a build to carry
+secrets it has no use for, and breaks again the next time a route needs a different variable.
+
+**The property needed to distinguish boot from build**, and it now does. During a build the export is
+a `Proxy` that throws the moment anything actually READS a value, so:
+
+- a build that merely imports the module is fine — which is all the route collection does;
+- a build that tries to USE runtime configuration fails loudly, instead of baking in `undefined` and
+  surfacing three layers away;
+- a boot still validates eagerly and lists every problem.
+
+The phase is `NEXT_PHASE=phase-production-build`, **MEASURED** by printing it from inside a module the
+build evaluates rather than taken from documentation.
+
+### Verified by running it, both directions
+
+|                                  | before                    | after                         |
+| -------------------------------- | ------------------------- | ----------------------------- |
+| `next build` with no runtime env | **fails**, names a route  | **exits 0**                   |
+| `npm start` with no runtime env  | fails at boot, lists both | **fails at boot, lists both** |
+
+The reproduction needed one trick worth recording: **Next loads `.env.local` even when the shell
+variables are unset**, so a local build is green for a reason CI does not have. Moving `.env.local`
+aside reproduces CI exactly. A fix written against the import graph alone — without a red build in
+hand — is the mistake the font lesson in `AGENTS.md` is about.
+
+### What still is not symmetric, and is stated rather than fixed
+
+`npm run check` locally builds **with** `.env.local` present, so it would not catch this coming back;
+CI builds without it and is the real regression test. A unit test now asserts `env.ts` still branches
+on the phase, so the likely regression — someone simplifying it back to an unconditional `load()` —
+fails before the push rather than after it.

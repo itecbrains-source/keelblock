@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { stripComments } from '../../scripts/prose.mjs';
-import { validateEnv } from './env.schema';
+import { validateEnv, isBuildPhase, BUILD_PHASE } from './env.schema';
 
 const valid = {
   NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54721',
@@ -88,5 +88,45 @@ describe('the validation actually runs — F-71', () => {
       `register() must import '@/lib/env' — it is the only hook Next.js calls once per server ` +
         `instance before any request, and therefore the only place "at boot" can mean what env.ts says`,
     ).toMatch(/import\(\s*'@\/lib\/env'\s*\)/);
+  });
+});
+
+// ── build is not boot — F-88 ──────────────────────────────────────────────────────────────────
+//
+// `env.ts` validates at import and throws, so a misconfigured deployment fails at boot with every
+// problem listed. `next build` is ALSO an importer: it evaluates route modules to collect their
+// configuration. The moment a route reached `env.ts` through its import graph, the build began
+// demanding runtime secrets from a machine that legitimately holds none, and CI went red naming a
+// route — a different one each commit, because the route named is whichever the build reached first.
+
+describe('build phase is distinguished from boot', () => {
+  it('recognises the phase Next sets during a build', () => {
+    // MEASURED 2026-09-17 by printing it from a module the build evaluates:
+    // NEXT_PHASE="phase-production-build", NODE_ENV="production".
+    expect(isBuildPhase({ NEXT_PHASE: BUILD_PHASE })).toBe(true);
+    expect(BUILD_PHASE).toBe('phase-production-build');
+  });
+
+  it('MUTATION: a running server is NOT a build, so boot still validates', () => {
+    // The property this must not break. If this ever returns true at runtime, the eager validation
+    // is silently gone and a misconfigured deployment starts answering requests.
+    expect(isBuildPhase({})).toBe(false);
+    expect(isBuildPhase({ NODE_ENV: 'production' })).toBe(false);
+    expect(isBuildPhase({ NEXT_PHASE: 'phase-production-server' })).toBe(false);
+    expect(isBuildPhase({ NEXT_PHASE: 'phase-development-server' })).toBe(false);
+  });
+
+  it('env.ts still branches on it — a "simplification" back to eager loading is the regression', () => {
+    // Asserted against the source because `env.ts` carries `import 'server-only'` and cannot be
+    // imported by a test runner (correctly — that is the boundary doing its job).
+    //
+    // Note what is NOT relied on here: the local `npm run check` builds WITH .env.local present, so
+    // it would not catch this coming back. CI builds without it and is the real regression test.
+    // This exists so the mistake is caught before the push rather than after.
+    const source = readFileSync('src/lib/env.ts', 'utf8');
+    expect(source, 'the export must be conditional on the phase').toMatch(
+      /export const env = isBuildPhase\(process\.env\)\s*\?/,
+    );
+    expect(source, 'and a build that READS a value must still fail loudly').toMatch(/new Proxy/);
   });
 });
