@@ -68,17 +68,24 @@ which is owner-gated. Marking it `done` fires DEF-011, DEF-012 and DEF-029 and f
 they are picked up. That is the gate applying the pressure it exists for; leaving it `partial` is the
 honest state, not an oversight.
 
-**SPEC-015 was authored this session and is `partial`.** It owns B-7 and half of B-8, and it exists
-because the axe pass built in `d681687` was running on every push while claiming no acceptance
-criterion — its registered owners were unauthored. AC-1 and AC-2 are `done` on that evidence.
+**SPEC-015 was authored this session and is `partial` at 5 of 6.** It owns B-7 and half of B-8, and
+it exists because the axe pass built in `d681687` was running on every push while claiming no
+acceptance criterion — its registered owners were unauthored.
 
-**Next, in the order they are cheapest:**
+**Only AC-5 is open, and it is a person rather than a build.** B-7's keyboard walkthrough. The
+protocol is written and ready to run — `docs/KEYBOARD-WALKTHROUGH.md`: six states, five passes each,
+three rules, and a record section that is empty and says so.
 
-1. **AC-3** — move the coverage bound into `docs/PRODUCT.md`'s B-7 wording so the bar itself stops
-   saying "axe-clean". Small, and it closes the overclaim risk memo 17 is about.
-2. **AC-6** — a lab performance budget that fails the build when crossed, and that names itself a
-   lab measurement. Buildable now; the field half is deferred to the product having users.
-3. **AC-5** — the keyboard walkthrough. A person. Same wall as DEF-024.
+**It does NOT need a stranger, and the two get conflated.** DEF-024 requires somebody who has not seen
+the repository; B-7 asks only for a keyboard walkthrough per surface, so the owner can run it. When
+the record is filled in, AC-5's evidence points at that file and `SPEC-015` comes out of
+`$noDocumentation` — the content gate will ask.
+
+**The lab budget landed with the measurement that justifies its shape.** Bytes rather than a timing,
+because a clean build and two incremental builds of an unchanged tree produced byte-identical output —
+so the bound needs headroom for growth, not noise. One ceiling over everything the build emits rather
+than a per-route list. `keelblock.budget.json` declares it, and every failure message carries the
+sentence saying it is a lab measurement and not Core Web Vitals.
 
 **Two flake hypotheses were retired this session, and one mechanism was found.** Do not re-derive any
 of it:
