@@ -3568,3 +3568,79 @@ content (`getByRole('heading', { name: 'Members of Acme' })`), so they already w
 check — Playwright's auto-waiting makes an assertion about content into a wait for it. The scan was
 uniquely exposed because **axe asks the DOM a question about the whole page rather than about one
 element**, so nothing in the call itself waits for anything.
+
+## F-92 · Unreproduced failures kept arriving in different gates, and nobody had looked at the harness they share
+
+**2026-09-17 · the pattern spotted by the reviewing seat · a mechanism found, and the ambiguity removed**
+
+Separate gates have failed transiently inside `npm run check` and not reproduced — `policy`, `unit`
+and `promises`:
+
+| gate       | recorded      | what happened next                 |
+| ---------- | ------------- | ---------------------------------- |
+| `policy`   | [F-83](#f-83) | deadlock captured once, then green |
+| `unit`     | [F-84](#f-84) | no test named, then green          |
+| `promises` | 2026-09-17    | no reason printed, then green      |
+
+Each was investigated separately, each got a hypothesis, and each hypothesis was retired on its own
+evidence — which was correct every time. **But repeated flaking across different gates inside one harness is a
+different shape from unrelated flakes, and the runner they share had never been examined.**
+
+### A mechanism, measured
+
+`scripts/check.mjs` recorded every step as `status: r.status ?? EXIT.FAILED`. MEASURED 2026-09-17:
+
+```
+child killed by SIGKILL   ->  status: null, signal: 'SIGKILL', error: null
+binary not found          ->  status: null, signal: null,      error: ENOENT
+ran and failed            ->  status: 3,    signal: null,      error: null
+```
+
+So a gate the operating system **killed**, a gate that **never started** — `EAGAIN` under process
+pressure is the realistic case, in a run that puts `next build`, `vitest`, Docker and a Postgres
+suite through one machine — and a gate that examined the repository and objected were **the same line
+in the summary, with the reason discarded.**
+
+That is exactly the shape each of them had: a failure with no output that passes immediately afterwards.
+
+**This does not prove the harness caused any of them.** Their evidence is gone, which is why
+they are findings rather than fixed bugs. What it does is remove the ambiguity that made them
+unanswerable.
+
+### What the runner does now
+
+- **Keeps the output.** Each step streams live as before and is also captured; a failing step's full
+  output is written to a file whose path is printed. F-84 says in as many words that its failure was
+  unreproducible _primarily because the output was gone_ — piped through `tail`, which also replaced
+  the exit status.
+- **Says how the step died.** Killed, could-not-start, and ordinary failure are now three different
+  sentences.
+- **Re-runs the failing step once, immediately, and reports whether it repeated.** That single bit
+  separates _"this gate is wrong"_ from _"the harness around it is"_, and it was missing every time.
+
+Proved with a deliberately flaky gate — one that fails the first time and passes after:
+
+```
+flaky: FAILED — this is the output that used to be lost
+  flaky failed — re-running it alone to see whether it repeats…
+  flaky: DID NOT REPRODUCE on an immediate standalone re-run.
+         Treat the first failure as the evidence, not this pass.
+  ✗ flaky   0.1s
+  flaky did NOT reproduce standalone — the failure is in the run, not necessarily the gate
+  flaky output kept at …/keelblock-check/…/flaky.log
+```
+
+The killed-by-signal and could-not-start paths are proved directly in `scripts/check.test.mts`
+against real child processes rather than against a description of them.
+
+### Costs, stated
+
+A failing run now costs roughly twice that step's time, because it runs it again. That is paid only
+when something is already wrong, and it buys the answer to the first question anybody asks. Output is
+capped at 4 MiB per step so a runaway gate cannot turn a diagnosis into the memory kill this change
+exists to explain.
+
+**The habit worth keeping is the reviewer's, not the fix.** Each individual investigation was sound.
+What none of them could see was the pattern, because each began after the previous one had closed. A
+repeated occurrence of the same _shape_ is evidence about whatever those occurrences have in common,
+even when each one carries a different name.

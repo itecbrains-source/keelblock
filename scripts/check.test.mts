@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { STEPS, EXIT, decideRun, summarize, REQUIRED_BINARIES, missingBinaries } from './check.mjs';
+import {
+  STEPS,
+  EXIT,
+  decideRun,
+  summarize,
+  REQUIRED_BINARIES,
+  missingBinaries,
+  describeAbnormalExit,
+  runStep,
+} from './check.mjs';
 import { readFileSync } from 'node:fs';
 
 const r = (id: string, ok: boolean) => ({ id, why: id, ms: 1000, status: ok ? 0 : 1 });
@@ -166,5 +175,81 @@ describe('degraded steps', () => {
     expect(s.ok).toBe(true);
     expect(s.exit).toBe(EXIT.OK);
     expect(s.degraded).toEqual([]);
+  });
+});
+
+// ── the harness as the common factor — F-92 ─────────────────────────────────────────────────────
+//
+// Three different gates have failed transiently inside `npm run check` and not reproduced: `policy`
+// (F-83), `unit` (F-84), and `promises` on 2026-09-17. Each was investigated on its own and each
+// hypothesis was retired on its own evidence. Nobody had looked at the runner they share.
+//
+// MEASURED: `spawn` reports a child KILLED BY A SIGNAL as `status: null, signal: 'SIGKILL'`, and one
+// that never started as `status: null, error.code: 'ENOENT'`. The runner recorded both as
+// `status ?? EXIT.FAILED` — so "killed", "could not start" and "ran and failed" were the same line in
+// the summary, and the reason was thrown away. That is the exact shape of a failure with no output
+// that passes on the next run.
+
+describe('a step that did not simply exit is described, not flattened', () => {
+  it('MUTATION: a killed gate says it was killed', () => {
+    expect(describeAbnormalExit({ status: null, signal: 'SIGKILL' })).toMatch(/KILLED by SIGKILL/);
+  });
+
+  it('MUTATION: a gate that never started says so, and says its silence is not a verdict', () => {
+    const said = describeAbnormalExit({ status: null, signal: null, error: { code: 'EAGAIN' } });
+    expect(said).toMatch(/could not be started \(EAGAIN\)/);
+    expect(said, 'the point of the sentence').toMatch(/never ran/);
+  });
+
+  it('an ordinary failure is left alone — the exit code already said it', () => {
+    expect(describeAbnormalExit({ status: 1 })).toBeNull();
+    expect(describeAbnormalExit({ status: 0 })).toBeNull();
+  });
+
+  it('the impossible case is reported rather than silently treated as a failure', () => {
+    expect(describeAbnormalExit({ status: null, signal: null })).toMatch(/should not be possible/);
+  });
+});
+
+describe('runStep keeps the evidence', () => {
+  it('captures output and the exit code of a gate that ran', async () => {
+    const r = await runStep(
+      {
+        cmd: 'node',
+        args: ['-e', 'console.log("on stdout"); console.error("on stderr"); process.exit(3)'],
+      },
+      { quiet: true },
+    );
+    expect(r.status).toBe(3);
+    expect(r.output, 'both streams are kept — gates write failures to stderr').toContain(
+      'on stdout',
+    );
+    expect(r.output).toContain('on stderr');
+  });
+
+  it('MUTATION: a child killed by a signal is distinguishable from one that failed', async () => {
+    // This is the case that was indistinguishable before. A gate the operating system stopped —
+    // out of memory, for instance — looked exactly like a gate that examined the repository and
+    // objected to it.
+    const r = await runStep(
+      { cmd: 'node', args: ['-e', 'process.kill(process.pid, "SIGKILL")'] },
+      { quiet: true },
+    );
+    expect(r.status).toBeNull();
+    expect(r.signal).toBe('SIGKILL');
+    expect(describeAbnormalExit(r)).toMatch(/KILLED/);
+  });
+
+  it('MUTATION: a gate that cannot be spawned reports an error rather than an exit code', async () => {
+    const r = await runStep({ cmd: 'definitely-not-a-binary-xyz', args: [] }, { quiet: true });
+    expect(r.status).toBeNull();
+    expect(r.error?.code).toBe('ENOENT');
+    expect(describeAbnormalExit(r)).toMatch(/could not be started/);
+  });
+
+  it('a clean gate reports zero and its output', async () => {
+    const r = await runStep({ cmd: 'node', args: ['-e', 'console.log("ok")'] }, { quiet: true });
+    expect(r.status).toBe(0);
+    expect(r.output.trim()).toBe('ok');
   });
 });

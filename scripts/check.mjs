@@ -10,7 +10,10 @@
  * (`scripts/check.test.mts`). A runner that has only ever printed a tick has not been shown to be
  * looking at anything.
  */
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 export const STEPS = [
   // Next generates route types (LayoutProps, PageProps) into .next/types. Without this, typecheck
@@ -109,6 +112,39 @@ export const STEPS = [
   },
 ];
 
+/**
+ * Why a step ended, when it did not simply exit with a code.
+ *
+ * **MEASURED 2026-09-17, and it is the reason this function exists.** `spawnSync`/`spawn` report a
+ * child that was KILLED BY A SIGNAL as `status: null, signal: 'SIGKILL'`, and a child that never
+ * started at all as `status: null, error.code: 'ENOENT'` (or `EAGAIN` under process pressure). This
+ * runner recorded both as `status ?? EXIT.FAILED` — so a gate that was killed, a gate that could not
+ * be spawned, and a gate that ran and genuinely failed were **indistinguishable in the summary, and
+ * the reason was discarded**.
+ *
+ * That is precisely the shape of every unreproduced failure this repository has recorded: a gate
+ * reported failing, no output explaining it, and a standalone re-run passing immediately after
+ * (F-83's `policy`, F-84's `unit`, and a `promises` failure on 2026-09-17). Three separate
+ * investigations each produced a hypothesis about a different gate; none looked at the harness they
+ * share. This does not prove the harness caused any of them — it removes the ambiguity that made
+ * them unanswerable.
+ *
+ * @param {{status: number | null, signal?: string | null, error?: {code?: string} | null}} r
+ * @returns {string | null} what to tell a person, or null when the exit code already says it
+ */
+export function describeAbnormalExit(r) {
+  if (r.error) {
+    return `could not be started (${r.error.code ?? 'spawn failed'}) — it never ran, so its silence is not a verdict`;
+  }
+  if (r.status === null && r.signal) {
+    return `was KILLED by ${r.signal} — it did not choose to fail, something stopped it`;
+  }
+  if (r.status === null) {
+    return 'ended with no exit code and no signal, which should not be possible';
+  }
+  return null;
+}
+
 /** Exit codes are a contract: 0 all green · 1 a gate failed · 2 the run could not be performed. */
 export const EXIT = { OK: 0, FAILED: 1, CANNOT_RUN: 2, DEGRADED: 3 };
 
@@ -187,7 +223,47 @@ function databaseReachable(
   return spawnSync('psql', [url, '-tAc', 'select 1'], { encoding: 'utf8' }).status === 0;
 }
 
-function main() {
+/**
+ * Run one step, showing its output live AND keeping a copy.
+ *
+ * `stdio: 'inherit'` was simpler and lost the evidence: the output went to the terminal and nowhere
+ * else, so a failure inside a run that was piped through `tail` — or scrolled past — left nothing to
+ * diagnose. Two of the three unreproduced failures in `docs/FINDINGS.md` were unreproducible
+ * PRIMARILY because their output was gone (F-84 says so in as many words).
+ *
+ * So each chunk is forwarded as it arrives and appended to a buffer. Live output is unchanged for a
+ * person watching; what is different is that after a failure there is a file to read.
+ *
+ * The buffer is capped. A runaway gate printing without end should not turn a diagnosis into an
+ * out-of-memory kill — which would produce exactly the signal-death this change exists to explain.
+ *
+ * @param {{cmd: string, args: string[]}} step
+ * @param {{quiet?: boolean}} [opts] quiet: capture without forwarding, for the confirming re-run
+ */
+export function runStep(step, opts = {}) {
+  const CAP = 4 * 1024 * 1024;
+  return new Promise((resolve) => {
+    const child = spawn(step.cmd, step.args, { stdio: ['inherit', 'pipe', 'pipe'] });
+    let output = '';
+    let truncated = false;
+    const tee = (stream, sink) => {
+      stream.on('data', (chunk) => {
+        const text = chunk.toString();
+        if (output.length < CAP) output += text;
+        else truncated = true;
+        if (!opts.quiet) sink.write(text);
+      });
+    };
+    tee(child.stdout, process.stdout);
+    tee(child.stderr, process.stderr);
+    child.on('error', (error) => resolve({ status: null, signal: null, error, output, truncated }));
+    child.on('close', (status, signal) =>
+      resolve({ status, signal, error: null, output, truncated }),
+    );
+  });
+}
+
+async function main() {
   /**
    * Probe by running the binary, not by asking a shell. `spawnSync(..., { shell: true })` concatenates
    * arguments into a command string unescaped — Node warns about it, and it is a real injection seam
@@ -211,16 +287,64 @@ function main() {
     process.exit(decision.exit);
   }
 
+  // Where a failing step's output is kept. Under the system temp directory rather than in the
+  // repository: a log nobody can accidentally commit is worth more than one that is easy to `ls`,
+  // and the path is printed loudly when it matters.
+  const logDir = join(tmpdir(), 'keelblock-check', new Date().toISOString().replace(/[:.]/g, '-'));
+
   const results = [];
   for (const step of decision.steps) {
     process.stdout.write(`\n──── ${step.id} · ${step.why}\n`);
     const t0 = Date.now();
-    const r = spawnSync(step.cmd, step.args, { stdio: 'inherit' });
+    const r = await runStep(step);
+    const ms = Date.now() - t0;
+    const abnormal = describeAbnormalExit(r);
+    const failed = r.status !== 0;
+
+    let reproduced = null;
+    let logPath = null;
+    if (failed) {
+      // 1 · KEEP THE OUTPUT. This is the half that was missing every time.
+      try {
+        mkdirSync(logDir, { recursive: true });
+        logPath = join(logDir, `${step.id}.log`);
+        writeFileSync(logPath, r.output + (r.truncated ? '\n[output truncated at 4MiB]\n' : ''));
+      } catch {
+        logPath = null; // a diagnosis that cannot be written must not fail the run it describes
+      }
+
+      // 2 · ASK WHETHER IT REPRODUCES, IMMEDIATELY. That single bit separates "this gate is wrong"
+      //     from "the harness around it is", and it is the bit that was missing all three times a
+      //     gate failed here and could not be explained. Quiet, so the re-run does not double the
+      //     noise at the exact moment someone is reading.
+      process.stdout.write(
+        `\n  ${step.id} failed — re-running it alone to see whether it repeats…\n`,
+      );
+      const again = await runStep(step, { quiet: true });
+      reproduced = again.status !== 0;
+      if (logPath) {
+        try {
+          writeFileSync(join(logDir, `${step.id}.rerun.log`), again.output);
+        } catch {
+          /* the first log is the one that matters */
+        }
+      }
+      process.stdout.write(
+        reproduced
+          ? `  ${step.id}: reproduced. The gate is reporting something real.\n`
+          : `  ${step.id}: DID NOT REPRODUCE on an immediate standalone re-run. ` +
+              `Treat the first failure as the evidence, not this pass.\n`,
+      );
+    }
+
     results.push({
       ...step,
       status: r.status ?? EXIT.FAILED,
       ok: r.status === 0,
-      ms: Date.now() - t0,
+      ms,
+      abnormal,
+      reproduced,
+      logPath,
     });
   }
 
@@ -229,6 +353,18 @@ function main() {
   });
   console.log('\n════ summary ════');
   for (const line of lines) console.log(line);
+
+  // The cause, where the reader is already looking. A summary that says a gate "failed" when it was
+  // killed, or when it never started, is the line three separate investigations began from.
+  for (const r of results.filter((x) => x.abnormal || x.reproduced === false || x.logPath)) {
+    if (r.abnormal) console.log(`\n  ${r.id} ${r.abnormal}`);
+    if (r.reproduced === false) {
+      console.log(
+        `  ${r.id} did NOT reproduce standalone — the failure is in the run, not necessarily the gate`,
+      );
+    }
+    if (r.logPath) console.log(`  ${r.id} output kept at ${r.logPath}`);
+  }
   const note = degraded.length
     ? `  ${degraded.length} degraded: ${degraded.join(', ')} — a rule did not run. ` +
       `Re-run with --strict to treat that as failure.\n`
